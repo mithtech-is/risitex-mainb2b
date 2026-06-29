@@ -41,7 +41,7 @@ export default function WholesaleProgramPage() {
               <div className="mt-10 flex flex-wrap items-center gap-3">
                 <SignedOut>
                   <Button asChild size="lg">
-                    <Link href="/auth/sign-up">Apply for Account</Link>
+                    <Link href="/auth/sign-in">Sign In</Link>
                   </Button>
                 </SignedOut>
                 <SignedIn>
@@ -53,6 +53,17 @@ export default function WholesaleProgramPage() {
                   <Link href="/products">Browse Catalogue</Link>
                 </Button>
               </div>
+              <SignedOut>
+                <p className="mt-3 text-body-sm text-text-muted">
+                  Don&rsquo;t have an account?{" "}
+                  <Link
+                    href="/auth/sign-up"
+                    className="text-text-primary underline-offset-4 hover:underline"
+                  >
+                    Register your business
+                  </Link>
+                </p>
+              </SignedOut>
             </div>
             <div className="lg:col-span-5">
               <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl ring-1 ring-border-subtle shadow-rest">
@@ -182,12 +193,21 @@ export default function WholesaleProgramPage() {
             </p>
             <div className="mt-8 inline-flex flex-wrap items-center justify-center gap-3">
               <Button asChild size="lg">
-                <Link href="/auth/sign-up">Apply Now</Link>
+                <Link href="/auth/sign-in">Sign In</Link>
               </Button>
               <Button variant="secondary" size="lg" asChild>
                 <Link href="/products">Browse Products</Link>
               </Button>
             </div>
+            <p className="mt-4 text-body-sm text-text-muted">
+              New here?{" "}
+              <Link
+                href="/auth/sign-up"
+                className="text-text-primary underline-offset-4 hover:underline"
+              >
+                Register your business
+              </Link>
+            </p>
           </Container>
         </section>
       </SignedOut>

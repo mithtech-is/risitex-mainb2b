@@ -155,10 +155,10 @@ export default async function WholesaleCataloguePage({
           <div className="flex flex-wrap items-center gap-2">
             <SignedOut>
               <Button asChild>
-                <Link href="/auth/sign-up">Apply for an account</Link>
+                <Link href="/auth/sign-in">Sign in</Link>
               </Button>
               <Button variant="secondary" asChild>
-                <Link href="/auth/sign-in">Sign in</Link>
+                <Link href="/auth/sign-up">Register</Link>
               </Button>
             </SignedOut>
             <SignedIn>

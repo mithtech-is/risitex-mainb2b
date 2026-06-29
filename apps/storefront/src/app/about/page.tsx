@@ -111,8 +111,17 @@ export default function AboutPage() {
           <p className="mt-3 text-body-lg text-text-secondary">Join 50+ dealers and distributors nationwide.</p>
           <div className="mt-8">
             <Button asChild size="lg">
-              <Link href="/auth/sign-up">Apply for Wholesale Account</Link>
+              <Link href="/auth/sign-in">Sign In</Link>
             </Button>
+            <p className="mt-3 text-body-sm text-text-muted">
+              Don&rsquo;t have an account?{" "}
+              <Link
+                href="/auth/sign-up"
+                className="text-text-primary underline-offset-4 hover:underline"
+              >
+                Apply for a wholesale account
+              </Link>
+            </p>
           </div>
         </Container>
       </section>

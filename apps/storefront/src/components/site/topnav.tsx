@@ -68,10 +68,57 @@ function TopnavActions() {
       <NavIcon href="/b2b/cart" label="Cart" count={counts.cart}>
         <ShoppingCart className="h-5 w-5" />
       </NavIcon>
-      <NavIcon href="/b2b/profile" label="Account">
-        <UserRound className="h-5 w-5" />
-      </NavIcon>
+      <AccountNavSlot />
     </div>
+  );
+}
+
+/**
+ * Account icon switches its destination + label by auth state. Signed-out
+ * users land on /auth/sign-in (a Sign in pill is rendered next to it so the
+ * CTA is text, not just an ambiguous person icon). Signed-in users get the
+ * usual person icon linking to their profile.
+ */
+function AccountNavSlot() {
+  const [authed, setAuthed] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    const read = () => {
+      try {
+        setAuthed(!!window.localStorage.getItem("medusa_auth_token"));
+      } catch {
+        setAuthed(false);
+      }
+    };
+    read();
+    const onChange = () => read();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "medusa_auth_token" || e.key === null) read();
+    };
+    window.addEventListener("risitex:auth-changed", onChange);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("risitex:auth-changed", onChange);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  if (authed === false) {
+    return (
+      <Link
+        href="/auth/sign-in"
+        className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border-subtle bg-surface-raised px-3 text-body-sm font-medium text-text-primary transition-colors duration-fast hover:bg-surface-sunken focus-visible:ring-focus"
+      >
+        Sign in
+      </Link>
+    );
+  }
+  // authed === true OR null (still resolving — render the icon, which
+  // links to a guarded route that handles the redirect itself).
+  return (
+    <NavIcon href="/b2b/profile" label="Account">
+      <UserRound className="h-5 w-5" />
+    </NavIcon>
   );
 }
 

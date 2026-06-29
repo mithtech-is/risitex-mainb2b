@@ -75,7 +75,7 @@ export default function HomePage() {
                 </Button>
                 <SignedOut>
                   <Button variant="secondary" size="lg" asChild>
-                    <Link href="/auth/sign-up">Apply for Account &rarr;</Link>
+                    <Link href="/auth/sign-in">Sign In &rarr;</Link>
                   </Button>
                 </SignedOut>
                 <SignedIn>
@@ -84,6 +84,17 @@ export default function HomePage() {
                   </Button>
                 </SignedIn>
               </div>
+              <SignedOut>
+                <p className="mt-3 text-body-sm text-text-muted">
+                  Don&rsquo;t have an account?{" "}
+                  <Link
+                    href="/auth/sign-up"
+                    className="text-text-primary underline-offset-4 hover:underline"
+                  >
+                    Register your business
+                  </Link>
+                </p>
+              </SignedOut>
 
               <div className="mt-12 grid grid-cols-3 gap-6">
                 <div>
@@ -328,8 +339,17 @@ export default function HomePage() {
           </div>
           <div className="mt-10 text-center">
             <Button asChild>
-              <Link href="/auth/sign-up">Apply for Wholesale Account</Link>
+              <Link href="/auth/sign-in">Sign In</Link>
             </Button>
+            <p className="mt-3 text-body-sm text-text-muted">
+              New to RISITEX?{" "}
+              <Link
+                href="/auth/sign-up"
+                className="text-text-primary underline-offset-4 hover:underline"
+              >
+                Apply for a wholesale account
+              </Link>
+            </p>
           </div>
         </Container>
       </section>
@@ -402,12 +422,21 @@ export default function HomePage() {
             </p>
             <div className="mt-8 inline-flex flex-wrap items-center justify-center gap-3">
               <Button asChild size="lg">
-                <Link href="/auth/sign-up">Apply Now</Link>
+                <Link href="/auth/sign-in">Sign In</Link>
               </Button>
               <Button variant="secondary" size="lg" asChild>
                 <Link href="/contact">Talk to Sales</Link>
               </Button>
             </div>
+            <p className="mt-4 text-body-sm text-text-muted">
+              Don&rsquo;t have an account?{" "}
+              <Link
+                href="/auth/sign-up"
+                className="text-text-primary underline-offset-4 hover:underline"
+              >
+                Register your business
+              </Link>
+            </p>
           </div>
         </Container>
       </section>
