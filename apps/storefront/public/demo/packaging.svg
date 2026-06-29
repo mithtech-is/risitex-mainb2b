@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-label="RISITEX carton packaging close-up">
+  <defs>
+    <linearGradient id="pbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F0E9D8"/>
+      <stop offset="100%" stop-color="#D9CFB6"/>
+    </linearGradient>
+    <linearGradient id="pcarton" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C9A574"/>
+      <stop offset="100%" stop-color="#8E6E40"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#pbg)"/>
+  <!-- Carton -->
+  <g>
+    <rect x="100" y="170" width="400" height="280" fill="url(#pcarton)"/>
+    <!-- Top flap -->
+    <polygon points="100,170 300,90 500,170" fill="#A07F4F"/>
+    <polygon points="100,170 300,90 300,160" fill="#B8915F"/>
+    <!-- Side highlight -->
+    <rect x="100" y="170" width="14" height="280" fill="#7A5C30" opacity=".4"/>
+    <!-- Tape -->
+    <rect x="100" y="290" width="400" height="22" fill="#5E4A2C" opacity=".55"/>
+    <!-- Label -->
+    <rect x="200" y="340" width="200" height="80" fill="#F4EFE6" stroke="#5E4A2C" stroke-width="2"/>
+    <text x="216" y="368" font-family="ui-monospace, monospace" font-size="14" fill="#3D3528">RST · 30/CTN</text>
+    <text x="216" y="388" font-family="ui-monospace, monospace" font-size="11" fill="#5E4A2C">HSN 6107 · GST 5%</text>
+    <text x="216" y="406" font-family="ui-monospace, monospace" font-size="11" fill="#5E4A2C">Tiruppur DC</text>
+  </g>
+  <!-- Twine -->
+  <g stroke="#3D3528" stroke-width="3" opacity=".4" fill="none">
+    <path d="M100 220 L500 220"/>
+    <path d="M100 410 L500 410"/>
+  </g>
+  <text x="40" y="560" font-family="ui-serif, Georgia, serif" font-size="18" fill="#3D3528" opacity=".7">RISITEX · Master carton</text>
+</svg>

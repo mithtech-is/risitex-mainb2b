@@ -1,0 +1,12 @@
+node_modules/
+.turbo/
+.next/
+.medusa/
+dist/
+build/
+coverage/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+infrastructure/docker/postgres-data/
+infrastructure/docker/redis-data/

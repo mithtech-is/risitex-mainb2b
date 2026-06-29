@@ -1,0 +1,408 @@
+/* ============================================================================
+ * RISITEX design system — runtime stylesheet
+ *
+ * This file is the source of truth at runtime. It declares CSS custom
+ * properties for every semantic token, in both light and dark modes, plus a
+ * conservative reset and globally-applied OpenType features.
+ *
+ * Mode switching follows two rules:
+ *   1. Default to `prefers-color-scheme` via the :root @media block.
+ *   2. Allow explicit override via `<html data-theme="light|dark">` — used by
+ *      the in-app theme toggle.
+ *
+ * Reduced-motion is honoured globally; transitions collapse to opacity-only
+ * with the instant duration.
+ *
+ * Consumers import this file once at app root.
+ * ========================================================================== */
+
+
+/* ---------------------------------------------------------------------------
+ * Token palette — light mode (default)
+ * ------------------------------------------------------------------------- */
+:root {
+  /* surfaces */
+  --surface-background: #FCFCF9;
+  --surface-raised: #FFFFFF;
+  --surface-sunken: #F7F7F2;
+  --surface-overlay: rgba(15, 15, 13, 0.40);
+  --surface-inverse: #0F0F0D;
+
+  /* text */
+  --text-primary: #0F0F0D;
+  --text-secondary: #3F3F38;
+  --text-muted: #5E5E55;
+  --text-disabled: #B9B9AF;
+  --text-on-accent: #FFFFFF;
+  --text-on-inverse: #FCFCF9;
+
+  /* borders */
+  --border-subtle: #E4E4DB;
+  --border-strong: #D2D2C7;
+  --border-focus: #2A3F7A;
+  --border-inverse: #2A2A25;
+
+  /* action */
+  --action-primary-bg: #2A3F7A;
+  --action-primary-bg-hover: #1F3060;
+  --action-primary-bg-active: #172547;
+  --action-primary-text: #FFFFFF;
+  --action-secondary-bg: #FFFFFF;
+  --action-secondary-bg-hover: #F7F7F2;
+  --action-secondary-text: #0F0F0D;
+  --action-danger-bg: #A14826;
+  --action-danger-bg-hover: #7E351A;
+  --action-danger-text: #FFFFFF;
+
+  /* feedback */
+  --feedback-success-bg: #F0F5EE;
+  --feedback-success-text: #34552C;
+  --feedback-success-border: #C6D9C0;
+  --feedback-warning-bg: #FAF4E8;
+  --feedback-warning-text: #724F0E;
+  --feedback-warning-border: #EAD8A8;
+  --feedback-danger-bg: #F8EEEA;
+  --feedback-danger-text: #5E2510;
+  --feedback-danger-border: #E6BFAE;
+  --feedback-info-bg: #EEF0F2;
+  --feedback-info-text: #2F3D4A;
+  --feedback-info-border: #C5CDD4;
+
+  /* brand */
+  --brand-accent: #2A3F7A;
+  --brand-accent-muted: #5F76AE;
+  --brand-accent-surface: #F1F3F9;
+
+  /* image plate (never changes between modes) */
+  --image-plate: #FFFFFF;
+
+  /* shadows */
+  --shadow-flat: none;
+  --shadow-rest: 0 1px 2px rgba(15, 15, 13, 0.04), 0 0 0 1px rgba(15, 15, 13, 0.04);
+  --shadow-raised:
+    0 4px 12px -2px rgba(15, 15, 13, 0.06),
+    0 2px 4px -2px rgba(15, 15, 13, 0.04),
+    0 0 0 1px rgba(15, 15, 13, 0.04);
+  --shadow-popover:
+    0 12px 32px -8px rgba(15, 15, 13, 0.12),
+    0 4px 12px -4px rgba(15, 15, 13, 0.06),
+    0 0 0 1px rgba(15, 15, 13, 0.06);
+  --shadow-modal:
+    0 24px 64px -16px rgba(15, 15, 13, 0.20),
+    0 8px 24px -8px rgba(15, 15, 13, 0.10),
+    0 0 0 1px rgba(15, 15, 13, 0.06);
+  --shadow-toast:
+    0 16px 40px -12px rgba(15, 15, 13, 0.16),
+    0 0 0 1px rgba(15, 15, 13, 0.08);
+  --shadow-inset-well: inset 0 1px 2px rgba(15, 15, 13, 0.04);
+
+  /* focus ring halo (used with --border-focus for 2-layer rings) */
+  --focus-ring-halo: 0 0 0 4px rgba(42, 63, 122, 0.12);
+
+  /* motion */
+  --motion-duration-instant: 80ms;
+  --motion-duration-fast: 140ms;
+  --motion-duration-base: 200ms;
+  --motion-duration-slow: 320ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-enter: cubic-bezier(0, 0, 0, 1);
+  --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* font families */
+  --font-display:
+    "GT Sectra", "Tiempos Headline", "Iowan Old Style", Charter, Georgia, serif;
+  --font-sans:
+    Inter, "Söhne", Geist, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    "JetBrains Mono", "Söhne Mono", "IBM Plex Mono", ui-monospace,
+    SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* color-scheme hint for native UA controls (scrollbars, etc.) */
+  color-scheme: light;
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Dark mode — via prefers-color-scheme OR explicit [data-theme="dark"]
+ * ------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface-background: #0B0C0E;
+    --surface-raised: #15161A;
+    --surface-sunken: #0E0F12;
+    --surface-overlay: rgba(0, 0, 0, 0.60);
+    --surface-inverse: #FCFCF9;
+
+    --text-primary: #F2F2EF;
+    --text-secondary: #B6B7B0;
+    --text-muted: #7B7C75;
+    --text-disabled: #4A4B45;
+    --text-on-accent: #0B0C0E;
+    --text-on-inverse: #0F0F0D;
+
+    --border-subtle: #24262C;
+    --border-strong: #34373F;
+    --border-focus: #7A93D6;
+    --border-inverse: #EFEFE8;
+
+    --action-primary-bg: #7A93D6;
+    --action-primary-bg-hover: #8FA5DE;
+    --action-primary-bg-active: #6680C5;
+    --action-primary-text: #0B0C0E;
+    --action-secondary-bg: #1B1D22;
+    --action-secondary-bg-hover: #22252B;
+    --action-secondary-text: #F2F2EF;
+    --action-danger-bg: #C46A4A;
+    --action-danger-bg-hover: #D78064;
+    --action-danger-text: #0B0C0E;
+
+    --feedback-success-bg: #1A2A18;
+    --feedback-success-text: #9CC094;
+    --feedback-success-border: #2B4426;
+    --feedback-warning-bg: #2A2210;
+    --feedback-warning-text: #E0BC72;
+    --feedback-warning-border: #4A3A14;
+    --feedback-danger-bg: #2A1610;
+    --feedback-danger-text: #E08B6A;
+    --feedback-danger-border: #4A2418;
+    --feedback-info-bg: #161B20;
+    --feedback-info-text: #9DAAB6;
+    --feedback-info-border: #2A333D;
+
+    --brand-accent: #7A93D6;
+    --brand-accent-muted: #5F76AE;
+    --brand-accent-surface: #171F33;
+
+    /* image plate stays white — photographs are sacred */
+    --image-plate: #FFFFFF;
+
+    --shadow-flat: none;
+    --shadow-rest: 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --shadow-raised:
+      0 4px 12px -2px rgba(0, 0, 0, 0.40),
+      0 0 0 1px rgba(255, 255, 255, 0.08);
+    --shadow-popover:
+      0 12px 32px -8px rgba(0, 0, 0, 0.60),
+      0 0 0 1px rgba(255, 255, 255, 0.10);
+    --shadow-modal:
+      0 24px 64px -16px rgba(0, 0, 0, 0.70),
+      0 0 0 1px rgba(255, 255, 255, 0.10);
+    --shadow-toast:
+      0 16px 40px -12px rgba(0, 0, 0, 0.70),
+      0 0 0 1px rgba(255, 255, 255, 0.12);
+    --shadow-inset-well: inset 0 1px 2px rgba(0, 0, 0, 0.40);
+
+    --focus-ring-halo: 0 0 0 4px rgba(122, 147, 214, 0.18);
+
+    color-scheme: dark;
+  }
+}
+
+/* Explicit override (manual toggle) — wins over prefers-color-scheme */
+:root[data-theme="dark"] {
+  --surface-background: #0B0C0E;
+  --surface-raised: #15161A;
+  --surface-sunken: #0E0F12;
+  --surface-overlay: rgba(0, 0, 0, 0.60);
+  --surface-inverse: #FCFCF9;
+
+  --text-primary: #F2F2EF;
+  --text-secondary: #B6B7B0;
+  --text-muted: #7B7C75;
+  --text-disabled: #4A4B45;
+  --text-on-accent: #0B0C0E;
+  --text-on-inverse: #0F0F0D;
+
+  --border-subtle: #24262C;
+  --border-strong: #34373F;
+  --border-focus: #7A93D6;
+  --border-inverse: #EFEFE8;
+
+  --action-primary-bg: #7A93D6;
+  --action-primary-bg-hover: #8FA5DE;
+  --action-primary-bg-active: #6680C5;
+  --action-primary-text: #0B0C0E;
+  --action-secondary-bg: #1B1D22;
+  --action-secondary-bg-hover: #22252B;
+  --action-secondary-text: #F2F2EF;
+  --action-danger-bg: #C46A4A;
+  --action-danger-bg-hover: #D78064;
+  --action-danger-text: #0B0C0E;
+
+  --feedback-success-bg: #1A2A18;
+  --feedback-success-text: #9CC094;
+  --feedback-success-border: #2B4426;
+  --feedback-warning-bg: #2A2210;
+  --feedback-warning-text: #E0BC72;
+  --feedback-warning-border: #4A3A14;
+  --feedback-danger-bg: #2A1610;
+  --feedback-danger-text: #E08B6A;
+  --feedback-danger-border: #4A2418;
+  --feedback-info-bg: #161B20;
+  --feedback-info-text: #9DAAB6;
+  --feedback-info-border: #2A333D;
+
+  --brand-accent: #7A93D6;
+  --brand-accent-muted: #5F76AE;
+  --brand-accent-surface: #171F33;
+
+  --image-plate: #FFFFFF;
+
+  --shadow-flat: none;
+  --shadow-rest: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-raised:
+    0 4px 12px -2px rgba(0, 0, 0, 0.40),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-popover:
+    0 12px 32px -8px rgba(0, 0, 0, 0.60),
+    0 0 0 1px rgba(255, 255, 255, 0.10);
+  --shadow-modal:
+    0 24px 64px -16px rgba(0, 0, 0, 0.70),
+    0 0 0 1px rgba(255, 255, 255, 0.10);
+  --shadow-toast:
+    0 16px 40px -12px rgba(0, 0, 0, 0.70),
+    0 0 0 1px rgba(255, 255, 255, 0.12);
+  --shadow-inset-well: inset 0 1px 2px rgba(0, 0, 0, 0.40);
+
+  --focus-ring-halo: 0 0 0 4px rgba(122, 147, 214, 0.18);
+
+  color-scheme: dark;
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Conservative reset
+ *
+ * Tailwind's preflight handles most of what's needed; this layer adds RISITEX-
+ * specific defaults: OpenType features, font smoothing, base typography, and
+ * a hairline scrollbar treatment.
+ * ------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  font-feature-settings:
+    "kern" 1,
+    "liga" 1,
+    "calt" 1,
+    "ss01" 1; /* Inter alternate single-storey 'a' for clarity */
+}
+
+body {
+  margin: 0;
+  background: var(--surface-background);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.57;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Long-form prose opts out of tabular numerals */
+.prose,
+.prose * {
+  font-variant-numeric: proportional-nums lining-nums;
+}
+
+/* Tables, prices, KPI cards keep tabular by default — opt-in helper */
+.numerics-tabular {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Display face is editorial — italics allowed only inside .editorial */
+.editorial em,
+.editorial i {
+  font-style: italic;
+}
+
+/* Image plate is always white — wraps product photography */
+.image-plate {
+  background: var(--image-plate);
+}
+
+/* Hairline scrollbars on overflow surfaces */
+@media (pointer: fine) {
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+    background-clip: content-box;
+    border: 3px solid transparent;
+  }
+}
+
+/* Focus visible — keyboard-only focus ring */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring-halo);
+}
+
+/* Suppress focus ring on mouse click for buttons that handle their own */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion
+ *
+ * Collapses all transitions to opacity-only with instant duration. Does NOT
+ * disable transitions entirely because some state changes (open/close) still
+ * need a tick to settle.
+ * ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: var(--motion-duration-instant) !important;
+    transition-property: opacity !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Skeleton shimmer — the one allowed infinite animation
+ * ------------------------------------------------------------------------- */
+@keyframes risitex-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-sunken) 0%,
+    var(--border-subtle) 50%,
+    var(--surface-sunken) 100%
+  );
+  background-size: 200% 100%;
+  animation: risitex-shimmer 1400ms linear infinite;
+  border-radius: 8px;
+}

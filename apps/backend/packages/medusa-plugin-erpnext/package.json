@@ -1,0 +1,56 @@
+{
+  "name": "@polemarch/medusa-plugin-erpnext",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Polemarch ↔ ERPNext (Frappe) bidirectional sync as a Medusa v2 plugin. Push: customers / orders / products / KYC fan-out via the live event bus + admin replay. Pull: read-only Frappe REST proxy for previewing remote doctypes.",
+  "license": "UNLICENSED",
+  "files": [
+    ".medusa/server",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "medusa plugin:build",
+    "dev": "medusa plugin:develop",
+    "prepare": "medusa plugin:build || true"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    "./workflows": "./.medusa/server/src/workflows/index.js",
+    "./.medusa/server/src/modules/*": "./.medusa/server/src/modules/*/index.js",
+    "./providers/*": "./.medusa/server/src/providers/*/index.js",
+    "./admin": {
+      "import": "./.medusa/server/src/admin/index.mjs",
+      "require": "./.medusa/server/src/admin/index.js",
+      "default": "./.medusa/server/src/admin/index.js"
+    },
+    "./*": "./.medusa/server/src/*.js"
+  },
+  "keywords": [
+    "medusa-plugin-integration",
+    "medusa-v2",
+    "erpnext",
+    "frappe"
+  ],
+  "devDependencies": {
+    "@medusajs/admin-sdk": "^2.14.2",
+    "@medusajs/cli": "^2.14.2",
+    "@medusajs/framework": "^2.14.2",
+    "@medusajs/icons": "^2.14.2",
+    "@medusajs/medusa": "^2.14.2",
+    "@medusajs/test-utils": "^2.14.2",
+    "@medusajs/ui": "^4.0.4",
+    "@swc/core": "^1.5.7",
+    "typescript": "^5.4.5",
+    "zod": "^3.22.0"
+  },
+  "peerDependencies": {
+    "@medusajs/admin-sdk": "^2.14.2",
+    "@medusajs/cli": "^2.14.2",
+    "@medusajs/framework": "^2.14.2",
+    "@medusajs/icons": "^2.14.2",
+    "@medusajs/medusa": "^2.14.2",
+    "@medusajs/test-utils": "^2.14.2",
+    "@medusajs/ui": "^4.0.4"
+  }
+}

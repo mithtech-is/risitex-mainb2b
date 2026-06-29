@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1400" width="1400" height="1400" role="img" aria-label="Poplin shirt placket and stitching detail">
+  <defs>
+    <pattern id="weaveD" width="9" height="9" patternUnits="userSpaceOnUse">
+      <rect width="9" height="9" fill="#F2EDDF"/>
+      <rect width="4.5" height="9" fill="#E9E2D0"/>
+      <rect width="9" height="4.5" fill="#00000007"/>
+    </pattern>
+    <pattern id="stitch" width="22" height="6" patternUnits="userSpaceOnUse">
+      <rect x="0" width="13" height="2" y="2" fill="#2A3F7A" opacity="0.7"/>
+    </pattern>
+  </defs>
+
+  <rect width="1400" height="1400" fill="url(#weaveD)"/>
+
+  <!-- Placket panel -->
+  <rect x="520" y="0" width="360" height="1400" fill="#F7F4EE"/>
+  <rect x="520" y="0" width="360" height="1400" fill="url(#weaveD)" opacity="0.5"/>
+  <!-- Topstitch lines along placket edges -->
+  <rect x="545" y="0" width="22" height="1400" fill="url(#stitch)"/>
+  <rect x="833" y="0" width="22" height="1400" fill="url(#stitch)"/>
+
+  <!-- Buttonholes + buttons, large macro -->
+  <g>
+    <g transform="translate(700 300)">
+      <rect x="-46" y="-7" width="92" height="14" rx="7" fill="none" stroke="#2A3F7A" stroke-width="3"/>
+      <circle r="34" fill="#E4DCC6" stroke="#B6AC93" stroke-width="3"/>
+      <circle r="20" fill="none" stroke="#B6AC93" stroke-width="2"/>
+      <circle cx="-8" cy="-8" r="3.5" fill="#9A9078"/>
+      <circle cx="8" cy="-8" r="3.5" fill="#9A9078"/>
+      <circle cx="-8" cy="8" r="3.5" fill="#9A9078"/>
+      <circle cx="8" cy="8" r="3.5" fill="#9A9078"/>
+    </g>
+    <g transform="translate(700 700)">
+      <rect x="-46" y="-7" width="92" height="14" rx="7" fill="none" stroke="#2A3F7A" stroke-width="3"/>
+      <circle r="34" fill="#E4DCC6" stroke="#B6AC93" stroke-width="3"/>
+      <circle r="20" fill="none" stroke="#B6AC93" stroke-width="2"/>
+      <circle cx="-8" cy="-8" r="3.5" fill="#9A9078"/>
+      <circle cx="8" cy="-8" r="3.5" fill="#9A9078"/>
+      <circle cx="-8" cy="8" r="3.5" fill="#9A9078"/>
+      <circle cx="8" cy="8" r="3.5" fill="#9A9078"/>
+    </g>
+    <g transform="translate(700 1100)">
+      <rect x="-46" y="-7" width="92" height="14" rx="7" fill="none" stroke="#2A3F7A" stroke-width="3"/>
+      <circle r="34" fill="#E4DCC6" stroke="#B6AC93" stroke-width="3"/>
+      <circle r="20" fill="none" stroke="#B6AC93" stroke-width="2"/>
+      <circle cx="-8" cy="-8" r="3.5" fill="#9A9078"/>
+      <circle cx="8" cy="-8" r="3.5" fill="#9A9078"/>
+      <circle cx="-8" cy="8" r="3.5" fill="#9A9078"/>
+      <circle cx="8" cy="8" r="3.5" fill="#9A9078"/>
+    </g>
+  </g>
+
+  <text x="60" y="1350" font-family="monospace" font-size="18" fill="#88878099" letter-spacing="2">PLACKET · FRENCH SEAM · MOTHER-OF-PEARL BUTTON</text>
+</svg>

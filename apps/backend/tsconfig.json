@@ -1,0 +1,38 @@
+{
+    "ts-node": {
+        "transpileOnly": true
+    },
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "declaration": false,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "sourceMap": true,
+        "outDir": "dist",
+        "rootDir": ".",
+        "strict": false,
+        "esModuleInterop": true,
+        "lib": [
+            "esnext"
+        ],
+        "skipLibCheck": true,
+        "baseUrl": ".",
+        "ignoreDeprecations": "5.0",
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ]
+        }
+    },
+    "include": [
+        "src/**/*.ts",
+        "modules/**/*.ts",
+        "medusa-config.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}

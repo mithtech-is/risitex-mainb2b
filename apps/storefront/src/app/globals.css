@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design system stylesheet — installs the CSS variable layer, reset, OpenType
+ * features, reduced-motion handling, and the shimmer keyframe. Must be the
+ * first import so Tailwind utilities resolve against the variables it declares.
+ */
+@import "@risitex/ui/styles.css";
+
+/*
+ * Wire next/font CSS variables into the design tokens.
+ * Inter → --font-sans, JetBrains Mono → --font-mono. The display face stays on
+ * the system serif fallback declared in @risitex/ui/styles.css until the
+ * foundry face is licensed.
+ *
+ * Each next/font call in layout.tsx exposes a CSS variable named below. We
+ * remap our semantic font tokens to those variables so all Tailwind font-*
+ * utilities pick up the loaded fonts.
+ */
+:root {
+  --font-sans: var(--font-inter), "Söhne", Geist, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), "Söhne Mono", "IBM Plex Mono",
+    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: var(--font-source-serif), "GT Sectra", "Tiempos Headline",
+    "Iowan Old Style", Charter, Georgia, serif;
+}
+
+/*
+ * Homepage hero motion — pure CSS, no JS, no client component. Keeps the
+ * page a Server Component (zero hydration cost). Fully disabled under
+ * prefers-reduced-motion.
+ */
+@keyframes rx-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes rx-sheen {
+  0% {
+    transform: translateX(-130%) skewX(-12deg);
+  }
+  60%,
+  100% {
+    transform: translateX(240%) skewX(-12deg);
+  }
+}
+.rx-rise {
+  opacity: 0;
+  animation: rx-fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.rx-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.rx-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 70%
+  );
+  transform: translateX(-130%) skewX(-12deg);
+  animation: rx-sheen 5s ease-in-out 1.4s infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rx-rise {
+    opacity: 1;
+    animation: none;
+  }
+  .rx-sheen::after {
+    display: none;
+    animation: none;
+  }
+}
+
+/*
+ * Welcome modal motion — backdrop fades, card lifts + scales in. Used by
+ * the homepage welcome overlay (welcome-modal.tsx). Exit reverses via the
+ * .is-closing modifier.
+ */
+@keyframes rx-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes rx-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.rx-backdrop {
+  animation: rx-backdrop-in 0.28s ease both;
+}
+.rx-card {
+  animation: rx-card-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.rx-backdrop.is-closing {
+  animation: rx-backdrop-in 0.22s ease reverse both;
+}
+.rx-card.is-closing {
+  animation: rx-card-in 0.22s ease reverse both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rx-backdrop,
+  .rx-card,
+  .rx-backdrop.is-closing,
+  .rx-card.is-closing {
+    animation: none;
+  }
+}

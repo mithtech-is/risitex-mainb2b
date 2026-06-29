@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build artifacts
+dist/
+.medusa/
+*.tsbuildinfo
+public/admin/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Sentry source maps
+.sentryclirc
+
+# Temp scripts (one-shot e2e harnesses, etc.)
+scripts-tmp/

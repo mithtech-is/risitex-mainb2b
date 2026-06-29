@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1400" width="1400" height="1400" role="img" aria-label="Poplin shirt flat-lay, natural">
+  <defs>
+    <pattern id="weaveN" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#F4EFE2"/>
+      <rect width="4" height="8" fill="#ECE5D4"/>
+      <rect width="8" height="4" fill="#00000006"/>
+    </pattern>
+    <linearGradient id="fold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#000" stop-opacity="0.05"/>
+      <stop offset="0.5" stop-color="#fff" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1400" height="1400" fill="#E7E0D0"/>
+
+  <!-- Shirt body -->
+  <g>
+    <path d="M420 360 L560 300 L700 360 L840 300 L980 360 L1010 540 L920 580 L920 1120 L480 1120 L480 580 L390 540 Z" fill="url(#weaveN)" stroke="#C9C0AC" stroke-width="3"/>
+    <!-- Sleeves -->
+    <path d="M420 360 L300 520 L380 720 L480 660 L480 580 L390 540 Z" fill="url(#weaveN)" stroke="#C9C0AC" stroke-width="3"/>
+    <path d="M980 360 L1100 520 L1020 720 L920 660 L920 580 L1010 540 Z" fill="url(#weaveN)" stroke="#C9C0AC" stroke-width="3"/>
+    <!-- Collar -->
+    <path d="M560 300 L700 360 L840 300 L800 250 L700 300 L600 250 Z" fill="#F7F4EE" stroke="#C9C0AC" stroke-width="3"/>
+    <!-- Placket -->
+    <rect x="685" y="360" width="30" height="760" fill="#F7F4EE" stroke="#C9C0AC" stroke-width="2"/>
+    <rect x="690" y="360" width="6" height="760" fill="url(#fold)"/>
+    <!-- Buttons -->
+    <g fill="#D8CFB8" stroke="#B6AC93" stroke-width="1.5">
+      <circle cx="700" cy="430" r="9"/>
+      <circle cx="700" cy="540" r="9"/>
+      <circle cx="700" cy="650" r="9"/>
+      <circle cx="700" cy="760" r="9"/>
+      <circle cx="700" cy="870" r="9"/>
+      <circle cx="700" cy="980" r="9"/>
+      <circle cx="700" cy="1080" r="9"/>
+    </g>
+    <!-- Breast pocket -->
+    <path d="M780 470 L870 470 L870 560 L825 590 L780 560 Z" fill="none" stroke="#C9C0AC" stroke-width="2.5"/>
+  </g>
+
+  <text x="60" y="1340" font-family="Georgia, serif" font-style="italic" font-size="42" fill="#0F0F0D80">Poplin shirt — Natural</text>
+</svg>

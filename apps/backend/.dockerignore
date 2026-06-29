@@ -1,0 +1,16 @@
+node_modules
+.medusa
+dist
+.next
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.git
+.github
+tests
+documents
+docs/screenshots
+coverage
+*.tsbuildinfo

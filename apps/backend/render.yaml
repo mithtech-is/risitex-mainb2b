@@ -1,0 +1,91 @@
+# Render Blueprint — Medusa backend + Postgres + Redis.
+#
+# Deploy with:  render.yaml (Blueprint → Apply)
+#
+# The storefront and Calcula services deploy separately (they live in
+# sibling directories). This Blueprint covers just `backend/`.
+#
+# Pre-deploy migration strategy: `medusa db:migrate` runs as a
+# `preDeployCommand` so migrations land *before* Render swaps the new
+# instance in. If migrations fail the deploy is cancelled — the old
+# image keeps serving traffic and an alert fires. Running migrations
+# in `startCommand` (the previous pattern) was unsafe — a failed
+# migration at runtime would crash the worker and cycle pods.
+services:
+  - type: web
+    name: polemarch-backend
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    preDeployCommand: npx medusa db:migrate
+    startCommand: npm run start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: polemarch-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: polemarch-redis
+          property: connectionString
+
+      # Generated secrets — Render fills these with random values on
+      # first deploy and never re-rolls them. Rotation is a manual
+      # dashboard action (see docs/SECRETS_AND_BACKUPS.md).
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: AT_REST_ENCRYPTION_KEY
+        generateValue: true
+      - key: CALCULA_WEBHOOK_SECRET
+        generateValue: true
+
+      # Cross-origin policy. Storefront + admin + auth all share one
+      # publishable Medusa API key, but CORS is scoped per origin class.
+      - key: STORE_CORS
+        value: "https://deals.polemarch.in,https://www.polemarch.in"
+      - key: ADMIN_CORS
+        value: "https://deals.polemarch.in"
+      - key: AUTH_CORS
+        value: "https://deals.polemarch.in,https://www.polemarch.in"
+
+      # Idle-timeout for admin sessions (SEBI-style baseline for back-
+      # office portals). Override via the dashboard if QA needs a wider
+      # window.
+      - key: ADMIN_SESSION_IDLE_MS
+        value: "1800000" # 30 min
+
+      # Analytics + error tracking — filled in via the dashboard so
+      # keys don't land in the Blueprint file. Each is optional; the
+      # SDK is no-op when the var is missing.
+      - key: POSTHOG_EVENTS_API_KEY
+        sync: false
+      - key: POSTHOG_HOST
+        value: "https://us.i.posthog.com"
+      # Calcula integration — URL is public, secret is set per env via
+      # the dashboard (rotated independently of the backend).
+      - key: CALCULA_API_URL
+        value: "https://calcula.polemarch.in"
+
+      - key: NODE_VERSION
+        value: "20.11.1"
+
+  - type: redis
+    name: polemarch-redis
+    ipAllowList: [] # Only allow internal connections
+    maxmemoryPolicy: allkeys-lru
+    plan: starter
+
+databases:
+  - name: polemarch-db
+    databaseName: medusa
+    user: medusa_admin
+    plan: starter
+    # Render's managed Postgres takes daily backups with 7-day retention
+    # on the starter plan. backend/scripts/backup-postgres.sh is the
+    # off-site / on-demand layer (documented in
+    # docs/SECRETS_AND_BACKUPS.md).

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-label="RISITEX warehouse dispatch floor">
+  <defs>
+    <linearGradient id="wsky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E9E2D2"/>
+      <stop offset="100%" stop-color="#D6CDB9"/>
+    </linearGradient>
+    <linearGradient id="wfloor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#BDB39C"/>
+      <stop offset="100%" stop-color="#9E957F"/>
+    </linearGradient>
+    <linearGradient id="carton" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C9A574"/>
+      <stop offset="100%" stop-color="#A07F4F"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#wsky)"/>
+  <!-- Beams -->
+  <g stroke="#7A7261" stroke-width="2" opacity=".5">
+    <line x1="0" y1="120" x2="600" y2="120"/>
+    <line x1="0" y1="180" x2="600" y2="180"/>
+    <line x1="0" y1="240" x2="600" y2="240"/>
+  </g>
+  <!-- Pillars -->
+  <g fill="#8C8472">
+    <rect x="60"  y="120" width="14" height="320"/>
+    <rect x="290" y="120" width="14" height="320"/>
+    <rect x="520" y="120" width="14" height="320"/>
+  </g>
+  <!-- Floor -->
+  <rect x="0" y="440" width="600" height="160" fill="url(#wfloor)"/>
+  <!-- Carton stacks -->
+  <g>
+    <rect x="100" y="340" width="120" height="100" fill="url(#carton)"/>
+    <rect x="100" y="290" width="120" height="60"  fill="url(#carton)" opacity=".92"/>
+    <rect x="240" y="320" width="100" height="120" fill="url(#carton)"/>
+    <rect x="360" y="360" width="80"  height="80"  fill="url(#carton)" opacity=".9"/>
+    <rect x="400" y="280" width="120" height="160" fill="url(#carton)"/>
+  </g>
+  <!-- Carton tape -->
+  <g stroke="#5E4A2C" stroke-width="3" opacity=".5">
+    <line x1="100" y1="390" x2="220" y2="390"/>
+    <line x1="240" y1="380" x2="340" y2="380"/>
+    <line x1="400" y1="360" x2="520" y2="360"/>
+  </g>
+  <!-- Forklift fork lines -->
+  <g stroke="#3D3528" stroke-width="2" fill="none" opacity=".7">
+    <path d="M70 440 L130 440"/>
+    <path d="M70 446 L130 446"/>
+  </g>
+  <!-- Watermark -->
+  <text x="40" y="560" font-family="ui-serif, Georgia, serif" font-size="18" fill="#3D3528" opacity=".7">RISITEX · Wholesale dispatch floor</text>
+</svg>

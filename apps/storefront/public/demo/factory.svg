@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-label="RISITEX production floor with sewing line">
+  <defs>
+    <linearGradient id="fsky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#DDD3C0"/>
+      <stop offset="100%" stop-color="#C5BBA6"/>
+    </linearGradient>
+    <linearGradient id="ffloor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8C8472"/>
+      <stop offset="100%" stop-color="#6C6553"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#fsky)"/>
+  <!-- Window slats -->
+  <g fill="#3D3528" opacity=".35">
+    <rect x="60"  y="80" width="120" height="6"/>
+    <rect x="60"  y="100" width="120" height="6"/>
+    <rect x="60"  y="120" width="120" height="6"/>
+    <rect x="60"  y="140" width="120" height="6"/>
+
+    <rect x="240" y="80" width="120" height="6"/>
+    <rect x="240" y="100" width="120" height="6"/>
+    <rect x="240" y="120" width="120" height="6"/>
+    <rect x="240" y="140" width="120" height="6"/>
+
+    <rect x="420" y="80" width="120" height="6"/>
+    <rect x="420" y="100" width="120" height="6"/>
+    <rect x="420" y="120" width="120" height="6"/>
+    <rect x="420" y="140" width="120" height="6"/>
+  </g>
+  <!-- Sewing tables -->
+  <g>
+    <rect x="60" y="380" width="480" height="14" fill="#3D3528"/>
+    <g fill="#3D3528">
+      <rect x="70"  y="394" width="6" height="60"/>
+      <rect x="220" y="394" width="6" height="60"/>
+      <rect x="370" y="394" width="6" height="60"/>
+      <rect x="520" y="394" width="6" height="60"/>
+    </g>
+  </g>
+  <!-- Sewing machines (stylised) -->
+  <g fill="#5E5240">
+    <path d="M100 340 q15 -40 50 0 z"/>
+    <path d="M250 340 q15 -40 50 0 z"/>
+    <path d="M400 340 q15 -40 50 0 z"/>
+  </g>
+  <!-- Bobbins (highlights) -->
+  <g fill="#C9A574">
+    <circle cx="125" cy="335" r="6"/>
+    <circle cx="275" cy="335" r="6"/>
+    <circle cx="425" cy="335" r="6"/>
+  </g>
+  <!-- Floor -->
+  <rect x="0" y="454" width="600" height="146" fill="url(#ffloor)"/>
+  <!-- Spools / fabric bolts stacked on floor -->
+  <g>
+    <rect x="40"  y="470" width="80" height="30" rx="4" fill="#C9A574"/>
+    <rect x="40"  y="500" width="80" height="30" rx="4" fill="#A07F4F"/>
+    <rect x="480" y="470" width="80" height="30" rx="4" fill="#8E6E40"/>
+    <rect x="480" y="500" width="80" height="30" rx="4" fill="#C9A574"/>
+  </g>
+  <text x="40" y="568" font-family="ui-serif, Georgia, serif" font-size="18" fill="#3D3528" opacity=".7">RISITEX · Production floor</text>
+</svg>

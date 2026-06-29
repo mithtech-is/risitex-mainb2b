@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-label="Editorial lifestyle catalogue shot">
+  <defs>
+    <linearGradient id="lsky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E9DCC4"/>
+      <stop offset="100%" stop-color="#BDB39C"/>
+    </linearGradient>
+    <linearGradient id="lground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A89167"/>
+      <stop offset="100%" stop-color="#7A6A47"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#lsky)"/>
+  <!-- Architectural backdrop -->
+  <g fill="#7A6A47" opacity=".35">
+    <rect x="60"  y="120" width="60" height="280"/>
+    <rect x="160" y="80"  width="60" height="320"/>
+    <rect x="260" y="140" width="60" height="260"/>
+    <rect x="360" y="100" width="60" height="300"/>
+    <rect x="460" y="160" width="60" height="240"/>
+  </g>
+  <!-- Ground -->
+  <rect x="0" y="400" width="600" height="200" fill="url(#lground)"/>
+  <!-- Mannequin silhouette -->
+  <g transform="translate(220,200)">
+    <circle cx="80" cy="40" r="34" fill="#3D3528"/>
+    <path d="M30 80 L130 80 L150 240 L120 380 L40 380 L10 240 Z" fill="#3D3528"/>
+    <!-- Drape highlight -->
+    <path d="M40 110 L120 110 L130 240 L30 240 Z" fill="#5E4A2C" opacity=".6"/>
+  </g>
+  <text x="40" y="560" font-family="ui-serif, Georgia, serif" font-size="18" fill="#FCFCF9" opacity=".9">Lifestyle · editorial</text>
+</svg>

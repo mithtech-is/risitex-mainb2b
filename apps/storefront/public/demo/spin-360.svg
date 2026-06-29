@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-label="360 degree view placeholder">
+  <defs>
+    <linearGradient id="sbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F4EFE6"/>
+      <stop offset="100%" stop-color="#D9CFB6"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#sbg)"/>
+  <!-- 360 ring -->
+  <g transform="translate(300,300)">
+    <ellipse cx="0" cy="0" rx="190" ry="60" fill="none" stroke="#3D3528" stroke-width="3" opacity=".7"/>
+    <!-- Tick marks -->
+    <g stroke="#3D3528" stroke-width="2" opacity=".7">
+      <line x1="-190" y1="0"  x2="-180" y2="0"/>
+      <line x1="190"  y1="0"  x2="180"  y2="0"/>
+      <line x1="0"    y1="-60" x2="0"   y2="-50"/>
+      <line x1="0"    y1="60"  x2="0"   y2="50"/>
+      <line x1="-134" y1="-42" x2="-127" y2="-39"/>
+      <line x1="134"  y1="-42" x2="127"  y2="-39"/>
+      <line x1="-134" y1="42"  x2="-127" y2="39"/>
+      <line x1="134"  y1="42"  x2="127"  y2="39"/>
+    </g>
+    <!-- Garment -->
+    <g>
+      <circle cx="0" cy="-60" r="28" fill="#5E4A2C"/>
+      <path d="M-30 -40 L30 -40 L40 80 L30 140 L-30 140 L-40 80 Z" fill="#A89167"/>
+      <line x1="0" y1="-40" x2="0" y2="140" stroke="#5E4A2C" stroke-width="2" opacity=".4"/>
+    </g>
+    <!-- Rotate arrows -->
+    <g fill="none" stroke="#3D3528" stroke-width="3" opacity=".85">
+      <path d="M-180 -20 q-15 25 0 50" />
+      <polygon points="-180,-25 -188,-15 -172,-15" fill="#3D3528"/>
+      <path d="M180 -20 q15 25 0 50" />
+      <polygon points="180,-25 172,-15 188,-15" fill="#3D3528"/>
+    </g>
+  </g>
+  <text x="300" y="540" text-anchor="middle" font-family="ui-monospace, monospace" font-size="14" fill="#3D3528" opacity=".75">360° rotational view</text>
+</svg>

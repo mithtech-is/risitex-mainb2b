@@ -1,0 +1,464 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button, Input, Label, PasswordInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@risitex/ui/components";
+import { Container } from "@/components/site/container";
+import { signUp, updateCustomerMetadata } from "@/lib/auth";
+import { toIndianE164 } from "@/lib/verification";
+
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000";
+const PUB_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "";
+const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
+/**
+ * Submit the wholesale application alongside customer creation so the next
+ * login does NOT route the buyer back to /wholesale/apply. The endpoint is
+ * open-intake (no auth) and idempotent against duplicate GSTIN (409 = already
+ * applied, which we silently swallow — the previous submission stands).
+ *
+ * Only fires when the form carries enough data to satisfy the Zod schema
+ * server-side (GSTIN + billing address). When the form is partial, we leave
+ * the customer with metadata only and let /wholesale/apply collect the rest
+ * later.
+ */
+async function autoSubmitWholesaleApplication(form: {
+  company_name: string;
+  gstin: string;
+  owner_name: string;
+  email: string;
+  mobile: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+}): Promise<void> {
+  const gstin = form.gstin.trim().toUpperCase();
+  if (!GSTIN_REGEX.test(gstin)) return; // skip — apply form will collect it
+  if (form.address.trim().length < 3) return;
+  if (form.city.trim().length < 1) return;
+  if (form.state.trim().length < 2) return;
+  if (form.pincode.trim().length < 4) return;
+  if (form.company_name.trim().length < 2) return;
+  try {
+    await fetch(`${BACKEND_URL}/store/companies/apply`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-publishable-api-key": PUB_KEY,
+      },
+      body: JSON.stringify({
+        gstin,
+        trade_name: form.company_name.trim(),
+        applicant_email: form.email.trim().toLowerCase(),
+        applicant_phone: toIndianE164(form.mobile),
+        contact_name: form.owner_name.trim() || undefined,
+        billing_address: {
+          line1: form.address.trim(),
+          city: form.city.trim(),
+          state: form.state.trim(),
+          postal_code: form.pincode.trim(),
+          country_code: "in",
+        },
+      }),
+    });
+    // We don't inspect the response: 200 means application stored, 409 means
+    // they already applied (still good — login will see "pending"), 400 means
+    // the backend's stricter validators caught something the form let through,
+    // in which case /wholesale/apply will still be reachable on next sign-in.
+  } catch {
+    // Network failure — signup succeeded, application can still be submitted
+    // later from /wholesale/apply. Don't surface to the user.
+  }
+}
+
+const BUSINESS_TYPES = [
+  { value: "retailer", label: "Retailer" },
+  { value: "distributor", label: "Distributor" },
+  { value: "wholesaler", label: "Wholesaler" },
+  { value: "manufacturer", label: "Manufacturer" },
+  { value: "ecommerce", label: "E-commerce Seller" },
+  { value: "corporate", label: "Corporate / Institution" },
+  { value: "other", label: "Other" },
+];
+
+const SIGNUP_PHONE_KEY = "risitex.signup.phone";
+// PAN format: 5 letters · 4 digits · 1 letter (e.g. AAAPL1234C).
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
+export default function BusinessRegistrationPage() {
+  const router = useRouter();
+  const [form, setForm] = React.useState({
+    company_name: "",
+    pan: "",
+    gstin: "",
+    business_type: "",
+    owner_name: "",
+    email: "",
+    mobile: "",
+    password: "",
+    confirm_password: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    trade_license: "",
+    accept_terms: false,
+  });
+  const [error, setError] = React.useState<string | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
+
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
+    setForm((f) => ({ ...f, [key]: value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (form.password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (form.password !== form.confirm_password) {
+      setError("Passwords don't match.");
+      return;
+    }
+    if (!PAN_REGEX.test(form.pan.trim().toUpperCase())) {
+      setError(
+        "PAN must be a 10-character Indian PAN (e.g. AAAPL1234C). PAN is required for B2B onboarding.",
+      );
+      return;
+    }
+    if (!form.accept_terms) {
+      setError("Please accept the terms and privacy policy to continue.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await signUp(form.email, form.password, form.owner_name);
+      const phoneE164 = toIndianE164(form.mobile);
+      await updateCustomerMetadata({
+        phone: phoneE164,
+        metadata: {
+          company_name: form.company_name,
+          pan: form.pan.trim().toUpperCase(),
+          gstin: form.gstin,
+          business_type: form.business_type,
+          owner_name: form.owner_name,
+          address: form.address,
+          city: form.city,
+          state: form.state,
+          pincode: form.pincode,
+          trade_license: form.trade_license,
+          // PAN is required at signup; once an OTP-backed PAN verification
+          // flow ships, this stays `false` until the OTP succeeds. For now
+          // we track that PAN was at least supplied.
+          pan_verified: false,
+        },
+      });
+      // FIX #6: file the wholesale application here so the user never sees
+      // /wholesale/apply on first login (the previous behavior — null status
+      // routed them to re-fill the same form).
+      await autoSubmitWholesaleApplication({
+        company_name: form.company_name,
+        gstin: form.gstin,
+        owner_name: form.owner_name,
+        email: form.email,
+        mobile: form.mobile,
+        address: form.address,
+        city: form.city,
+        state: form.state,
+        pincode: form.pincode,
+      });
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(SIGNUP_PHONE_KEY, form.mobile);
+      }
+      router.push("/auth/verify-email");
+      router.refresh();
+    } catch (err) {
+      const msg = (err as Error)?.message ?? "";
+      setError(
+        /fetch failed|network error|Failed to fetch/i.test(msg)
+          ? "Network error - please check your connection and try again."
+          : /policy|at least|uppercase|number|character/i.test(msg)
+            ? msg
+            : msg.includes("409")
+              ? "This email is already registered. Please sign in instead."
+              : "Couldn't create your account. Try again or contact support.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Container width="narrow">
+      <div className="py-16">
+        <p className="text-micro text-text-muted">Business Registration</p>
+        <h1 className="mt-2 text-display-lg text-text-primary">
+          Register Your Business.
+        </h1>
+        <p className="mt-3 text-body-md text-text-muted">
+          Already registered?{" "}
+          <Link
+            href="/auth/sign-in"
+            className="text-text-primary underline-offset-4 hover:underline"
+          >
+            Sign in
+          </Link>
+          .
+        </p>
+
+        <form
+          onSubmit={handleSubmit}
+          className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2"
+        >
+          <div className="flex flex-col gap-1.5 md:col-span-2">
+            <Label htmlFor="company_name" required>
+              Company Name
+            </Label>
+            <Input
+              id="company_name"
+              value={form.company_name}
+              onChange={(e) => set("company_name", e.currentTarget.value)}
+              required
+              placeholder="Your registered business name"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="pan" required>
+              PAN
+            </Label>
+            <Input
+              id="pan"
+              value={form.pan}
+              onChange={(e) => set("pan", e.currentTarget.value.toUpperCase())}
+              placeholder="AAAPL1234C"
+              maxLength={10}
+              required
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="gstin">GSTIN (optional)</Label>
+            <Input
+              id="gstin"
+              value={form.gstin}
+              onChange={(e) => set("gstin", e.currentTarget.value.toUpperCase())}
+              placeholder="29ABCDE1234F1Z5"
+              maxLength={15}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="business_type" required>
+              Business Type
+            </Label>
+            <Select
+              value={form.business_type}
+              onValueChange={(v) => set("business_type", v)}
+              required
+            >
+              <SelectTrigger id="business_type">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                {BUSINESS_TYPES.map((bt) => (
+                  <SelectItem key={bt.value} value={bt.value}>
+                    {bt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="owner_name" required>
+              Owner / Contact Name
+            </Label>
+            <Input
+              id="owner_name"
+              autoComplete="name"
+              value={form.owner_name}
+              onChange={(e) => set("owner_name", e.currentTarget.value)}
+              required
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="email" required>
+              Email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={form.email}
+              onChange={(e) => set("email", e.currentTarget.value)}
+              required
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="mobile" required>
+              Mobile Number
+            </Label>
+            <Input
+              id="mobile"
+              type="tel"
+              autoComplete="tel"
+              inputMode="numeric"
+              value={form.mobile}
+              onChange={(e) => set("mobile", e.currentTarget.value)}
+              placeholder="10-digit number"
+              required
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5 md:col-span-2">
+            <Label htmlFor="address">
+              Business Address
+            </Label>
+            <Input
+              id="address"
+              value={form.address}
+              onChange={(e) => set("address", e.currentTarget.value)}
+              placeholder="Street address"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="city">City</Label>
+            <Input
+              id="city"
+              value={form.city}
+              onChange={(e) => set("city", e.currentTarget.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="state">State</Label>
+            <Input
+              id="state"
+              value={form.state}
+              onChange={(e) => set("state", e.currentTarget.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="pincode">Pincode</Label>
+            <Input
+              id="pincode"
+              value={form.pincode}
+              onChange={(e) => set("pincode", e.currentTarget.value)}
+              maxLength={6}
+              inputMode="numeric"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="trade_license">
+              Trade License (optional)
+            </Label>
+            <Input
+              id="trade_license"
+              value={form.trade_license}
+              onChange={(e) => set("trade_license", e.currentTarget.value)}
+              placeholder="License number"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5 md:col-span-2">
+            <Label htmlFor="password" required>
+              Password
+            </Label>
+            <PasswordInput
+              id="password"
+              autoComplete="new-password"
+              value={form.password}
+              onChange={(e) => set("password", e.currentTarget.value)}
+              required
+              minLength={8}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5 md:col-span-2">
+            <Label htmlFor="confirm_password" required>
+              Confirm Password
+            </Label>
+            <PasswordInput
+              id="confirm_password"
+              autoComplete="new-password"
+              value={form.confirm_password}
+              onChange={(e) => set("confirm_password", e.currentTarget.value)}
+              required
+              minLength={8}
+            />
+            {form.confirm_password.length > 0 &&
+              form.password !== form.confirm_password && (
+                <p className="text-caption text-feedback-danger-text">
+                  Passwords don&rsquo;t match.
+                </p>
+              )}
+          </div>
+
+          <div className="flex items-start gap-2 md:col-span-2">
+            <input
+              id="terms"
+              type="checkbox"
+              checked={form.accept_terms}
+              onChange={(e) => set("accept_terms", e.currentTarget.checked)}
+              required
+              className="mt-1 h-4 w-4"
+            />
+            <Label htmlFor="terms" className="text-body-sm text-text-muted">
+              I agree to the{" "}
+              <Link
+                href="/terms"
+                className="text-text-primary underline-offset-4 hover:underline"
+              >
+                Terms of Use
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/privacy"
+                className="text-text-primary underline-offset-4 hover:underline"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </Label>
+          </div>
+
+          {error && (
+            <p
+              role="alert"
+              className="md:col-span-2 rounded-md bg-feedback-danger-bg px-3 py-2 text-body-sm text-feedback-danger-text ring-1 ring-feedback-danger-border"
+            >
+              {error}
+            </p>
+          )}
+
+          <div className="md:col-span-2">
+            <Button
+              type="submit"
+              isLoading={submitting}
+              size="lg"
+              className="w-full md:w-auto"
+            >
+              Submit Application
+            </Button>
+            <p className="mt-3 text-caption text-text-muted">
+              After submission, verify your email and phone. PAN is required;
+              GSTIN can be added later from your B2B Company Details.
+            </p>
+          </div>
+        </form>
+      </div>
+    </Container>
+  );
+}

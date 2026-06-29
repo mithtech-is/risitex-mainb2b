@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-label="Video walkthrough placeholder">
+  <defs>
+    <linearGradient id="vbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1F1B16"/>
+      <stop offset="100%" stop-color="#0B0C0E"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#vbg)"/>
+  <!-- Soft vignette -->
+  <radialGradient id="vvign" cx="0.5" cy="0.5" r="0.6">
+    <stop offset="0%" stop-color="#A89167" stop-opacity=".25"/>
+    <stop offset="100%" stop-color="#0B0C0E" stop-opacity="0"/>
+  </radialGradient>
+  <rect width="600" height="600" fill="url(#vvign)"/>
+  <!-- Play button -->
+  <g transform="translate(300,300)">
+    <circle r="80" fill="none" stroke="#FCFCF9" stroke-width="3" opacity=".85"/>
+    <polygon points="-22,-34 42,0 -22,34" fill="#FCFCF9" opacity=".95"/>
+  </g>
+  <!-- Filmstrip frames -->
+  <g fill="#FCFCF9" opacity=".25">
+    <rect x="40" y="60"  width="50" height="30"/>
+    <rect x="100" y="60" width="50" height="30"/>
+    <rect x="160" y="60" width="50" height="30"/>
+    <rect x="220" y="60" width="50" height="30"/>
+    <rect x="280" y="60" width="50" height="30"/>
+    <rect x="340" y="60" width="50" height="30"/>
+    <rect x="400" y="60" width="50" height="30"/>
+    <rect x="460" y="60" width="50" height="30"/>
+    <rect x="520" y="60" width="50" height="30"/>
+  </g>
+  <g fill="#FCFCF9" opacity=".18">
+    <rect x="40"  y="510" width="50" height="30"/>
+    <rect x="100" y="510" width="50" height="30"/>
+    <rect x="160" y="510" width="50" height="30"/>
+    <rect x="220" y="510" width="50" height="30"/>
+    <rect x="280" y="510" width="50" height="30"/>
+    <rect x="340" y="510" width="50" height="30"/>
+    <rect x="400" y="510" width="50" height="30"/>
+    <rect x="460" y="510" width="50" height="30"/>
+    <rect x="520" y="510" width="50" height="30"/>
+  </g>
+  <text x="50" y="450" font-family="ui-monospace, monospace" font-size="14" fill="#FCFCF9" opacity=".7">Factory walkthrough · 1:30</text>
+</svg>

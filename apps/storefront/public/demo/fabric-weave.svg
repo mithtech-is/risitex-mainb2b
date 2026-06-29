@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-label="Cotton plain weave close-up">
+  <defs>
+    <pattern id="warp" x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse">
+      <rect width="14" height="14" fill="#F0E9D8"/>
+      <rect x="0" y="0" width="7" height="14" fill="#D9CFB6"/>
+    </pattern>
+    <pattern id="weft" x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse">
+      <rect width="14" height="14" fill="transparent"/>
+      <rect x="0" y="0" width="14" height="7" fill="#A07F4F" opacity=".18"/>
+    </pattern>
+  </defs>
+  <rect width="600" height="600" fill="url(#warp)"/>
+  <rect width="600" height="600" fill="url(#weft)"/>
+  <!-- Magnifier circle to suggest closeup -->
+  <g>
+    <circle cx="430" cy="170" r="80" fill="none" stroke="#3D3528" stroke-width="6" opacity=".9"/>
+    <line x1="490" y1="225" x2="540" y2="280" stroke="#3D3528" stroke-width="8" stroke-linecap="round" opacity=".9"/>
+  </g>
+  <text x="40" y="560" font-family="ui-serif, Georgia, serif" font-size="18" fill="#3D3528" opacity=".75">Plain weave · 60s cotton</text>
+</svg>
