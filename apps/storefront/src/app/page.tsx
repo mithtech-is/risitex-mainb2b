@@ -75,7 +75,7 @@ export default function HomePage() {
                 </Button>
                 <SignedOut>
                   <Button variant="secondary" size="lg" asChild>
-                    <Link href="/wholesale/apply">Apply for Account &rarr;</Link>
+                    <Link href="/auth/sign-up">Apply for Account &rarr;</Link>
                   </Button>
                 </SignedOut>
                 <SignedIn>
@@ -328,7 +328,7 @@ export default function HomePage() {
           </div>
           <div className="mt-10 text-center">
             <Button asChild>
-              <Link href="/wholesale/apply">Apply for Wholesale Account</Link>
+              <Link href="/auth/sign-up">Apply for Wholesale Account</Link>
             </Button>
           </div>
         </Container>
@@ -402,7 +402,7 @@ export default function HomePage() {
             </p>
             <div className="mt-8 inline-flex flex-wrap items-center justify-center gap-3">
               <Button asChild size="lg">
-                <Link href="/wholesale/apply">Apply Now</Link>
+                <Link href="/auth/sign-up">Apply Now</Link>
               </Button>
               <Button variant="secondary" size="lg" asChild>
                 <Link href="/contact">Talk to Sales</Link>

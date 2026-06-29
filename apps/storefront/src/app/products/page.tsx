@@ -173,7 +173,7 @@ export default async function ProductsPage({
                   <Link href="/auth/sign-in">Sign In</Link>
                 </Button>
                 <Button variant="secondary" asChild>
-                  <Link href="/wholesale/apply">Apply for Account</Link>
+                  <Link href="/auth/sign-up">Apply for Account</Link>
                 </Button>
               </div>
             </div>

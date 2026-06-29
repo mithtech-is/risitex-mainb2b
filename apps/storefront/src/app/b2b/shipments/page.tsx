@@ -321,22 +321,122 @@ export default function B2bShipmentsPage() {
       </section>
 
       {pendingPOs.length > 0 && (() => {
-        const queued = pendingPOs.filter((p) => p.payment_confirmed_at);
+        // 4 sections, narrowest-first (so live trackable shipments appear
+        // at the top): dispatched → admin-approved → payment-recorded →
+        // awaiting payment.
+        const dispatched = pendingPOs.filter((p) => p.dispatched_at);
+        const approved = pendingPOs.filter(
+          (p) => p.admin_approved_at && !p.dispatched_at,
+        );
+        const queued = pendingPOs.filter(
+          (p) => p.payment_confirmed_at && !p.admin_approved_at,
+        );
         const awaiting = pendingPOs.filter((p) => !p.payment_confirmed_at);
         return (
           <>
-            {queued.length > 0 && (
+            {dispatched.length > 0 && (
               <section
-                aria-label="Purchase orders queued for dispatch"
+                aria-label="Dispatched purchase orders"
+                className="mt-6 rounded-md border border-feedback-success-border bg-feedback-success-bg p-5"
+              >
+                <h2 className="text-heading-sm text-feedback-success-text">
+                  {dispatched.length} purchase order{dispatched.length === 1 ? "" : "s"} dispatched
+                </h2>
+                <p className="mt-1 text-caption text-feedback-success-text/80">
+                  In transit with carrier tracking. Click View PO for the
+                  full timeline.
+                </p>
+                <ul className="mt-4 space-y-2">
+                  {dispatched.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-feedback-success-border bg-surface-background p-4"
+                    >
+                      <div>
+                        <p className="font-mono text-body-sm text-text-primary">
+                          {p.po_number}
+                        </p>
+                        <p className="mt-0.5 text-caption text-text-muted">
+                          ₹{Number(p.value_major ?? 0).toLocaleString("en-IN")} ·{" "}
+                          {p.dispatch_carrier ?? "carrier"} ·{" "}
+                          <span className="font-mono">
+                            {p.dispatch_tracking_number ?? "—"}
+                          </span>{" "}
+                          · dispatched{" "}
+                          {p.dispatched_at
+                            ? new Date(p.dispatched_at).toLocaleDateString()
+                            : "—"}
+                        </p>
+                      </div>
+                      <div className="inline-flex gap-2">
+                        <Badge tone="success" size="xs">In transit</Badge>
+                        <Button asChild size="xs" variant="tertiary">
+                          <Link href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}>
+                            View PO
+                          </Link>
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {approved.length > 0 && (
+              <section
+                aria-label="Approved purchase orders preparing dispatch"
                 className="mt-6 rounded-md border border-feedback-info-border bg-feedback-info-bg p-5"
               >
                 <h2 className="text-heading-sm text-feedback-info-text">
-                  {queued.length} purchase order{queued.length === 1 ? "" : "s"} queued for dispatch
+                  {approved.length} purchase order{approved.length === 1 ? "" : "s"} approved — preparing dispatch
                 </h2>
                 <p className="mt-1 text-caption text-feedback-info-text/80">
-                  Payment proof recorded; finance reconciles against the
-                  bank/gateway statement and ops releases a tracking number
-                  next — usually within 1 business day.
+                  Admin has approved your payment. Ops is preparing the
+                  carton — tracking number arrives once it&apos;s handed off
+                  to the carrier.
+                </p>
+                <ul className="mt-4 space-y-2">
+                  {approved.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-feedback-info-border bg-surface-background p-4"
+                    >
+                      <div>
+                        <p className="font-mono text-body-sm text-text-primary">
+                          {p.po_number}
+                        </p>
+                        <p className="mt-0.5 text-caption text-text-muted">
+                          ₹{Number(p.value_major ?? 0).toLocaleString("en-IN")} · approved by{" "}
+                          {p.admin_approved_by_name ?? "admin"} on{" "}
+                          {p.admin_approved_at
+                            ? new Date(p.admin_approved_at).toLocaleDateString()
+                            : "—"}
+                        </p>
+                      </div>
+                      <div className="inline-flex gap-2">
+                        <Badge tone="info" size="xs">Preparing dispatch</Badge>
+                        <Button asChild size="xs" variant="tertiary">
+                          <Link href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}>
+                            View PO
+                          </Link>
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {queued.length > 0 && (
+              <section
+                aria-label="Purchase orders awaiting admin approval"
+                className="mt-6 rounded-md border border-feedback-info-border bg-feedback-info-bg p-5"
+              >
+                <h2 className="text-heading-sm text-feedback-info-text">
+                  {queued.length} purchase order{queued.length === 1 ? "" : "s"} awaiting admin approval
+                </h2>
+                <p className="mt-1 text-caption text-feedback-info-text/80">
+                  Payment proof recorded. Admin reviews against the
+                  bank/gateway statement and approves — usually within 1
+                  business day.
                 </p>
                 <ul className="mt-4 space-y-2">
                   {queued.map((p) => (
@@ -355,7 +455,7 @@ export default function B2bShipmentsPage() {
                         </p>
                       </div>
                       <div className="inline-flex gap-2">
-                        <Badge tone="info" size="xs">Dispatch queued</Badge>
+                        <Badge tone="info" size="xs">Awaiting approval</Badge>
                         <Button asChild size="xs" variant="tertiary">
                           <Link href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}>
                             View PO

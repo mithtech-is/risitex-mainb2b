@@ -101,18 +101,19 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
       // /confirm-payment route). Surface them on the list so the storefront
       // doesn't need a second round-trip per row to render the badge.
       const meta = (r.metadata ?? {}) as Record<string, unknown>
-      const payment_confirmed_at =
-        typeof meta.payment_confirmed_at === "string"
-          ? (meta.payment_confirmed_at as string)
-          : null
-      const payment_confirmed_method =
-        typeof meta.payment_confirmed_method === "string"
-          ? (meta.payment_confirmed_method as string)
-          : null
-      const payment_confirmed_reference =
-        typeof meta.payment_confirmed_reference === "string"
-          ? (meta.payment_confirmed_reference as string)
-          : null
+      const pickStr = (key: string): string | null =>
+        typeof meta[key] === "string" ? (meta[key] as string) : null
+      const payment_confirmed_at = pickStr("payment_confirmed_at")
+      const payment_confirmed_method = pickStr("payment_confirmed_method")
+      const payment_confirmed_reference = pickStr("payment_confirmed_reference")
+      // Admin-side promotion flags — set by /admin/purchase-orders/:id/approve-payment
+      // and /mark-shipped. Storefront uses these to flip shipment + invoice
+      // tabs from "queued" to live tracking once admin has acted.
+      const admin_approved_at = pickStr("admin_approved_at")
+      const admin_approved_by_name = pickStr("admin_approved_by_name")
+      const dispatched_at = pickStr("dispatched_at")
+      const dispatch_tracking_number = pickStr("dispatch_tracking_number")
+      const dispatch_carrier = pickStr("dispatch_carrier")
       return {
         id: r.id,
         po_number: r.po_number,
@@ -127,6 +128,11 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
         payment_confirmed_at,
         payment_confirmed_method,
         payment_confirmed_reference,
+        admin_approved_at,
+        admin_approved_by_name,
+        dispatched_at,
+        dispatch_tracking_number,
+        dispatch_carrier,
         metadata: meta,
       }
     })

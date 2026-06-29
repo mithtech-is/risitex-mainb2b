@@ -7,6 +7,7 @@ import {
 } from "../../../../../modules/polemarch_communication"
 import { respondOk, respondErr } from "../../../../../utils/envelope"
 import { findConflictingPhoneCustomer } from "../../../../../utils/identity-uniqueness"
+import { autoApproveIfPending } from "../../../../../lib/auto-approve-application"
 
 /**
  * POST /store/auth/phone-otp/verify
@@ -131,8 +132,10 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     }
 
     const customerModule: any = req.scope.resolve(Modules.CUSTOMER)
+    let customerEmail: string | undefined
     try {
         const existing = await customerModule.retrieveCustomer(ctxCustomerId)
+        customerEmail = existing?.email as string | undefined
         const meta = (existing?.metadata ?? {}) as Record<string, unknown>
         await customerModule.updateCustomers(ctxCustomerId, {
             phone: phone_e164,
@@ -155,5 +158,24 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
         )
     }
 
-    return respondOk(res, { purpose: "verify" as const, phone_e164 })
+    // Spec gate: auto-approve fires only when BOTH email AND phone
+    // are verified. Either OTP route can be the "second" verify; both
+    // call this helper and the helper gates on the two flags itself.
+    const approval = customerEmail
+        ? await autoApproveIfPending(req.scope, {
+              customer_id: ctxCustomerId,
+              email: customerEmail,
+          })
+        : { approved: false, alreadyApproved: false, reason: "no_email" as const }
+
+    return respondOk(res, {
+        purpose: "verify" as const,
+        phone_e164,
+        phone_verified: true,
+        b2b_approved: approval.approved || !!approval.alreadyApproved,
+        company_id: (approval as any).company_id ?? null,
+        ...(approval.reason && !approval.approved
+            ? { auto_approve_skipped: approval.reason }
+            : {}),
+    })
 }

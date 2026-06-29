@@ -25,14 +25,14 @@ async function requireWholesale(): Promise<string | null> {
   const status = await getWholesaleApplicationStatus().catch(() => null);
   if (status === "approved") return null;
   if (status === "pending") return "/onboarding/b2b/pending";
-  return "/wholesale/apply";
+  return "/auth/sign-up";
 }
 
 async function requireApplication(): Promise<string | null> {
   const c = await getCurrentCustomer();
   if (!c) return "/auth/sign-in";
   const status = await getWholesaleApplicationStatus().catch(() => null);
-  return status ? null : "/wholesale/apply";
+  return status ? null : "/auth/sign-up";
 }
 
 export type GuardRequirement =

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Input, Label, PasswordInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
+import { RegistrationSteps } from "@/components/auth/registration-steps";
 import { signUp, updateCustomerMetadata } from "@/lib/auth";
 import { toIndianE164 } from "@/lib/verification";
 
@@ -14,20 +15,23 @@ const PUB_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "";
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
 /**
- * Submit the wholesale application alongside customer creation so the next
- * login does NOT route the buyer back to /wholesale/apply. The endpoint is
- * open-intake (no auth) and idempotent against duplicate GSTIN (409 = already
- * applied, which we silently swallow — the previous submission stands).
+ * Submit the wholesale application alongside customer creation so the
+ * dashboard can render a complete B2B profile on first login. Endpoint
+ * is open-intake (no auth) and idempotent against duplicate GSTIN (409
+ * = already applied, which we silently swallow — the previous
+ * submission stands).
  *
- * Only fires when the form carries enough data to satisfy the Zod schema
- * server-side (GSTIN + billing address). When the form is partial, we leave
- * the customer with metadata only and let /wholesale/apply collect the rest
- * later.
+ * Only fires when the form carries enough data to satisfy the Zod
+ * schema server-side (GSTIN + billing address). Partial sign-ups leave
+ * the customer with metadata only; the account dashboard's company-
+ * details form picks up the rest after the buyer signs in.
  */
 async function autoSubmitWholesaleApplication(form: {
   company_name: string;
+  trade_name: string;
   gstin: string;
-  owner_name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   mobile: string;
   address: string;
@@ -42,6 +46,11 @@ async function autoSubmitWholesaleApplication(form: {
   if (form.state.trim().length < 2) return;
   if (form.pincode.trim().length < 4) return;
   if (form.company_name.trim().length < 2) return;
+  const fullName = `${form.first_name.trim()} ${form.last_name.trim()}`.trim();
+  const tradeName =
+    form.trade_name.trim().length > 0
+      ? form.trade_name.trim()
+      : form.company_name.trim();
   try {
     await fetch(`${BACKEND_URL}/store/companies/apply`, {
       method: "POST",
@@ -51,10 +60,10 @@ async function autoSubmitWholesaleApplication(form: {
       },
       body: JSON.stringify({
         gstin,
-        trade_name: form.company_name.trim(),
+        trade_name: tradeName,
         applicant_email: form.email.trim().toLowerCase(),
         applicant_phone: toIndianE164(form.mobile),
-        contact_name: form.owner_name.trim() || undefined,
+        contact_name: fullName || undefined,
         billing_address: {
           line1: form.address.trim(),
           city: form.city.trim(),
@@ -91,11 +100,13 @@ const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 export default function BusinessRegistrationPage() {
   const router = useRouter();
   const [form, setForm] = React.useState({
+    first_name: "",
+    last_name: "",
     company_name: "",
+    trade_name: "",
     pan: "",
     gstin: "",
     business_type: "",
-    owner_name: "",
     email: "",
     mobile: "",
     password: "",
@@ -137,35 +148,86 @@ export default function BusinessRegistrationPage() {
     }
 
     setSubmitting(true);
+    // Pre-flight duplicate checks — fail fast with a friendly message
+    // instead of a 500 from a Postgres unique-constraint violation.
     try {
-      await signUp(form.email, form.password, form.owner_name);
+      const dupRes = await fetch(`${BACKEND_URL}/store/auth/account-exists`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": PUB_KEY,
+        },
+        body: JSON.stringify({
+          email: form.email.trim().toLowerCase(),
+          pan: form.pan.trim().toUpperCase(),
+          mobile: form.mobile,
+        }),
+      });
+      if (dupRes.ok) {
+        const dup = (await dupRes.json()) as {
+          exists?: boolean;
+          by?: "email" | "pan" | "mobile";
+        };
+        if (dup.exists) {
+          const labels: Record<string, string> = {
+            email: "email",
+            pan: "PAN",
+            mobile: "mobile number",
+          };
+          const which = labels[dup.by ?? "email"] ?? "details";
+          setError(
+            `This ${which} is already registered. ${
+              dup.by === "email"
+                ? "Sign in instead, or use the password reset link."
+                : "Please use a different one or sign in."
+            }`,
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
+    } catch {
+      // Pre-flight is best-effort. Real uniqueness backstop is the DB.
+    }
+    try {
+      await signUp(
+        form.email,
+        form.password,
+        form.first_name.trim(),
+        form.last_name.trim(),
+      );
       const phoneE164 = toIndianE164(form.mobile);
       await updateCustomerMetadata({
         phone: phoneE164,
         metadata: {
-          company_name: form.company_name,
+          first_name: form.first_name.trim(),
+          last_name: form.last_name.trim(),
+          // Back-compat alias — older code paths read owner_name.
+          owner_name: `${form.first_name.trim()} ${form.last_name.trim()}`.trim(),
+          company_name: form.company_name.trim(),
+          trade_name: form.trade_name.trim() || undefined,
           pan: form.pan.trim().toUpperCase(),
-          gstin: form.gstin,
+          gstin: form.gstin.trim().toUpperCase() || undefined,
           business_type: form.business_type,
-          owner_name: form.owner_name,
-          address: form.address,
-          city: form.city,
-          state: form.state,
-          pincode: form.pincode,
-          trade_license: form.trade_license,
-          // PAN is required at signup; once an OTP-backed PAN verification
-          // flow ships, this stays `false` until the OTP succeeds. For now
-          // we track that PAN was at least supplied.
+          address: form.address.trim(),
+          city: form.city.trim(),
+          state: form.state.trim(),
+          pincode: form.pincode.trim(),
+          trade_license: form.trade_license.trim() || undefined,
+          // PAN is required at signup; the OTP-backed PAN verification
+          // flow flips this true on success.
           pan_verified: false,
         },
       });
-      // FIX #6: file the wholesale application here so the user never sees
-      // /wholesale/apply on first login (the previous behavior — null status
-      // routed them to re-fill the same form).
+      // File the wholesale application synchronously so the user never lands
+      // on /wholesale/apply post-OTP. Idempotent at the backend (409 on
+      // duplicate GSTIN is silently swallowed).
       await autoSubmitWholesaleApplication({
         company_name: form.company_name,
+        trade_name: form.trade_name,
         gstin: form.gstin,
-        owner_name: form.owner_name,
+        first_name: form.first_name,
+        last_name: form.last_name,
         email: form.email,
         mobile: form.mobile,
         address: form.address,
@@ -197,6 +259,7 @@ export default function BusinessRegistrationPage() {
   return (
     <Container width="narrow">
       <div className="py-16">
+        <RegistrationSteps currentStep={1} className="mb-8" />
         <p className="text-micro text-text-muted">Business Registration</p>
         <h1 className="mt-2 text-display-lg text-text-primary">
           Register Your Business.
@@ -216,45 +279,64 @@ export default function BusinessRegistrationPage() {
           onSubmit={handleSubmit}
           className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2"
         >
-          <div className="flex flex-col gap-1.5 md:col-span-2">
+          <div className="md:col-span-2">
+            <h2 className="text-heading-sm text-text-primary">
+              Personal Information
+            </h2>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="first_name" required>
+              First Name
+            </Label>
+            <Input
+              id="first_name"
+              autoComplete="given-name"
+              value={form.first_name}
+              onChange={(e) => set("first_name", e.currentTarget.value)}
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="last_name" required>
+              Last Name
+            </Label>
+            <Input
+              id="last_name"
+              autoComplete="family-name"
+              value={form.last_name}
+              onChange={(e) => set("last_name", e.currentTarget.value)}
+              required
+            />
+          </div>
+
+          <div className="md:col-span-2 mt-4">
+            <h2 className="text-heading-sm text-text-primary">
+              Business Information
+            </h2>
+          </div>
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="company_name" required>
               Company Name
             </Label>
             <Input
               id="company_name"
+              autoComplete="organization"
               value={form.company_name}
               onChange={(e) => set("company_name", e.currentTarget.value)}
               required
               placeholder="Your registered business name"
             />
           </div>
-
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="pan" required>
-              PAN
-            </Label>
+            <Label htmlFor="trade_name">Trade Name (optional)</Label>
             <Input
-              id="pan"
-              value={form.pan}
-              onChange={(e) => set("pan", e.currentTarget.value.toUpperCase())}
-              placeholder="AAAPL1234C"
-              maxLength={10}
-              required
+              id="trade_name"
+              value={form.trade_name}
+              onChange={(e) => set("trade_name", e.currentTarget.value)}
+              placeholder="Brand / DBA name (if different)"
             />
           </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="gstin">GSTIN (optional)</Label>
-            <Input
-              id="gstin"
-              value={form.gstin}
-              onChange={(e) => set("gstin", e.currentTarget.value.toUpperCase())}
-              placeholder="29ABCDE1234F1Z5"
-              maxLength={15}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 md:col-span-2">
             <Label htmlFor="business_type" required>
               Business Type
             </Label>
@@ -276,17 +358,39 @@ export default function BusinessRegistrationPage() {
             </Select>
           </div>
 
+          <div className="md:col-span-2 mt-4">
+            <h2 className="text-heading-sm text-text-primary">
+              Business Verification
+            </h2>
+          </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="owner_name" required>
-              Owner / Contact Name
+            <Label htmlFor="pan" required>
+              PAN Number
             </Label>
             <Input
-              id="owner_name"
-              autoComplete="name"
-              value={form.owner_name}
-              onChange={(e) => set("owner_name", e.currentTarget.value)}
+              id="pan"
+              value={form.pan}
+              onChange={(e) => set("pan", e.currentTarget.value.toUpperCase())}
+              placeholder="AAAPL1234C"
+              maxLength={10}
               required
             />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="gstin">GSTIN (optional)</Label>
+            <Input
+              id="gstin"
+              value={form.gstin}
+              onChange={(e) => set("gstin", e.currentTarget.value.toUpperCase())}
+              placeholder="29ABCDE1234F1Z5"
+              maxLength={15}
+            />
+          </div>
+
+          <div className="md:col-span-2 mt-4">
+            <h2 className="text-heading-sm text-text-primary">
+              Contact Information
+            </h2>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -319,6 +423,11 @@ export default function BusinessRegistrationPage() {
             />
           </div>
 
+          <div className="md:col-span-2 mt-4">
+            <h2 className="text-heading-sm text-text-primary">
+              Business Address (optional — speeds up approval)
+            </h2>
+          </div>
           <div className="flex flex-col gap-1.5 md:col-span-2">
             <Label htmlFor="address">
               Business Address
@@ -372,6 +481,11 @@ export default function BusinessRegistrationPage() {
             />
           </div>
 
+          <div className="md:col-span-2 mt-4">
+            <h2 className="text-heading-sm text-text-primary">
+              Account Information
+            </h2>
+          </div>
           <div className="flex flex-col gap-1.5 md:col-span-2">
             <Label htmlFor="password" required>
               Password

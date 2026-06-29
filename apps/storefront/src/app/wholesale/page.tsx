@@ -41,7 +41,7 @@ export default function WholesaleProgramPage() {
               <div className="mt-10 flex flex-wrap items-center gap-3">
                 <SignedOut>
                   <Button asChild size="lg">
-                    <Link href="/wholesale/apply">Apply for Account</Link>
+                    <Link href="/auth/sign-up">Apply for Account</Link>
                   </Button>
                 </SignedOut>
                 <SignedIn>
@@ -182,7 +182,7 @@ export default function WholesaleProgramPage() {
             </p>
             <div className="mt-8 inline-flex flex-wrap items-center justify-center gap-3">
               <Button asChild size="lg">
-                <Link href="/wholesale/apply">Apply Now</Link>
+                <Link href="/auth/sign-up">Apply Now</Link>
               </Button>
               <Button variant="secondary" size="lg" asChild>
                 <Link href="/products">Browse Products</Link>

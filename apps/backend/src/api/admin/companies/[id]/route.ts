@@ -4,7 +4,6 @@ import { z } from "zod"
 import { COMPANY_MODULE } from "../../../../modules/company"
 import type { CompanyModuleService } from "../../../../modules/company"
 import { CUSTOMER_TIER_MODULE } from "../../../../modules/customer_tier"
-import { archiveRecord } from "../../../../lib/deletion-archive"
 
 /**
  * GET    /admin/companies/:id  — retrieve one company
@@ -81,10 +80,6 @@ export const DELETE = async (req: MedusaRequest, res: MedusaResponse) => {
       bindings?: unknown[],
     ) => Promise<{ rows?: Array<Record<string, unknown>> }>
   }
-  const actorId =
-    (req as unknown as { auth_context?: { actor_id?: string } })
-      .auth_context?.actor_id ?? "admin"
-
   // 1. Load it first so a missing id is a clean 404 (not a 500).
   let company
   try {
@@ -110,48 +105,7 @@ export const DELETE = async (req: MedusaRequest, res: MedusaResponse) => {
     }
   }
 
-  // 3. Snapshot the OLD details to the deletion archive BEFORE we touch
-  //    anything — this soft-delete won't trip the DB AFTER DELETE trigger, so
-  //    we archive explicitly. Captures the full company plus the customers
-  //    we're about to unlink, so the account can be reconstructed later.
-  let linkedCustomers: Array<Record<string, unknown>> = []
-  try {
-    const snap = await pgConn.raw(
-      `SELECT id, email, first_name, last_name, customer_tier_id, payment_terms
-         FROM customer
-        WHERE company_id = ?`,
-      [company.id],
-    )
-    linkedCustomers = snap.rows ?? []
-  } catch {
-    // non-fatal — proceed with whatever we have
-  }
-  await archiveRecord(pgConn, {
-    entity_type: "company",
-    entity_id: company.id,
-    label: company.trade_name,
-    snapshot: {
-      company: {
-        id: company.id,
-        gstin: company.gstin,
-        trade_name: company.trade_name,
-        status: company.status,
-        billing_address: company.billing_address,
-        customer_tier_id: company.customer_tier_id,
-        sales_rep_id: company.sales_rep_id,
-        credit_terms_id: company.credit_terms_id,
-        review_notes: company.review_notes,
-        metadata: company.metadata,
-        created_at: company.created_at,
-      },
-      tier_group_id: groupId,
-      unlinked_customers: linkedCustomers,
-    },
-    deleted_by: actorId,
-    reason: "company deleted from admin",
-  })
-
-  // 4. Fully remove the company's customers (ops chose "fully remove" on
+  // 3. Fully remove the company's customers (ops chose "fully remove" on
   //    company delete). Soft-delete the customer rows; the DB triggers then
   //    (a) archive each customer and (b) PURGE their login identity
   //    (auth_identity + provider_identity), so the email no longer "exists"
@@ -170,7 +124,7 @@ export const DELETE = async (req: MedusaRequest, res: MedusaResponse) => {
     // A customer-removal hiccup must not block deleting the company.
   }
 
-  // 5. Soft-delete the company (frees the GSTIN for re-application).
+  // 4. Soft-delete the company (frees the GSTIN for re-application).
   try {
     await companies.deleteCompany({ company_id: company.id })
   } catch (err) {

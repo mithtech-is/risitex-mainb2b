@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Input, Label } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
+import { RegistrationSteps } from "@/components/auth/registration-steps";
 import {
   getVerificationStatus,
   sendPhoneOtp,
@@ -134,7 +135,8 @@ export default function VerifyPhonePage() {
         otp,
       });
       window.sessionStorage.removeItem(SIGNUP_PHONE_KEY);
-      router.replace("/b2b/dashboard");
+      // Spec step 8: "Registration Successful" screen before dashboard.
+      router.replace("/auth/activated");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -148,7 +150,8 @@ export default function VerifyPhonePage() {
   return (
     <Container width="narrow">
       <div className="py-16">
-        <p className="text-micro text-text-muted">Step 2 of 2</p>
+        <RegistrationSteps currentStep={3} className="mb-8" />
+        <p className="text-micro text-text-muted">Step 3 of 4</p>
         <h1 className="mt-2 text-display-lg text-text-primary">
           Verify your WhatsApp.
         </h1>

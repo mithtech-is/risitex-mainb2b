@@ -5,11 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Input, Label, PasswordInput } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
-import { signIn, signOut, accountExists } from "@/lib/auth";
-import {
-  getVerificationStatus,
-  getWholesaleApplicationStatus,
-} from "@/lib/verification";
+import { signIn, accountExists } from "@/lib/auth";
+import { getVerificationStatus } from "@/lib/verification";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -40,29 +37,18 @@ export default function SignInPage() {
       return;
     }
     try {
-      const wholesale = await getWholesaleApplicationStatus().catch(() => null);
-      if (wholesale === "pending" || wholesale === "rejected") {
-        await signOut().catch(() => {});
-        setError(
-          wholesale === "pending"
-            ? "Your account is awaiting approval. We'll email you once it's approved."
-            : "Your application wasn't approved. Please contact us.",
-        );
-        setSubmitting(false);
-        return;
-      }
+      // Spec: post-registration login routes purely on email/phone verified.
+      // Wholesale application status is handled inside the dashboard, so we
+      // never send a verified user back to /wholesale/apply (which violated
+      // "Do NOT ask the user to register for wholesale again"). For users
+      // who haven't finished email/phone OTPs, the verification-center
+      // dispatches them to the missing step.
       const status = await getVerificationStatus().catch(() => null);
       const fullyVerified =
         !!status && status.email_verified && status.phone_verified;
-      if (fullyVerified) {
-        if (wholesale === "approved") {
-          router.push("/b2b/dashboard");
-        } else {
-          router.push("/wholesale/apply");
-        }
-      } else {
-        router.push("/auth/verification-center");
-      }
+      router.push(
+        fullyVerified ? "/b2b/dashboard" : "/auth/verification-center",
+      );
       router.refresh();
     } catch {
       setError("Signed in, but something went wrong loading your account.");
@@ -137,10 +123,10 @@ export default function SignInPage() {
 
           <p className="text-caption text-text-muted text-center">
             <Link
-              href="/wholesale/apply"
+              href="/auth/sign-up"
               className="text-brand-accent underline-offset-4 hover:underline"
             >
-              Don&apos;t have an account? Apply for wholesale
+              Don&apos;t have an account? Register your business
             </Link>
           </p>
         </form>

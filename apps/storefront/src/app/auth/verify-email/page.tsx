@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Input, Label } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
+import { RegistrationSteps } from "@/components/auth/registration-steps";
 import {
   getVerificationStatus,
   sendEmailOtp,
@@ -109,7 +110,8 @@ export default function VerifyEmailPage() {
       await verifyEmailOtp({ otp_request_id: otpRequestId, otp });
       const s = await getVerificationStatus().catch(() => null);
       if (s?.phone_verified) {
-        router.replace("/b2b/dashboard");
+        // Both flags now true — celebrate via the activation step.
+        router.replace("/auth/activated");
       } else {
         router.replace("/auth/verify-phone");
       }
@@ -123,7 +125,8 @@ export default function VerifyEmailPage() {
   return (
     <Container width="narrow">
       <div className="py-16">
-        <p className="text-micro text-text-muted">Step 1 of 2</p>
+        <RegistrationSteps currentStep={2} className="mb-8" />
+        <p className="text-micro text-text-muted">Step 2 of 4</p>
         <h1 className="mt-2 text-display-lg text-text-primary">
           Verify your email.
         </h1>

@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 import {
   Button,
   MarginCalculator,
@@ -16,6 +18,7 @@ import {
   clampToAvailable,
   type AvailabilityRow,
 } from "@/lib/availability";
+import { addToCart, type CartLine } from "@/lib/cart";
 
 export function B2bBuyPanel({ product }: { product: Product }) {
   // FR-9.02: load sellable ("Available" = physical − reserved) stock per SKU
@@ -171,16 +174,63 @@ export function B2bBuyPanel({ product }: { product: Product }) {
     });
   };
 
+  // Inline confirmation banner — replaces the old "redirect straight to
+  // checkout" behaviour. Stays visible for 6 seconds so the buyer sees
+  // the success state without losing their place on the catalogue/PDP.
+  const [addedSummary, setAddedSummary] = React.useState<{
+    units: number;
+    lines: number;
+  } | null>(null);
+  const dismissTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (dismissTimer.current) clearTimeout(dismissTimer.current);
+    };
+  }, []);
+
   const handleAdd = () => {
     if (!meetsMoq) return;
-    const params = new URLSearchParams();
+    const unitPriceMajor = currentTier
+      ? currentTier.pricePerUnitMajor
+      : product.priceMajor;
+    const newLines: CartLine[] = [];
+    let addedUnits = 0;
     for (const cell of cells) {
       if (!cell.variantId) continue;
       const qty = quantities[`${cell.rowId}_${cell.colId}`] ?? 0;
       if (qty <= 0) continue;
-      params.append("variant", `${cell.variantId}:${qty}`);
+      // Reconstruct the variant axis labels so the cart can show
+      // "Black / M" without re-loading product data.
+      const sizeLabel =
+        rows.length > 0
+          ? effectiveRows.find((r) => r.id === cell.rowId)?.label ?? ""
+          : "";
+      const colLabel =
+        cols.find((c) => c.id === cell.colId)?.label ?? "";
+      const variantTitle = [colLabel, sizeLabel]
+        .filter((s) => s && s !== "Unit")
+        .join(" / ") || product.unit || "Unit";
+      newLines.push({
+        variantId: cell.variantId,
+        productSlug: product.slug,
+        productName: product.name,
+        variantTitle,
+        unitPriceMajor,
+        quantity: qty,
+        thumbnail: product.images?.[0],
+        moq: product.moq,
+        cartonSize: product.cartonSize,
+      });
+      addedUnits += qty;
     }
-    window.location.href = `/b2b/checkout?${params.toString()}`;
+    if (newLines.length === 0) return;
+    addToCart(newLines);
+    setAddedSummary({ units: addedUnits, lines: newLines.length });
+    // Reset the matrix so the next add doesn't double-add the same qtys.
+    setQuantities({});
+    if (dismissTimer.current) clearTimeout(dismissTimer.current);
+    dismissTimer.current = setTimeout(() => setAddedSummary(null), 6_000);
   };
 
   return (
@@ -274,7 +324,7 @@ export function B2bBuyPanel({ product }: { product: Product }) {
             {totalQty === 0
               ? "Add quantities first"
               : meetsMoq
-                ? `Add to quote · ${totalQty.toLocaleString()} pcs`
+                ? `Add to cart · ${totalQty.toLocaleString()} pcs`
                 : `${(moq - totalQty).toLocaleString()} pcs to MOQ`}
           </Button>
           <Button
@@ -290,6 +340,34 @@ export function B2bBuyPanel({ product }: { product: Product }) {
             MOQ {moq.toLocaleString()} pcs · Lead {product.leadTimeDays ?? "—"} days
           </span>
         </div>
+
+        {addedSummary && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-feedback-success-border bg-feedback-success-bg px-4 py-3"
+          >
+            <div className="flex items-center gap-2">
+              <CheckCircle2
+                className="h-5 w-5 text-feedback-success-text"
+                aria-hidden
+              />
+              <p className="text-body-sm text-feedback-success-text">
+                Added {addedSummary.units.toLocaleString()} pcs across{" "}
+                {addedSummary.lines} variant
+                {addedSummary.lines === 1 ? "" : "s"} to your cart.
+              </p>
+            </div>
+            <div className="inline-flex gap-2">
+              <Button asChild size="sm" variant="secondary">
+                <Link href="/wholesale/catalogue">Continue shopping</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/b2b/cart">View cart</Link>
+              </Button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

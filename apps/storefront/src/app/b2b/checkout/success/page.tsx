@@ -25,6 +25,7 @@ export default function CheckoutSuccessPage() {
   const poNumber = params?.get("num") ?? "";
   const amt = Number(params?.get("amt") ?? 0);
   const pay = params?.get("pay") ?? "";
+  const paymentRecorded = params?.get("pr") === "1";
 
   return (
     <div className="flex min-h-full flex-col gap-6">
@@ -38,11 +39,14 @@ export default function CheckoutSuccessPage() {
           <CheckCircle2 className="mt-1 h-6 w-6 text-feedback-success-text" aria-hidden />
           <div>
             <p className="text-heading-md text-feedback-success-text">
-              Purchase order received
+              {paymentRecorded
+                ? "Purchase order placed — payment recorded"
+                : "Purchase order received"}
             </p>
             <p className="mt-1 text-body-sm text-feedback-success-text/80">
-              We've logged your PO and routed it to ops + finance. You can track
-              progress from this page or the Purchase Orders dashboard.
+              {paymentRecorded
+                ? "We've logged your PO and your payment reference. Finance reconciles against the bank statement / gateway — once admin approves, your shipment ticket and GST invoice will surface in their tabs (usually within 1 business day)."
+                : "We've logged your PO and routed it to ops + finance. Record your payment reference from the PO detail page to move it forward."}
             </p>
           </div>
         </div>
@@ -68,11 +72,44 @@ export default function CheckoutSuccessPage() {
           jobs land.
         </p>
         <ul className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <StatusRow icon={<Receipt className="h-4 w-4" />} label="Invoice" status="Queued" />
-          <StatusRow icon={<Truck className="h-4 w-4" />} label="Shipment ticket" status="Queued" />
-          <StatusRow icon={<FileDown className="h-4 w-4" />} label="Wallet ledger" status={pay === "wallet" || pay === "wallet_plus_razorpay" ? "Reserved" : "Not applicable"} />
-          <StatusRow icon={<Eye className="h-4 w-4" />} label="ERPNext sync" status="Queued" />
+          <StatusRow
+            icon={<CheckCircle2 className="h-4 w-4" />}
+            label="Payment proof"
+            status={paymentRecorded ? "Recorded" : "Pending"}
+          />
+          <StatusRow
+            icon={<Receipt className="h-4 w-4" />}
+            label="Invoice"
+            status={paymentRecorded ? "Awaiting admin approval" : "Queued"}
+          />
+          <StatusRow
+            icon={<Truck className="h-4 w-4" />}
+            label="Shipment ticket"
+            status={paymentRecorded ? "Awaiting admin approval" : "Queued"}
+          />
+          <StatusRow
+            icon={<FileDown className="h-4 w-4" />}
+            label="Wallet ledger"
+            status={
+              pay === "wallet" || pay === "wallet_plus_razorpay"
+                ? "Reserved"
+                : "Not applicable"
+            }
+          />
+          <StatusRow
+            icon={<Eye className="h-4 w-4" />}
+            label="ERPNext sync"
+            status="Queued"
+          />
         </ul>
+
+        {poId && (
+          <div className="mt-4">
+            <Button asChild size="sm" variant="secondary">
+              <Link href={`/b2b/purchase-orders/${poId}`}>Open PO detail</Link>
+            </Button>
+          </div>
+        )}
       </section>
 
       <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
@@ -119,21 +156,29 @@ function StatusRow({
 }: {
   icon: React.ReactNode;
   label: string;
-  status: "Queued" | "Reserved" | "Not applicable";
+  status:
+    | "Queued"
+    | "Reserved"
+    | "Not applicable"
+    | "Recorded"
+    | "Pending"
+    | "Awaiting admin approval";
 }) {
-  const tone =
-    status === "Reserved"
-      ? "info"
-      : status === "Not applicable"
-        ? "neutral"
-        : "warning";
+  const tone: "success" | "info" | "warning" | "neutral" =
+    status === "Recorded"
+      ? "success"
+      : status === "Reserved"
+        ? "info"
+        : status === "Not applicable"
+          ? "neutral"
+          : "warning";
   return (
     <li className="flex items-center gap-3 rounded-sm border border-border-subtle bg-surface-background p-3">
       <span className="text-text-muted" aria-hidden>
         {icon}
       </span>
       <span className="flex-1 text-body-sm text-text-primary">{label}</span>
-      <Badge tone={tone as "info" | "warning" | "neutral"}>{status}</Badge>
+      <Badge tone={tone}>{status}</Badge>
     </li>
   );
 }

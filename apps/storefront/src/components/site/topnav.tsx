@@ -8,7 +8,7 @@ import * as React from "react";
 import { MobileMenu } from "./mobile-menu";
 import { WalletIconButton } from "@/components/wallet/wallet-icon-button";
 import { Heart, ShoppingCart, UserRound } from "lucide-react";
-import { MEDUSA_BASE_URL } from "@/lib/medusa";
+import { getCart } from "@/lib/cart";
 
 const NAV = [
   { href: "/about", label: "About" },
@@ -65,7 +65,7 @@ function TopnavActions() {
         <Heart className="h-5 w-5" />
       </NavIcon>
       <WalletIconButton />
-      <NavIcon href="/b2b/checkout" label="Cart" count={counts.cart}>
+      <NavIcon href="/b2b/cart" label="Cart" count={counts.cart}>
         <ShoppingCart className="h-5 w-5" />
       </NavIcon>
       <NavIcon href="/b2b/profile" label="Account">
@@ -109,40 +109,29 @@ function useNavActionCounts() {
 
   React.useEffect(() => {
     let cancelled = false;
-    const token = window.localStorage.getItem("medusa_auth_token");
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      "x-publishable-api-key":
-        process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "",
+
+    // Cart badge = number of distinct LINES in the cart, not total units.
+    // Total units for a B2B cart is typically in the hundreds or thousands
+    // (just one carton can be 60+ pieces), which would always cap at "99+"
+    // — useless. Line count tells the buyer "I have 2 different products
+    // waiting" at a glance, which is the actionable signal.
+    //
+    // Wishlist is read from localStorage only — the older code path
+    // contaminated this count with /store/saved-carts.length, which is a
+    // totally unrelated archive of named baskets. Reading purely from
+    // local keeps the badge in sync with the heart-toggle UI.
+    const recomputeCart = () => getCart().length;
+    const load = () => {
+      if (cancelled) return;
+      setCounts({
+        wishlist: readLocalCount("risitex-b2b-wishlist"),
+        cart: recomputeCart(),
+      });
     };
-    if (token) headers.Authorization = `Bearer ${token}`;
 
-    async function load() {
-      const next = { wishlist: readLocalCount("risitex-b2b-wishlist"), cart: 0 };
-      try {
-        const res = await fetch(`${MEDUSA_BASE_URL}/store/saved-carts`, {
-          headers,
-          credentials: "include",
-        });
-        if (res.ok) {
-          const body = (await res.json()) as {
-            saved_carts?: { item_count?: number }[];
-          };
-          next.cart = (body.saved_carts ?? []).reduce(
-            (sum, cart) => sum + Number(cart.item_count ?? 0),
-            0,
-          );
-          next.wishlist = Math.max(next.wishlist, body.saved_carts?.length ?? 0);
-        }
-      } catch {
-        next.cart = readLocalCount("risitex-b2b-cart");
-      }
-      if (!cancelled) setCounts(next);
-    }
-
-    void load();
-    // React to wishlist heart toggles from any PLP/PDP card so the navbar
-    // badge updates without a page reload.
+    load();
+    // React to wishlist heart toggles AND cart mutations so the navbar
+    // badges update without a page reload.
     const onWishlistChange = () => {
       if (cancelled) return;
       setCounts((c) => ({
@@ -150,14 +139,21 @@ function useNavActionCounts() {
         wishlist: readLocalCount("risitex-b2b-wishlist"),
       }));
     };
+    const onCartChange = () => {
+      if (cancelled) return;
+      setCounts((c) => ({ ...c, cart: recomputeCart() }));
+    };
     const onStorage = (e: StorageEvent) => {
       if (e.key === "risitex-b2b-wishlist" || e.key === null) onWishlistChange();
+      if (e.key === "risitex.b2b.cart.v1" || e.key === null) onCartChange();
     };
     window.addEventListener("risitex:wishlist-changed", onWishlistChange);
+    window.addEventListener("risitex:cart-changed", onCartChange);
     window.addEventListener("storage", onStorage);
     return () => {
       cancelled = true;
       window.removeEventListener("risitex:wishlist-changed", onWishlistChange);
+      window.removeEventListener("risitex:cart-changed", onCartChange);
       window.removeEventListener("storage", onStorage);
     };
   }, []);

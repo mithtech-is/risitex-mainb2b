@@ -103,6 +103,15 @@ export type DraftPurchaseOrder = {
   payment_confirmed_at?: string | null;
   payment_confirmed_method?: string | null;
   payment_confirmed_reference?: string | null;
+  /** Admin-side approval of the buyer's payment proof. Drives whether
+   *  shipment + invoice tabs flip from "queued" to live tracking. */
+  admin_approved_at?: string | null;
+  admin_approved_by_name?: string | null;
+  /** Admin-side dispatch record. Storefront shipments page reads these
+   *  to surface PO-based shipments alongside Medusa fulfillments. */
+  dispatched_at?: string | null;
+  dispatch_tracking_number?: string | null;
+  dispatch_carrier?: string | null;
   metadata?: Record<string, unknown> | null;
 };
 

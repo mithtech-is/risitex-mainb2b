@@ -36,11 +36,6 @@ import {
     ListUserRolesQueryDto,
     CheckPermissionDto,
 } from "./validators/rbac"
-import {
-    EnsureWarehouseProfileDto,
-    UpdateWarehouseProfileDto,
-    ListWarehouseProfilesQueryDto,
-} from "./validators/warehouse"
 
 // Hard-coded to avoid pulling cashfree_wallet's barrel into the
 // middleware module — that barrel re-exports the service type and
@@ -612,30 +607,7 @@ export default defineMiddlewares({
     routes: [
         // ── Ported from the legacy textile backend (monorepo
         //    consolidation, 2026-06-19): request validation for the
-        //    warehouse-profiles + RBAC admin routes. ──
-        {
-            matcher: "/admin/warehouse-profiles",
-            method: ["POST"],
-            middlewares: [validateAndTransformBody(EnsureWarehouseProfileDto)],
-        },
-        {
-            matcher: "/admin/warehouse-profiles",
-            method: ["GET"],
-            middlewares: [
-                validateAndTransformQuery(ListWarehouseProfilesQueryDto, {
-                    defaults: [
-                        "id", "stock_location_id", "gst_number", "is_owned",
-                        "operating_hours", "daily_dispatch_capacity",
-                        "contact_name", "contact_phone", "contact_email", "active",
-                    ],
-                }),
-            ],
-        },
-        {
-            matcher: "/admin/warehouse-profiles/:id",
-            method: ["POST"],
-            middlewares: [validateAndTransformBody(UpdateWarehouseProfileDto)],
-        },
+        //    RBAC admin routes. ──
         {
             matcher: "/admin/roles",
             method: ["POST"],

@@ -243,15 +243,11 @@ export default defineConfig({
         // consolidation, 2026-06-19). v2 had no equivalents:
         //   product_questions → storefront /store/product-questions Q&A
         //   rbac              → custom roles / permissions / grants
-        //   warehouse         → per-stock-location warehouse profiles
         product_questions: {
             resolve: "./src/modules/product-questions",
         },
         rbac: {
             resolve: "./src/modules/rbac",
-        },
-        warehouse: {
-            resolve: "./src/modules/warehouse",
         },
         // Renamed from `polemarch_email` to broaden scope: this module
         // now also handles MSG91 SMS, Polygin WhatsApp, and the phone
@@ -263,10 +259,6 @@ export default defineConfig({
         polemarch_communication: {
             resolve: "./src/modules/polemarch_communication",
         },
-        // polemarch_content module is DEFERRED for RISITEX MVP — see
-        // docs/migration-plan.md §1.1. It remains in the repo so we can
-        // re-enable post-MVP without re-importing.
-        // polemarch_content: { resolve: "./src/modules/polemarch_content" },
         [Modules.NOTIFICATION]: {
             resolve: "@medusajs/medusa/notification",
             options: {

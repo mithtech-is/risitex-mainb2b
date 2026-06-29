@@ -15,7 +15,12 @@ import { B2bTopbar } from "@/components/b2b/b2b-topbar";
 import { ShippingGstEstimate } from "@/components/checkout/shipping-gst-estimate";
 import { CouponInput, type AppliedCoupon } from "@/components/checkout/coupon-input";
 import { MEDUSA_BASE_URL } from "@/lib/medusa";
-import { createPurchaseOrder } from "@/lib/purchase-orders";
+import {
+  createPurchaseOrder,
+  confirmPurchaseOrderPayment,
+  type PaymentConfirmation,
+} from "@/lib/purchase-orders";
+import { getCart, clearCart, subtotalMajor } from "@/lib/cart";
 import { gstStateCode, gstBreakdown, GST_SELLER_STATE } from "@/lib/india-gst";
 
 /**
@@ -178,6 +183,81 @@ const PAYMENT_METHODS = [
 
 type PaymentMethodId = (typeof PAYMENT_METHODS)[number]["id"];
 
+/**
+ * Map the checkout-wizard's payment method (broader UX taxonomy) to the
+ * backend confirm-payment enum (narrower, finance-facing taxonomy).
+ */
+const PAYMENT_METHOD_TO_BACKEND: Record<PaymentMethodId, PaymentConfirmation["method"]> = {
+  wallet: "wallet",
+  wallet_plus_razorpay: "razorpay",
+  razorpay: "razorpay",
+  credit_terms: "credit_terms",
+  po_upload: "po_upload",
+  bank_transfer: "bank_transfer",
+  proforma: "proforma",
+};
+
+/**
+ * Inline proof requirements per payment method. The wizard captures
+ * proof at checkout time (rather than asking the buyer to come back to
+ * the PO detail page later) for methods where the buyer already knows
+ * the reference at the moment of placing the order. Wallet / credit /
+ * proforma don't need a buyer-supplied reference — the proof is implicit
+ * (wallet debit / credit allocation / not-yet-paid quote).
+ */
+const PAYMENT_PROOF_CONFIG: Record<
+  PaymentMethodId,
+  {
+    needsReference: boolean;
+    label: string;
+    placeholder: string;
+    hint: string;
+  }
+> = {
+  wallet: {
+    needsReference: false,
+    label: "",
+    placeholder: "",
+    hint: "Wallet balance will be debited at order placement — no reference needed.",
+  },
+  wallet_plus_razorpay: {
+    needsReference: true,
+    label: "Razorpay Transaction / Order ID",
+    placeholder: "pay_NkM2…",
+    hint: "Complete Razorpay capture for the remaining balance, then paste the transaction id here.",
+  },
+  razorpay: {
+    needsReference: true,
+    label: "Razorpay Transaction / Order ID",
+    placeholder: "pay_NkM2…",
+    hint: "Complete Razorpay capture, then paste the transaction id here so finance can reconcile.",
+  },
+  credit_terms: {
+    needsReference: false,
+    label: "",
+    placeholder: "",
+    hint: "Booked against your approved credit window — payment is due per your terms, no proof needed now.",
+  },
+  po_upload: {
+    needsReference: true,
+    label: "Your internal PO number",
+    placeholder: "INT-PO-2026-0042",
+    hint: "We&apos;ll match this against the uploaded PO PDF during finance reconciliation.",
+  },
+  bank_transfer: {
+    needsReference: true,
+    label: "UTR / NEFT Reference Number",
+    placeholder: "AXISN20260629…",
+    hint: "Complete the NEFT/RTGS transfer to our account, then enter the bank-issued UTR here.",
+  },
+  proforma: {
+    needsReference: false,
+    label: "",
+    placeholder: "",
+    hint: "We&apos;ll issue a proforma invoice — settle via your finance system, then confirm payment from the PO detail page.",
+  },
+};
+
 function authHeaders(): Record<string, string> {
   const h: Record<string, string> = { "x-publishable-api-key": PUB_KEY };
   if (typeof window !== "undefined") {
@@ -205,9 +285,22 @@ export default function CheckoutPage() {
   const [loadError, setLoadError] = React.useState<string | null>(null);
 
   // ── Cart from URL (variant=ID:QTY pairs, or simple product/value) ──
+  // Falls back to the local cart store (lib/cart.ts) when the URL doesn't
+  // carry any variant params — so a hard-refresh on /b2b/checkout still
+  // shows what's in the cart instead of redirecting to "empty cart".
+  const [storeCartLines, setStoreCartLines] = React.useState<CartLine[]>([]);
+  const [storeCartValue, setStoreCartValue] = React.useState(0);
+  React.useEffect(() => {
+    const c = getCart();
+    setStoreCartLines(
+      c.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+    );
+    setStoreCartValue(subtotalMajor(c));
+  }, []);
+
   const cartLines: CartLine[] = React.useMemo(() => {
-    if (!params) return [];
-    return params
+    if (!params) return storeCartLines;
+    const urlLines = params
       .getAll("variant")
       .map((entry) => {
         const [variantId, qty] = entry.split(":");
@@ -217,10 +310,11 @@ export default function CheckoutPage() {
         };
       })
       .filter((line) => line.variantId && line.quantity > 0);
-  }, [params]);
+    return urlLines.length > 0 ? urlLines : storeCartLines;
+  }, [params, storeCartLines]);
 
   const productName = params?.get("product") ?? "";
-  const seededValue = Number(params?.get("value") ?? 0);
+  const seededValue = Number(params?.get("value") ?? 0) || storeCartValue;
   const variantQtyTotal = cartLines.reduce((s, l) => s + l.quantity, 0);
 
   // ── Backend data ───────────────────────────────────────────────────
@@ -287,6 +381,18 @@ export default function CheckoutPage() {
     `PO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`,
   );
   const [poFile, setPoFile] = React.useState<File | null>(null);
+  // Inline payment-proof capture (FR-4.x):
+  //   For methods where the buyer already knows the reference at order time
+  //   (UTR / Razorpay txn id / internal PO #), we capture it here instead of
+  //   forcing a second trip to /b2b/purchase-orders/[id]. The reference is
+  //   POSTed to /store/purchase-orders/:id/confirm-payment immediately after
+  //   the PO is created, so the buyer lands on the success page with status
+  //   "payment recorded — awaiting approval" instead of "awaiting payment".
+  const [paymentReference, setPaymentReference] = React.useState<string>("");
+  const [paymentPaidAt, setPaymentPaidAt] = React.useState<string>(
+    new Date().toISOString().slice(0, 10),
+  );
+  const [paymentProofNotes, setPaymentProofNotes] = React.useState<string>("");
   const [notes, setNotes] = React.useState<string>(
     productName ? `Order originated from ${productName}.` : "",
   );
@@ -367,10 +473,15 @@ export default function CheckoutPage() {
 
   function paymentReady(): boolean {
     if (paymentMethodId === "wallet") return walletCoversAll;
-    if (paymentMethodId === "wallet_plus_razorpay") return walletPaise > 0;
+    if (paymentMethodId === "wallet_plus_razorpay")
+      return walletPaise > 0 && paymentReference.trim().length >= 4;
     if (paymentMethodId === "credit_terms") return creditCovers;
-    if (paymentMethodId === "po_upload") return !!poFile;
-    return true; // razorpay / bank_transfer / proforma all pass; capture happens later
+    if (paymentMethodId === "po_upload")
+      return !!poFile && paymentReference.trim().length >= 2;
+    if (paymentMethodId === "razorpay" || paymentMethodId === "bank_transfer") {
+      return paymentReference.trim().length >= 4;
+    }
+    return true; // proforma — no capture at checkout time
   }
 
   const goNext = () => {
@@ -389,9 +500,10 @@ export default function CheckoutPage() {
     setSubmitError(null);
     setSubmitting(true);
     try {
-      // Single existing terminal endpoint — creates the durable PO row
-      // that the order-management workflow later resolves into a Medusa
-      // order + shipment + invoice once payment lands.
+      // Step 1: create the durable PO row. file_url points at the
+      // printable PO route — synthesized server-side from the PO data —
+      // so the buyer (and admin) always have a clickable PO document
+      // even when no PDF was uploaded by the customer.
       const created = await createPurchaseOrder({
         po_number: poNumber,
         value_major: paiseToRupees(grandTotalPaise),
@@ -405,14 +517,74 @@ export default function CheckoutPage() {
           `Shipping: ${shippingMethod?.label} ${formatRupees(shippingPaise)}`,
           `GST: ${formatRupees(gstTotalPaise)} (${gstLines.map((l) => l.label).join(" + ") || "—"})`,
           `Payment: ${PAYMENT_METHODS.find((p) => p.id === paymentMethodId)?.label}`,
-          shippingMode === "same" ? "Ship-to = billing address" : `Ship-to: ${customShip.line1}, ${customShip.city}`,
+          shippingMode === "same"
+            ? "Ship-to = billing address"
+            : `Ship-to: ${customShip.line1}, ${customShip.city}`,
         ]
           .filter(Boolean)
           .join("\n"),
-        file_url: "/generated/checkout-draft-po.pdf",
+        // The /b2b/purchase-orders/[id]/print route renders this PO as a
+        // printable A4 document. We can't know the id until POST returns,
+        // but the storefront PO detail page synthesizes the right URL —
+        // see purchase-orders/[id]/page.tsx. The sentinel value here keeps
+        // the backend zod schema happy without writing a real URL we'd
+        // then have to keep in sync.
+        file_url: "/b2b/po-print-placeholder",
       });
+
+      // Step 2: if the buyer supplied a payment reference inline, record
+      // it immediately so the PO lands as "payment recorded — awaiting
+      // approval" rather than "awaiting payment". For methods without
+      // an inline reference (wallet / credit_terms / proforma) we still
+      // stamp payment_confirmed_at for wallet (since the wallet debit
+      // is the proof) and leave proforma / credit_terms unstamped so
+      // finance knows they're not yet paid.
+      let paymentRecorded = false;
+      try {
+        const cfg = PAYMENT_PROOF_CONFIG[paymentMethodId];
+        const backendMethod = PAYMENT_METHOD_TO_BACKEND[paymentMethodId];
+        if (cfg.needsReference) {
+          await confirmPurchaseOrderPayment(created.id, {
+            method: backendMethod,
+            reference: paymentReference.trim(),
+            paid_at: paymentPaidAt
+              ? new Date(paymentPaidAt).toISOString()
+              : undefined,
+            notes: paymentProofNotes.trim() || undefined,
+          });
+          paymentRecorded = true;
+        } else if (paymentMethodId === "wallet") {
+          await confirmPurchaseOrderPayment(created.id, {
+            method: "wallet",
+            reference: `wallet-debit-${Date.now().toString(36)}`,
+            notes: "Wallet auto-debit at checkout",
+          });
+          paymentRecorded = true;
+        }
+      } catch (proofErr) {
+        // Don't lose the PO if the proof step fails — the buyer can
+        // still confirm payment from the PO detail page. Surface the
+        // error inline so they know to retry.
+        const detail =
+          proofErr instanceof Error ? proofErr.message : "Could not record payment";
+        setSubmitError(
+          `Order placed (${created.po_number}) but recording the payment reference failed: ${detail}. Open the PO from your dashboard to record it manually.`,
+        );
+      }
+
+      // PO landed — empty the local cart so the next Add to Cart starts
+      // fresh and the navbar badge resets to 0. Cart-store mutation fires
+      // risitex:cart-changed which the topnav listens to.
+      try {
+        clearCart();
+      } catch {
+        /* best-effort — never block success navigation */
+      }
+
       router.replace(
-        `/b2b/checkout/success?po=${encodeURIComponent(created.id)}&num=${encodeURIComponent(created.po_number)}&amt=${created.value_major}&pay=${paymentMethodId}`,
+        `/b2b/checkout/success?po=${encodeURIComponent(created.id)}&num=${encodeURIComponent(created.po_number)}&amt=${created.value_major}&pay=${paymentMethodId}${
+          paymentRecorded ? "&pr=1" : ""
+        }`,
       );
     } catch (e) {
       setSubmitError(
@@ -861,6 +1033,67 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               )}
+
+              {/* Inline payment-proof capture. Asks for UTR / txn id /
+                  internal PO # immediately after method selection so the
+                  buyer doesn't have to come back to /b2b/purchase-orders
+                  later just to enter a reference. */}
+              {(() => {
+                const cfg = PAYMENT_PROOF_CONFIG[paymentMethodId];
+                if (!cfg.needsReference) {
+                  return cfg.hint ? (
+                    <p
+                      role="status"
+                      aria-live="polite"
+                      className="mt-5 rounded-md border border-feedback-info-border bg-feedback-info-bg px-4 py-3 text-body-sm text-feedback-info-text"
+                    >
+                      {cfg.hint}
+                    </p>
+                  ) : null;
+                }
+                return (
+                  <div className="mt-6 rounded-md border border-border-subtle bg-surface-background p-4">
+                    <h3 className="text-body-md font-medium text-text-primary">
+                      Payment proof
+                    </h3>
+                    <p className="mt-1 text-caption text-text-muted">{cfg.hint}</p>
+                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div className="flex flex-col gap-1.5 md:col-span-2">
+                        <Label htmlFor="pay-ref" required>
+                          {cfg.label}
+                        </Label>
+                        <Input
+                          id="pay-ref"
+                          value={paymentReference}
+                          onChange={(e) => setPaymentReference(e.currentTarget.value)}
+                          placeholder={cfg.placeholder}
+                          className="font-mono"
+                          required
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="pay-paid-at">Payment date</Label>
+                        <Input
+                          id="pay-paid-at"
+                          type="date"
+                          value={paymentPaidAt}
+                          onChange={(e) => setPaymentPaidAt(e.currentTarget.value)}
+                          max={new Date().toISOString().slice(0, 10)}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="pay-proof-notes">Notes (optional)</Label>
+                        <Input
+                          id="pay-proof-notes"
+                          value={paymentProofNotes}
+                          onChange={(e) => setPaymentProofNotes(e.currentTarget.value)}
+                          placeholder="Bank used, payer name on slip, etc."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </section>
           )}
 

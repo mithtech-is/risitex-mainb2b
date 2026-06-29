@@ -93,20 +93,80 @@ export default function InvoicesPage() {
       )}
 
       {!state.loading && hasPending && (() => {
-        const queued = state.pendingPOs.filter((p) => p.payment_confirmed_at);
-        const awaiting = state.pendingPOs.filter((p) => !p.payment_confirmed_at);
+        // Same 4-stage progression as the shipments page: dispatched →
+        // approved → payment-recorded → awaiting payment.
+        const issued = state.pendingPOs.filter((p) => p.admin_approved_at);
+        const queued = state.pendingPOs.filter(
+          (p) => p.payment_confirmed_at && !p.admin_approved_at,
+        );
+        const awaiting = state.pendingPOs.filter(
+          (p) => !p.payment_confirmed_at,
+        );
         return (
           <>
+            {issued.length > 0 && (
+              <section
+                aria-label="Approved purchase orders with invoice issued"
+                className="rounded-md border border-feedback-success-border bg-feedback-success-bg p-5"
+              >
+                <h2 className="text-heading-sm text-feedback-success-text">
+                  {issued.length} invoice{issued.length === 1 ? "" : "s"} issued
+                </h2>
+                <p className="mt-1 text-caption text-feedback-success-text/80">
+                  Admin approved the payment — GST invoice is issued.
+                  Download the printable PO file from the detail page; a
+                  finalised tax invoice follows from finance.
+                </p>
+                <ul className="mt-4 space-y-2">
+                  {issued.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-feedback-success-border bg-surface-background p-4"
+                    >
+                      <div>
+                        <p className="font-mono text-body-sm text-text-primary">
+                          {p.po_number}
+                        </p>
+                        <p className="mt-0.5 text-caption text-text-muted">
+                          ₹{Number(p.value_major ?? 0).toLocaleString("en-IN")} ·
+                          approved {p.admin_approved_at
+                            ? new Date(p.admin_approved_at).toLocaleDateString()
+                            : "—"}{" "}
+                          · paid via {p.payment_confirmed_method ?? "—"}
+                        </p>
+                      </div>
+                      <div className="inline-flex gap-2">
+                        <Badge tone="success" size="xs">Invoice issued</Badge>
+                        <Button asChild size="sm" variant="secondary">
+                          <a
+                            href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}/print`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Download
+                          </a>
+                        </Button>
+                        <Button asChild size="sm" variant="tertiary">
+                          <Link href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}>
+                            View PO
+                          </Link>
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
             {queued.length > 0 && (
               <section
-                aria-label="Purchase orders queued for invoice generation"
+                aria-label="Purchase orders awaiting admin approval"
                 className="rounded-md border border-feedback-info-border bg-feedback-info-bg p-5"
               >
                 <h2 className="text-heading-sm text-feedback-info-text">
-                  {queued.length} purchase order{queued.length === 1 ? "" : "s"} queued for invoicing
+                  {queued.length} purchase order{queued.length === 1 ? "" : "s"} awaiting admin approval
                 </h2>
                 <p className="mt-1 text-caption text-feedback-info-text/80">
-                  Payment proof recorded. Finance reconciles the payment and
+                  Payment proof recorded. Admin reconciles the payment and
                   issues the GST invoice next — usually within 1 business day.
                 </p>
                 <ul className="mt-4 space-y-2">
@@ -125,7 +185,7 @@ export default function InvoicesPage() {
                         </p>
                       </div>
                       <div className="inline-flex gap-2">
-                        <Badge tone="info" size="xs">Invoice queued</Badge>
+                        <Badge tone="info" size="xs">Awaiting approval</Badge>
                         <Button asChild size="sm" variant="tertiary">
                           <Link href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}>
                             View PO

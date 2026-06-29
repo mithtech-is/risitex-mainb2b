@@ -121,6 +121,8 @@ export default function PurchaseOrderDetailPage() {
   }
 
   const paymentConfirmed = !!po.payment_confirmed_at;
+  const adminApproved = !!po.admin_approved_at;
+  const dispatched = !!po.dispatched_at;
   const linkedToOrder = !!po.order;
   const snapshotNotes =
     (po.metadata?.notes as string | undefined) ??
@@ -134,63 +136,70 @@ export default function PurchaseOrderDetailPage() {
         subtitle={`Purchase order · ${new Date(po.created_at).toLocaleString("en-IN")}`}
       />
 
-      {/* Top-level status banner */}
-      <section
-        className={
-          (linkedToOrder
-            ? "border-feedback-success-border bg-feedback-success-bg"
+      {/* Top-level status banner — escalates through 4 stages:
+          awaiting payment → payment recorded → admin approved → dispatched */}
+      {(() => {
+        const stage = dispatched
+          ? ("dispatched" as const)
+          : adminApproved
+            ? ("approved" as const)
             : paymentConfirmed
+              ? ("recorded" as const)
+              : ("awaiting" as const);
+        const tone =
+          stage === "dispatched" || stage === "approved"
+            ? "success"
+            : stage === "recorded"
+              ? "info"
+              : "warning";
+        const borderBg =
+          tone === "success"
+            ? "border-feedback-success-border bg-feedback-success-bg"
+            : tone === "info"
               ? "border-feedback-info-border bg-feedback-info-bg"
-              : "border-feedback-warning-border bg-feedback-warning-bg") +
-          " rounded-md border p-5"
-        }
-      >
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p
-              className={
-                (linkedToOrder
-                  ? "text-feedback-success-text"
-                  : paymentConfirmed
-                    ? "text-feedback-info-text"
-                    : "text-feedback-warning-text") + " text-heading-sm"
-              }
-            >
-              {linkedToOrder
-                ? "Order confirmed — fulfillment in progress"
-                : paymentConfirmed
-                  ? "Payment recorded — reconciling with finance"
-                  : "Awaiting payment"}
-            </p>
-            <p
-              className={
-                (linkedToOrder
-                  ? "text-feedback-success-text/80"
-                  : paymentConfirmed
-                    ? "text-feedback-info-text/80"
-                    : "text-feedback-warning-text/80") + " mt-1 text-body-sm"
-              }
-            >
-              {linkedToOrder
-                ? "Your shipment ticket and GST invoice will appear in their respective tabs as soon as ops dispatches."
-                : paymentConfirmed
-                  ? `Your payment proof is logged. Finance verifies it against ${
-                      po.payment_confirmed_method ?? "the bank statement"
-                    } and promotes this PO to a confirmed order — usually within 1 business day.`
-                  : "Record your payment proof below to move this PO forward. Until you do, no invoice or shipment ticket is generated."}
-            </p>
-          </div>
-          <Badge
-            tone={linkedToOrder ? "success" : paymentConfirmed ? "info" : "warning"}
-          >
-            {linkedToOrder
-              ? po.status
-              : paymentConfirmed
+              : "border-feedback-warning-border bg-feedback-warning-bg";
+        const textBase =
+          tone === "success"
+            ? "text-feedback-success-text"
+            : tone === "info"
+              ? "text-feedback-info-text"
+              : "text-feedback-warning-text";
+        const title =
+          stage === "dispatched"
+            ? "Dispatched — in transit"
+            : stage === "approved"
+              ? "Approved — preparing dispatch"
+              : stage === "recorded"
+                ? "Payment recorded — awaiting admin approval"
+                : "Awaiting payment";
+        const sub =
+          stage === "dispatched"
+            ? `Your order is on its way via ${po.dispatch_carrier ?? "carrier"}. Tracking number: ${po.dispatch_tracking_number ?? "—"}.`
+            : stage === "approved"
+              ? `Admin approved your payment${po.admin_approved_by_name ? ` (${po.admin_approved_by_name})` : ""} on ${po.admin_approved_at ? new Date(po.admin_approved_at).toLocaleString("en-IN") : "—"}. Shipment + GST invoice will appear in their tabs once dispatched.`
+              : stage === "recorded"
+                ? `Your payment proof is logged. Admin reviews against the ${po.payment_confirmed_method ?? "bank statement"} and approves — usually within 1 business day.`
+                : "Record your payment proof below to move this PO forward. Until you do, no invoice or shipment ticket is generated.";
+        const badge =
+          stage === "dispatched"
+            ? "shipped"
+            : stage === "approved"
+              ? "approved"
+              : stage === "recorded"
                 ? "payment confirmed"
-                : "awaiting payment"}
-          </Badge>
-        </div>
-      </section>
+                : "awaiting payment";
+        return (
+          <section className={`${borderBg} rounded-md border p-5`}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className={`${textBase} text-heading-sm`}>{title}</p>
+                <p className={`${textBase}/80 mt-1 text-body-sm`}>{sub}</p>
+              </div>
+              <Badge tone={tone}>{badge}</Badge>
+            </div>
+          </section>
+        );
+      })()}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
         {/* Snapshot */}
@@ -229,16 +238,28 @@ export default function PurchaseOrderDetailPage() {
             </div>
           )}
 
-          {po.file_url && (
-            <div className="mt-5">
-              <Button asChild variant="secondary" size="sm">
-                <a href={po.file_url} target="_blank" rel="noopener noreferrer">
-                  <FileText className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                  Open PO file
-                </a>
-              </Button>
-            </div>
-          )}
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button asChild variant="secondary" size="sm">
+              <a
+                href={`/b2b/purchase-orders/${po.id}/print`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileText className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                Open PO file
+              </a>
+            </Button>
+            {po.file_url &&
+              !po.file_url.startsWith("/b2b/") &&
+              !po.file_url.includes("checkout-draft-po") && (
+                <Button asChild variant="ghost" size="sm">
+                  <a href={po.file_url} target="_blank" rel="noopener noreferrer">
+                    <FileText className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                    View original upload
+                  </a>
+                </Button>
+              )}
+          </div>
         </section>
 
         {/* Right column: payment confirmation OR confirmed-state summary */}
@@ -454,7 +475,8 @@ function PaymentConfirmedCard({ po }: { po: DraftPurchaseOrder }) {
 
 function WorkflowCard({ po }: { po: DraftPurchaseOrder }) {
   const paymentConfirmed = !!po.payment_confirmed_at;
-  const linkedToOrder = !!po.order;
+  const adminApproved = !!po.admin_approved_at;
+  const dispatched = !!po.dispatched_at;
   return (
     <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
       <h3 className="text-heading-sm text-text-primary">Workflow</h3>
@@ -473,15 +495,35 @@ function WorkflowCard({ po }: { po: DraftPurchaseOrder }) {
         />
         <Step
           icon={<Receipt className="h-4 w-4" />}
-          label="Order confirmed + invoice issued"
-          done={linkedToOrder}
+          label={
+            adminApproved
+              ? `Approved by ${po.admin_approved_by_name ?? "admin"}`
+              : "Awaiting admin approval"
+          }
+          done={adminApproved}
+          ts={po.admin_approved_at ?? null}
         />
         <Step
           icon={<Truck className="h-4 w-4" />}
-          label="Shipment dispatched"
-          done={po.status === "fulfilled"}
+          label={
+            dispatched
+              ? `Dispatched · ${po.dispatch_carrier ?? "carrier"}`
+              : "Shipment dispatched"
+          }
+          done={dispatched}
+          ts={po.dispatched_at ?? null}
         />
       </ul>
+      {dispatched && po.dispatch_tracking_number && (
+        <div className="mt-4 rounded-sm border border-feedback-success-border bg-feedback-success-bg p-3">
+          <p className="text-caption text-feedback-success-text/80">
+            Tracking number
+          </p>
+          <p className="mt-1 font-mono text-body-sm text-feedback-success-text">
+            {po.dispatch_tracking_number}
+          </p>
+        </div>
+      )}
     </section>
   );
 }
