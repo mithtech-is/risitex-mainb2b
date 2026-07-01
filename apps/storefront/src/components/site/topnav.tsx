@@ -7,6 +7,7 @@ import { Wordmark } from "./wordmark";
 import * as React from "react";
 import { MobileMenu } from "./mobile-menu";
 import { WalletIconButton } from "@/components/wallet/wallet-icon-button";
+import { AuthModal } from "@/components/auth/auth-modal";
 import { Heart, ShoppingCart, UserRound } from "lucide-react";
 import { getCart } from "@/lib/cart";
 
@@ -75,12 +76,12 @@ function TopnavActions() {
 
 /**
  * Account icon switches its destination + label by auth state. Signed-out
- * users land on /auth/sign-in (a Sign in pill is rendered next to it so the
- * CTA is text, not just an ambiguous person icon). Signed-in users get the
- * usual person icon linking to their profile.
+ * users see a Sign in button that opens the AuthModal. Signed-in users get
+ * the usual person icon linking to their profile.
  */
 function AccountNavSlot() {
   const [authed, setAuthed] = React.useState<boolean | null>(null);
+  const [authOpen, setAuthOpen] = React.useState(false);
 
   React.useEffect(() => {
     const read = () => {
@@ -105,12 +106,16 @@ function AccountNavSlot() {
 
   if (authed === false) {
     return (
-      <Link
-        href="/auth/sign-in"
-        className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border-subtle bg-surface-raised px-3 text-body-sm font-medium text-text-primary transition-colors duration-fast hover:bg-surface-sunken focus-visible:ring-focus"
-      >
-        Sign in
-      </Link>
+      <>
+        <button
+          type="button"
+          onClick={() => setAuthOpen(true)}
+          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border-subtle bg-surface-raised px-3 text-body-sm font-medium text-text-primary transition-colors duration-fast hover:bg-surface-sunken focus-visible:ring-focus"
+        >
+          Sign in
+        </button>
+        <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+      </>
     );
   }
   // authed === true OR null (still resolving — render the icon, which

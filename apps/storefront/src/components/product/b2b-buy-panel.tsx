@@ -19,8 +19,12 @@ import {
   type AvailabilityRow,
 } from "@/lib/availability";
 import { addToCart, type CartLine } from "@/lib/cart";
+import { MEDUSA_BASE_URL } from "@/lib/medusa";
 
 export function B2bBuyPanel({ product }: { product: Product }) {
+  const [b2bStatus, setB2bStatus] = React.useState<string | null>(null);
+  const [checkingStatus, setCheckingStatus] = React.useState(true);
+
   // FR-9.02: load sellable ("Available" = physical − reserved) stock per SKU
   // so the grid caps each cell to what can actually be ordered. Falls back to
   // fixture stock when the endpoint or SKU isn't available.
@@ -31,6 +35,36 @@ export function B2bBuyPanel({ product }: { product: Product }) {
     () => product.variants.map((v) => v.sku).filter((s): s is string => !!s),
     [product.variants],
   );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const token = typeof window !== "undefined" ? window.localStorage.getItem("medusa_auth_token") : null;
+    if (!token) {
+      setCheckingStatus(false);
+      return;
+    }
+    fetch(`${MEDUSA_BASE_URL}/store/companies/me`, {
+      headers: {
+        "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "",
+        "Authorization": `Bearer ${token}`,
+      },
+      credentials: "include",
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) {
+          setB2bStatus(data?.b2b?.company?.status ?? null);
+          setCheckingStatus(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCheckingStatus(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   React.useEffect(() => {
     let cancelled = false;
     fetchAvailability(skus)
@@ -232,6 +266,33 @@ export function B2bBuyPanel({ product }: { product: Product }) {
     if (dismissTimer.current) clearTimeout(dismissTimer.current);
     dismissTimer.current = setTimeout(() => setAddedSummary(null), 6_000);
   };
+
+  if (checkingStatus) {
+    return <p className="text-body-sm text-text-muted">Loading wholesale details...</p>;
+  }
+
+  if (b2bStatus !== "approved") {
+    return (
+      <div className="flex flex-col gap-6 rounded-lg border border-feedback-warning-border bg-feedback-warning-bg p-6 shadow-sm">
+        <div className="space-y-2">
+          <h3 className="text-heading-sm text-feedback-warning-text font-display font-bold">
+            Wholesale Account Pending Approval
+          </h3>
+          <p className="text-body-sm text-feedback-warning-text/90 leading-relaxed">
+            Your registered wholesale company account is currently under review by our sales team. Pricing, ordering, and cart features will be automatically unlocked once your registration is approved. Review typically takes 5–10 minutes during business hours.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3 pt-2">
+          <Button asChild variant="secondary" size="sm">
+            <Link href="/b2b/dashboard">Go to Dashboard</Link>
+          </Button>
+          <Button asChild variant="secondary" size="sm">
+            <Link href="/contact">Contact Support</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8">

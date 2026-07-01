@@ -44,9 +44,11 @@ export default function VerifyEmailPage() {
         return;
       }
       if (s.email_verified) {
-        router.replace(
-          s.phone_verified ? "/b2b/dashboard" : "/auth/verify-phone",
-        );
+        if (s.phone_verified) {
+          router.replace("/b2b/dashboard");
+        } else {
+          router.replace("/auth/verify-phone");
+        }
         return;
       }
       await fireSend();
@@ -108,9 +110,9 @@ export default function VerifyEmailPage() {
     setInfo(null);
     try {
       await verifyEmailOtp({ otp_request_id: otpRequestId, otp });
+      // Check phone status — if unverified, route to phone OTP next.
       const s = await getVerificationStatus().catch(() => null);
       if (s?.phone_verified) {
-        // Both flags now true — celebrate via the activation step.
         router.replace("/auth/activated");
       } else {
         router.replace("/auth/verify-phone");

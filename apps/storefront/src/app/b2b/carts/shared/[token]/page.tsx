@@ -12,6 +12,7 @@ import {
 import { ShoppingBasket } from "lucide-react";
 import { Container } from "@/components/site/container";
 import { Breadcrumb } from "@/components/site/breadcrumb";
+import { MEDUSA_BASE_URL } from "@/lib/medusa";
 
 type SharedCartLine = {
   variantId: string;
@@ -49,9 +50,7 @@ export default function SharedCartPage() {
   React.useEffect(() => {
     if (!token) return;
     let cancelled = false;
-    const BACKEND_URL =
-      process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000";
-    fetch(`${BACKEND_URL}/store/b2b-sales/shared-carts/${token}`, {
+    fetch(`${MEDUSA_BASE_URL}/store/shared-carts/${token}`, {
       headers: {
         "Content-Type": "application/json",
         ...(process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY

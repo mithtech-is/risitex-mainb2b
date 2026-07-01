@@ -86,15 +86,13 @@ export async function autoApproveIfPending(
       return { approved: false, alreadyApproved: true, company_id: linkedCompanyId }
     }
 
-    // ── 2. BOTH flags required (the spec gate).
+    // ── 2. Verification gate — require BOTH email and phone.
     const emailVerified = meta.email_verified === true
     const phoneVerified = meta.phone_verified === true
     if (!emailVerified || !phoneVerified) {
       return {
         approved: false,
-        reason: !emailVerified
-          ? "awaiting_email_verification"
-          : "awaiting_phone_verification",
+        reason: !emailVerified ? "awaiting_email_verification" : "awaiting_phone_verification",
       }
     }
 

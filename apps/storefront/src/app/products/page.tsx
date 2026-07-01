@@ -3,7 +3,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
-import { SignedOut, SignedIn } from "@/components/auth/signed-out";
+import { SignedOut } from "@/components/auth/signed-out";
+import { B2bPriceGate } from "@/components/b2b/b2b-price-gate";
 import { getWholesaleProducts } from "@/lib/wholesale-products";
 import { CATEGORY_LABELS } from "@/data/products";
 import { WishlistHeart } from "@/components/wishlist/wishlist-heart";
@@ -45,8 +46,11 @@ export default async function ProductsPage({
             <p className="mt-3 max-w-2xl text-body-lg text-text-secondary">
               {all.length} SKUs across innerwear, loungewear, fabric, and
               accessories.{" "}
-              <SignedOut>Sign in to see your personalised tier pricing.</SignedOut>
-              <SignedIn>Tier pricing applied to your account.</SignedIn>
+              <B2bPriceGate
+                approved={<span>Wholesale pricing visible — account approved.</span>}
+                pending={<span>Wholesale pricing visible after account approval.</span>}
+                unauthenticated={<span>Sign in to see your personalised tier pricing.</span>}
+              />
             </p>
           </div>
         </Container>
@@ -126,33 +130,37 @@ export default async function ProductsPage({
                             {p.moq ? `${p.moq} pcs` : "—"}
                           </p>
                         </div>
-                        <SignedIn>
-                          <div>
-                            <span className="text-text-muted">Price</span>
-                            <p className="text-text-primary">
-                              {p.priceMajor > 0
-                                ? `₹${p.priceMajor.toLocaleString("en-IN")}${p.unit ?? ""}`
-                                : "On request"}
-                            </p>
-                          </div>
-                        </SignedIn>
-                        <SignedOut>
-                          <div>
-                            <span className="text-text-muted">Price</span>
-                            <p className="text-text-muted italic">
-                              Login to view
-                            </p>
-                          </div>
-                        </SignedOut>
+                        <B2bPriceGate
+                          approved={
+                            <div>
+                              <span className="text-text-muted">Price</span>
+                              <p className="text-text-primary">
+                                {p.priceMajor > 0
+                                  ? `₹${p.priceMajor.toLocaleString("en-IN")}${p.unit ?? ""}`
+                                  : "On request"}
+                              </p>
+                            </div>
+                          }
+                          unauthenticated={
+                            <div>
+                              <span className="text-text-muted">Price</span>
+                              <p className="text-text-muted italic">
+                                Login to view
+                              </p>
+                            </div>
+                          }
+                        />
                       </div>
-                      <SignedIn>
-                        {p.tiers && p.tiers.length > 0 && (
-                          <p className="mt-2 text-caption text-brand-accent">
-                            From ₹{p.tiers[p.tiers.length - 1]!.pricePerUnitMajor}
-                            {p.unit ?? ""} @ {p.tiers[p.tiers.length - 1]!.minQty}+
-                          </p>
-                        )}
-                      </SignedIn>
+                      <B2bPriceGate
+                        approved={
+                          p.tiers && p.tiers.length > 0 ? (
+                            <p className="mt-2 text-caption text-brand-accent">
+                              From ₹{p.tiers[p.tiers.length - 1]!.pricePerUnitMajor}
+                              {p.unit ?? ""} @ {p.tiers[p.tiers.length - 1]!.minQty}+
+                            </p>
+                          ) : null
+                        }
+                      />
                     </div>
                   </article>
                 </Link>

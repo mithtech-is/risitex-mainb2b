@@ -22,17 +22,19 @@ async function requireVerified(): Promise<string | null> {
 async function requireWholesale(): Promise<string | null> {
   const c = await getCurrentCustomer();
   if (!c) return "/auth/sign-in";
-  const status = await getWholesaleApplicationStatus().catch(() => null);
-  if (status === "approved") return null;
-  if (status === "pending") return "/onboarding/b2b/pending";
-  return "/auth/sign-up";
+  const s = await getVerificationStatus().catch(() => null);
+  if (!s || !s.email_verified || !s.phone_verified) return "/auth/verification-center";
+  return null;
 }
 
 async function requireApplication(): Promise<string | null> {
   const c = await getCurrentCustomer();
   if (!c) return "/auth/sign-in";
   const status = await getWholesaleApplicationStatus().catch(() => null);
-  return status ? null : "/auth/sign-up";
+  // If no application exists, route to the catalogue instead of the
+  // registration page. The B2B onboarding pages (pending / approved)
+  // only make sense after an application has been filed.
+  return status ? null : "/wholesale/catalogue";
 }
 
 export type GuardRequirement =

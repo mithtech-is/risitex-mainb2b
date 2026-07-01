@@ -23,7 +23,7 @@ export const CompanyApplication = model
   .define("company_application", {
     id: model.id({ prefix: "coapp" }).primaryKey(),
 
-    gstin: model.text(),
+    gstin: model.text().nullable(),
     trade_name: model.text(),
 
     applicant_email: model.text(),

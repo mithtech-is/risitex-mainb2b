@@ -96,11 +96,11 @@ export function CouponInput({
           setError("No matching coupon found.");
         } else if (body.reason === "expired") {
           setError("This coupon has expired.");
-        } else if (body.reason === "min_units") {
+        } else if (body.reason === "below_min_units") {
           setError(
             "Order quantity is below the minimum required for this coupon.",
           );
-        } else if (body.reason === "inactive") {
+        } else if (body.reason === "invalid_code") {
           setError("This coupon is no longer active.");
         } else {
           setError("Could not apply coupon. Please check the code and retry.");

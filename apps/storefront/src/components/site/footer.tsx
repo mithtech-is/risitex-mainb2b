@@ -6,10 +6,8 @@ const FOOTER_COLUMNS = [
   {
     title: "Catalogue",
     links: [
-      { href: "/products", label: "Catalogue" },
+      { href: "/wholesale/catalogue", label: "Catalogue" },
       { href: "/b2b/inventory", label: "Inventory" },
-      { href: "/b2b/reorder", label: "Quick Order" },
-      { href: "/b2b/bulk-orders", label: "Bulk Order" },
     ],
   },
   {
@@ -17,16 +15,14 @@ const FOOTER_COLUMNS = [
     links: [
       { href: "/b2b/dashboard", label: "Dashboard" },
       { href: "/b2b/orders", label: "Orders" },
-      { href: "/b2b/purchase-orders", label: "Purchase Orders" },
       { href: "/b2b/shipments", label: "Shipments" },
     ],
   },
   {
     title: "Company",
     links: [
-      { href: "/about", label: "About" },
-      { href: "/b2b/company", label: "Company Details" },
-      { href: "/b2b/company-users", label: "Company Users" },
+      { href: "/about", label: "About Us" },
+      { href: "/b2b/profile", label: "Profile Settings" },
       { href: "/contact", label: "Contact Us" },
     ],
   },
@@ -34,7 +30,7 @@ const FOOTER_COLUMNS = [
     title: "Support",
     links: [
       { href: "/faq", label: "FAQ" },
-      { href: "/contact", label: "Enquiry" },
+      { href: "/contact", label: "Business Enquiry" },
       { href: "/privacy", label: "Privacy Policy" },
       { href: "/terms", label: "Terms of Use" },
     ],

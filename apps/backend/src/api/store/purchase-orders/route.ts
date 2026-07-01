@@ -1,5 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { z } from "zod"
 import {
   PURCHASE_ORDER_MODULE,
@@ -154,22 +154,22 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 /**
  * POST /store/purchase-orders
  *
- * Creates a DRAFT PurchaseOrder (no order_id yet). Customer uploads
- * the PO PDF/image to /store/upload first to get a `file_url`, then
- * POSTs the PO metadata here. The PO sits as "draft" in the list
- * until the customer attaches it to an order at checkout.
+ * Body: { po_number, file_url, value_major, expected_payment_date?, notes? }
  *
- * Body:
- *   po_number              required, 1–60 chars
- *   file_url               required, /store/upload return URL
- *   value_major            required positive integer (rupees)
- *   expected_payment_date  optional ISO date
- *   notes                  optional
+ * Creates a new purchase_order document in DRAFT state.
  *
- * Auto-resolves company_id from the customer's company link so PO
+ * We resolve the customer's active company_id at create time so the PO
  * attribution survives even if the customer later moves to a
  * different team.
  */
+
+const AddressSchema = z.object({
+  address_1: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  province: z.string().optional().nullable(),
+  postal_code: z.string().optional().nullable(),
+  country_code: z.string().optional().nullable(),
+})
 
 const PostBody = z.object({
   po_number: z.string().min(1).max(60),
@@ -177,6 +177,12 @@ const PostBody = z.object({
   value_major: z.number().int().positive().max(100_000_000),
   expected_payment_date: z.string().datetime().optional(),
   notes: z.string().max(2_000).optional(),
+  items: z.array(z.object({
+    variant_id: z.string(),
+    quantity: z.number().int().positive(),
+  })).optional(),
+  billing_address: AddressSchema.optional(),
+  shipping_address: AddressSchema.optional(),
 })
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
@@ -194,19 +200,101 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const input = parsed.data
 
   try {
-    // Resolve company_id so PO attribution is durable even if the
+    const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+
+    // Resolve company_id and email so PO attribution is durable even if the
     // customer later moves between teams.
     let companyId: string | null = null
+    let customerEmail: string | null = null
     try {
-      const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
       const { data: customers } = await query.graph({
         entity: "customer",
-        fields: ["id", "company_id"],
+        fields: ["id", "company_id", "email"],
         filters: { id: customerId },
       })
       companyId = (customers?.[0]?.company_id as string | null) ?? null
+      customerEmail = (customers?.[0]?.email as string | null) ?? null
     } catch {
-      // ignore — company_id is best-effort
+      // ignore — company_id and email are best-effort
+    }
+
+    // Resolve Region and Sales Channel
+    let regionId: string | null = null
+    try {
+      const regionService = req.scope.resolve(Modules.REGION)
+      const regions = await regionService.listRegions({ currency_code: "inr" }, { take: 1 })
+      regionId = regions[0]?.id ?? null
+    } catch {
+      // ignore
+    }
+
+    let salesChannelId: string | null = null
+    try {
+      const scService = req.scope.resolve(Modules.SALES_CHANNEL)
+      const scs = await scService.listSalesChannels({}, { take: 1 })
+      salesChannelId = scs[0]?.id ?? null
+    } catch {
+      // ignore
+    }
+
+    let orderId: string | null = null
+    if (input.items && input.items.length > 0) {
+      try {
+        const variantIds = input.items.map((it) => it.variant_id)
+        const { data: variants } = await query.graph({
+          entity: "variant",
+          fields: ["id", "title", "sku", "product.title", "calculated_price.calculated_amount"],
+          filters: { id: variantIds },
+        })
+
+        const orderItems = input.items.map((item) => {
+          const v = variants.find((x) => x.id === item.variant_id)
+          const price = v?.calculated_price?.calculated_amount ?? 100
+          return {
+            title: v?.product?.title || v?.title || "Line item",
+            variant_id: item.variant_id,
+            sku: v?.sku || "",
+            quantity: item.quantity,
+            unit_price: price, // in minor units
+          }
+        })
+
+        const orderModule = req.scope.resolve(Modules.ORDER)
+        const createdOrder = await orderModule.createOrders({
+          region_id: regionId || undefined,
+          customer_id: customerId,
+          sales_channel_id: salesChannelId || undefined,
+          email: customerEmail || undefined,
+          currency_code: "inr",
+          status: "pending",
+          shipping_address: input.shipping_address ? {
+            address_1: input.shipping_address.address_1 || "",
+            city: input.shipping_address.city || "",
+            province: input.shipping_address.province || "",
+            postal_code: input.shipping_address.postal_code || "",
+            country_code: input.shipping_address.country_code || "in",
+          } : undefined,
+          billing_address: input.billing_address ? {
+            address_1: input.billing_address.address_1 || "",
+            city: input.billing_address.city || "",
+            province: input.billing_address.province || "",
+            postal_code: input.billing_address.postal_code || "",
+            country_code: input.billing_address.country_code || "in",
+          } : undefined,
+          items: orderItems,
+          shipping_methods: [
+            {
+              name: "Standard B2B Shipping",
+              amount: 0,
+            }
+          ]
+        })
+        orderId = createdOrder.id
+      } catch (orderErr) {
+        logger.warn(
+          `[purchase-orders] failed to create standard Medusa Order: ${orderErr instanceof Error ? orderErr.message : orderErr}`
+        )
+      }
     }
 
     const poModule = req.scope.resolve(
@@ -221,7 +309,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     ).createPurchaseOrders({
       customer_id: customerId,
       company_id: companyId,
-      order_id: null,
+      order_id: orderId,
       po_number: input.po_number.trim(),
       file_url: input.file_url,
       value_minor: input.value_major * 100,
@@ -233,6 +321,20 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     })
     const row = Array.isArray(created) ? created[0] : created
 
+    let linkedOrder = null
+    if (orderId) {
+      try {
+        const { data: orders } = await query.graph({
+          entity: "order",
+          fields: ["id", "display_id", "status", "payment_status", "fulfillment_status"],
+          filters: { id: orderId },
+        })
+        linkedOrder = orders?.[0] ?? null
+      } catch {
+        // ignore
+      }
+    }
+
     return res.status(201).json({
       purchase_order: {
         id: row.id,
@@ -243,8 +345,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
         expected_payment_date: row.expected_payment_date,
         created_at: row.created_at,
         updated_at: row.updated_at,
-        order: null,
-        status: "draft" as const,
+        order: linkedOrder,
+        status: linkedOrder ? "in_progress" : "draft",
       },
     })
   } catch (err) {

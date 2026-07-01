@@ -22,6 +22,10 @@ import {
 } from "@/lib/purchase-orders";
 import { getCart, clearCart, subtotalMajor } from "@/lib/cart";
 import { gstStateCode, gstBreakdown, GST_SELLER_STATE } from "@/lib/india-gst";
+import {
+  DeliveryCompanySelector,
+  type CourierOption,
+} from "@/components/checkout/delivery-company-selector";
 
 /**
  * /b2b/checkout
@@ -98,42 +102,23 @@ type Credit = {
 
 const PUB_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "";
 
-const SHIPPING_METHODS = [
-  {
-    id: "standard",
-    label: "Standard Surface",
-    desc: "3–5 business days, palletised dispatch from Tiruppur DC.",
-    eta: "3–5 days",
-    flatRupees: 250,
-  },
-  {
-    id: "express",
-    label: "Express Surface",
-    desc: "1–2 business days nationwide. Carrier-selected at dispatch.",
-    eta: "1–2 days",
-    flatRupees: 600,
-  },
-  {
-    id: "air",
-    label: "Air Cargo",
-    desc: "Next-day metros, 1–2 day non-metro. For deadline-bound dispatch.",
-    eta: "1–2 days",
-    flatRupees: 1500,
-  },
-  {
-    id: "pickup",
-    label: "Customer Pickup",
-    desc: "Pick up at the Tiruppur DC during business hours.",
-    eta: "Same-day from dispatch-ready",
-    flatRupees: 0,
-  },
-  {
-    id: "own_transport",
-    label: "Own Transport / 3PL",
-    desc: "Provide carrier waybill at pickup; we hand over packed cartons.",
-    eta: "Per your carrier",
-    flatRupees: 0,
-  },
+const COURIER_PROVIDERS: CourierOption[] = [
+  { id: "dhl_express", name: "DHL Express", estimatedDelivery: "2–3 days", chargeRupees: 480 },
+  { id: "bluedart", name: "Blue Dart", estimatedDelivery: "2–4 days", chargeRupees: 420 },
+  { id: "delhivery_b2b", name: "Delhivery B2B", estimatedDelivery: "3–5 days", chargeRupees: 280 },
+  { id: "professional_couriers", name: "Professional Couriers", estimatedDelivery: "3–6 days", chargeRupees: 250 },
+  { id: "dtdc_premium", name: "DTDC Premium", estimatedDelivery: "3–5 days", chargeRupees: 300 },
+  { id: "xpressbees", name: "Xpressbees", estimatedDelivery: "3–5 days", chargeRupees: 270 },
+  { id: "ecom_express", name: "Ecom Express", estimatedDelivery: "4–6 days", chargeRupees: 260 },
+  { id: "india_post_speed", name: "India Post Speed Post", estimatedDelivery: "5–7 days", chargeRupees: 180 },
+  { id: "fedex", name: "FedEx", estimatedDelivery: "2–4 days", chargeRupees: 520 },
+  { id: "ups", name: "UPS", estimatedDelivery: "3–5 days", chargeRupees: 500 },
+  { id: "other_courier", name: "Other Courier Partner", estimatedDelivery: "Carrier dependent", chargeRupees: 0 },
+];
+
+const PICKUP_OPTIONS = [
+  { id: "customer_pickup", label: "Customer Pickup", eta: "Same-day", flatRupees: 0 },
+  { id: "own_transport", label: "Own Transport / 3PL", eta: "Per your carrier", flatRupees: 0 },
 ] as const;
 
 const PAYMENT_METHODS = [
@@ -155,30 +140,6 @@ const PAYMENT_METHODS = [
     desc: "Pay full amount online.",
     needsBalance: false,
   },
-  {
-    id: "credit_terms",
-    label: "Credit Terms",
-    desc: "Apply against your approved net-payment window.",
-    needsBalance: false,
-  },
-  {
-    id: "po_upload",
-    label: "Purchase Order Upload",
-    desc: "Upload your company's PO; finance team reconciles offline.",
-    needsBalance: false,
-  },
-  {
-    id: "bank_transfer",
-    label: "Bank Transfer (NEFT / RTGS)",
-    desc: "We share account details; dispatch on credit confirmation.",
-    needsBalance: false,
-  },
-  {
-    id: "proforma",
-    label: "Proforma Invoice",
-    desc: "Receive a quote, pay later through your finance system.",
-    needsBalance: false,
-  },
 ] as const;
 
 type PaymentMethodId = (typeof PAYMENT_METHODS)[number]["id"];
@@ -191,19 +152,10 @@ const PAYMENT_METHOD_TO_BACKEND: Record<PaymentMethodId, PaymentConfirmation["me
   wallet: "wallet",
   wallet_plus_razorpay: "razorpay",
   razorpay: "razorpay",
-  credit_terms: "credit_terms",
-  po_upload: "po_upload",
-  bank_transfer: "bank_transfer",
-  proforma: "proforma",
 };
 
 /**
- * Inline proof requirements per payment method. The wizard captures
- * proof at checkout time (rather than asking the buyer to come back to
- * the PO detail page later) for methods where the buyer already knows
- * the reference at the moment of placing the order. Wallet / credit /
- * proforma don't need a buyer-supplied reference — the proof is implicit
- * (wallet debit / credit allocation / not-yet-paid quote).
+ * Inline proof requirements per payment method.
  */
 const PAYMENT_PROOF_CONFIG: Record<
   PaymentMethodId,
@@ -231,30 +183,6 @@ const PAYMENT_PROOF_CONFIG: Record<
     label: "Razorpay Transaction / Order ID",
     placeholder: "pay_NkM2…",
     hint: "Complete Razorpay capture, then paste the transaction id here so finance can reconcile.",
-  },
-  credit_terms: {
-    needsReference: false,
-    label: "",
-    placeholder: "",
-    hint: "Booked against your approved credit window — payment is due per your terms, no proof needed now.",
-  },
-  po_upload: {
-    needsReference: true,
-    label: "Your internal PO number",
-    placeholder: "INT-PO-2026-0042",
-    hint: "We&apos;ll match this against the uploaded PO PDF during finance reconciliation.",
-  },
-  bank_transfer: {
-    needsReference: true,
-    label: "UTR / NEFT Reference Number",
-    placeholder: "AXISN20260629…",
-    hint: "Complete the NEFT/RTGS transfer to our account, then enter the bank-issued UTR here.",
-  },
-  proforma: {
-    needsReference: false,
-    label: "",
-    placeholder: "",
-    hint: "We&apos;ll issue a proforma invoice — settle via your finance system, then confirm payment from the PO detail page.",
   },
 };
 
@@ -374,13 +302,14 @@ export default function CheckoutPage() {
     contact_name: "",
     contact_phone: "",
   });
-  const [shippingMethodId, setShippingMethodId] = React.useState<string>("standard");
+  const [shippingMethodId, setShippingMethodId] = React.useState<string>("delhivery_b2b");
   const [paymentMethodId, setPaymentMethodId] = React.useState<PaymentMethodId>("wallet");
   const [coupon, setCoupon] = React.useState<AppliedCoupon | null>(null);
-  const [poNumber, setPoNumber] = React.useState<string>(
-    `PO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`,
+  const [poNumber] = React.useState<string>(
+    `ORD-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`,
   );
-  const [poFile, setPoFile] = React.useState<File | null>(null);
+  const [otherCourierName, setOtherCourierName] = React.useState<string>("");
+  const [otherCourierNotes, setOtherCourierNotes] = React.useState<string>("");
   // Inline payment-proof capture (FR-4.x):
   //   For methods where the buyer already knows the reference at order time
   //   (UTR / Razorpay txn id / internal PO #), we capture it here instead of
@@ -414,8 +343,9 @@ export default function CheckoutPage() {
   const discountPaise = coupon?.discount_paise ?? 0;
   const discountedSubtotalPaise = Math.max(0, subtotalPaise - discountPaise);
 
-  const shippingMethod = SHIPPING_METHODS.find((m) => m.id === shippingMethodId);
-  const shippingPaise = (shippingMethod?.flatRupees ?? 0) * 100;
+  const courierMethod = COURIER_PROVIDERS.find((m) => m.id === shippingMethodId);
+  const pickupMethod = PICKUP_OPTIONS.find((m) => m.id === shippingMethodId);
+  const shippingPaise = (courierMethod?.chargeRupees ?? pickupMethod?.flatRupees ?? 0) * 100;
 
   const shipState =
     shippingMode === "same"
@@ -467,7 +397,10 @@ export default function CheckoutPage() {
 
   const canStep2 = cartLines.length > 0 || subtotalPaise > 0;
   const canStep3 = canStep2 && billingAddressOk && shippingAddressOk;
-  const canStep4 = canStep3 && !!shippingMethodId;
+  const canStep4 =
+    canStep3 &&
+    !!shippingMethodId &&
+    (shippingMethodId !== "other_courier" || !!otherCourierName.trim());
   const canStep5 = canStep4 && !!paymentMethodId && paymentReady();
   const canPlace = canStep5 && confirmed;
 
@@ -475,13 +408,10 @@ export default function CheckoutPage() {
     if (paymentMethodId === "wallet") return walletCoversAll;
     if (paymentMethodId === "wallet_plus_razorpay")
       return walletPaise > 0 && paymentReference.trim().length >= 4;
-    if (paymentMethodId === "credit_terms") return creditCovers;
-    if (paymentMethodId === "po_upload")
-      return !!poFile && paymentReference.trim().length >= 2;
-    if (paymentMethodId === "razorpay" || paymentMethodId === "bank_transfer") {
+    if (paymentMethodId === "razorpay") {
       return paymentReference.trim().length >= 4;
     }
-    return true; // proforma — no capture at checkout time
+    return true;
   }
 
   const goNext = () => {
@@ -500,21 +430,26 @@ export default function CheckoutPage() {
     setSubmitError(null);
     setSubmitting(true);
     try {
-      // Step 1: create the durable PO row. file_url points at the
-      // printable PO route — synthesized server-side from the PO data —
-      // so the buyer (and admin) always have a clickable PO document
-      // even when no PDF was uploaded by the customer.
+      const courierDetail = shippingMethodId === "other_courier"
+        ? `Other Courier Partner: ${otherCourierName.trim()}`
+        : `Courier: ${courierMethod?.name ?? pickupMethod?.label ?? "—"}`;
+      const courierNoteDetail = shippingMethodId === "other_courier" && otherCourierNotes.trim()
+        ? `Courier Notes: ${otherCourierNotes.trim()}`
+        : "";
+
       const created = await createPurchaseOrder({
         po_number: poNumber,
         value_major: paiseToRupees(grandTotalPaise),
         notes: [
+          courierDetail,
+          courierNoteDetail,
           notes ? `Notes: ${notes}` : "",
           `Lines: ${cartLines.length} (${variantQtyTotal} units)`,
           `Subtotal: ${formatRupees(subtotalPaise)}`,
           discountPaise > 0
             ? `Coupon: ${coupon?.code} → -${formatRupees(discountPaise)}`
             : "",
-          `Shipping: ${shippingMethod?.label} ${formatRupees(shippingPaise)}`,
+          `Shipping: ${formatRupees(shippingPaise)}`,
           `GST: ${formatRupees(gstTotalPaise)} (${gstLines.map((l) => l.label).join(" + ") || "—"})`,
           `Payment: ${PAYMENT_METHODS.find((p) => p.id === paymentMethodId)?.label}`,
           shippingMode === "same"
@@ -523,22 +458,36 @@ export default function CheckoutPage() {
         ]
           .filter(Boolean)
           .join("\n"),
-        // The /b2b/purchase-orders/[id]/print route renders this PO as a
-        // printable A4 document. We can't know the id until POST returns,
-        // but the storefront PO detail page synthesizes the right URL —
-        // see purchase-orders/[id]/page.tsx. The sentinel value here keeps
-        // the backend zod schema happy without writing a real URL we'd
-        // then have to keep in sync.
         file_url: "/b2b/po-print-placeholder",
+        items: cartLines.map((line) => ({
+          variant_id: line.variantId,
+          quantity: line.quantity,
+        })),
+        billing_address: company?.billing_address ? {
+          address_1: company.billing_address.line1 || "",
+          city: company.billing_address.city || "",
+          province: company.billing_address.state || "",
+          postal_code: company.billing_address.postal_code || "",
+          country_code: company.billing_address.country_code || "in",
+        } : undefined,
+        shipping_address: shippingMode === "same" && company?.billing_address ? {
+          address_1: company.billing_address.line1 || "",
+          city: company.billing_address.city || "",
+          province: company.billing_address.state || "",
+          postal_code: company.billing_address.postal_code || "",
+          country_code: company.billing_address.country_code || "in",
+        } : {
+          address_1: customShip.line1 || "",
+          city: customShip.city || "",
+          province: customShip.state || "",
+          postal_code: customShip.postal_code || "",
+          country_code: "in",
+        },
       });
 
       // Step 2: if the buyer supplied a payment reference inline, record
       // it immediately so the PO lands as "payment recorded — awaiting
-      // approval" rather than "awaiting payment". For methods without
-      // an inline reference (wallet / credit_terms / proforma) we still
-      // stamp payment_confirmed_at for wallet (since the wallet debit
-      // is the proof) and leave proforma / credit_terms unstamped so
-      // finance knows they're not yet paid.
+      // approval" rather than "awaiting payment".
       let paymentRecorded = false;
       try {
         const cfg = PAYMENT_PROOF_CONFIG[paymentMethodId];
@@ -562,19 +511,13 @@ export default function CheckoutPage() {
           paymentRecorded = true;
         }
       } catch (proofErr) {
-        // Don't lose the PO if the proof step fails — the buyer can
-        // still confirm payment from the PO detail page. Surface the
-        // error inline so they know to retry.
         const detail =
           proofErr instanceof Error ? proofErr.message : "Could not record payment";
         setSubmitError(
-          `Order placed (${created.po_number}) but recording the payment reference failed: ${detail}. Open the PO from your dashboard to record it manually.`,
+          `Order placed (${created.po_number}) but recording the payment reference failed: ${detail}. Please contact support with your order number.`,
         );
       }
 
-      // PO landed — empty the local cart so the next Add to Cart starts
-      // fresh and the navbar badge resets to 0. Cart-store mutation fires
-      // risitex:cart-changed which the topnav listens to.
       try {
         clearCart();
       } catch {
@@ -623,16 +566,16 @@ export default function CheckoutPage() {
     );
   }
 
-  if (!hasCompany) {
+  if (!hasCompany || company?.status !== "approved") {
     return (
       <div className="flex min-h-full flex-col gap-6">
         <B2bTopbar title="Checkout" subtitle="Your B2B company isn't approved yet." />
         <EmptyState
           title="Checkout unavailable"
-          description="Your wholesale account must be approved before you can place orders. Finish verification — once your email OTP succeeds you'll be auto-approved."
+          description="Your wholesale company account is pending approval. Once our sales team approves your registration, checkout and online payments will be enabled."
           action={
             <Button asChild>
-              <Link href="/auth/verification-center">Finish verification</Link>
+              <Link href="/b2b/dashboard">Go to Dashboard</Link>
             </Button>
           }
         />
@@ -877,19 +820,31 @@ export default function CheckoutPage() {
 
           {step === 3 && (
             <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
-              <h2 className="text-heading-sm text-text-primary">Shipping method</h2>
+              <h2 className="text-heading-sm text-text-primary">Delivery company</h2>
               <p className="mt-1 text-caption text-text-muted">
-                Freight is charged at dispatch against the carrier's actual bill;
-                what's shown here is an indicative cost.
+                Select a courier partner for this shipment. Freight is charged at
+                dispatch against the carrier&apos;s actual bill; shown here is an
+                indicative cost.
               </p>
-              <fieldset className="mt-4">
-                <legend className="sr-only">Choose a shipping method</legend>
-                <div className="space-y-2">
-                  {SHIPPING_METHODS.map((m) => (
+
+              <div className="mt-4">
+                <DeliveryCompanySelector
+                  options={COURIER_PROVIDERS}
+                  value={shippingMethodId}
+                  onValueChange={setShippingMethodId}
+                />
+              </div>
+
+              <fieldset className="mt-5">
+                <legend className="text-body-sm font-medium text-text-primary">
+                  Or choose an alternative
+                </legend>
+                <div className="mt-2 space-y-2">
+                  {PICKUP_OPTIONS.map((m) => (
                     <label
                       key={m.id}
                       className={[
-                        "flex cursor-pointer items-start gap-3 rounded-md border p-4 transition-colors",
+                        "flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors",
                         shippingMethodId === m.id
                           ? "border-action-primary-bg bg-surface-sunken"
                           : "border-border-subtle bg-surface-background hover:bg-surface-sunken",
@@ -901,23 +856,47 @@ export default function CheckoutPage() {
                         value={m.id}
                         checked={shippingMethodId === m.id}
                         onChange={() => setShippingMethodId(m.id)}
-                        className="mt-1"
                       />
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <span className="text-body-md font-medium text-text-primary">
-                            {m.label}
-                          </span>
-                          <span className="font-mono text-body-sm text-text-secondary">
-                            {m.flatRupees > 0 ? `₹${m.flatRupees}` : "Free"} · {m.eta}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-caption text-text-muted">{m.desc}</p>
+                      <div className="flex flex-1 items-baseline justify-between gap-2">
+                        <span className="text-body-md font-medium text-text-primary">
+                          {m.label}
+                        </span>
+                        <span className="font-mono text-body-sm text-text-secondary">
+                          {m.flatRupees > 0 ? `₹${m.flatRupees}` : "Free"} · {m.eta}
+                        </span>
                       </div>
                     </label>
                   ))}
                 </div>
               </fieldset>
+
+              {shippingMethodId === "other_courier" && (
+                <div className="mt-5 border-t border-border-subtle pt-4 space-y-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="other-courier-name" required>
+                      Courier Company Name
+                    </Label>
+                    <Input
+                      id="other-courier-name"
+                      placeholder="e.g. DTDC Express, Professional Couriers..."
+                      value={otherCourierName}
+                      onChange={(e) => setOtherCourierName(e.currentTarget.value)}
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="other-courier-notes">
+                      Shipping Notes / Instructions (Optional)
+                    </Label>
+                    <Input
+                      id="other-courier-notes"
+                      placeholder="Optional notes for booking or dispatch..."
+                      value={otherCourierNotes}
+                      onChange={(e) => setOtherCourierNotes(e.currentTarget.value)}
+                    />
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
@@ -925,8 +904,7 @@ export default function CheckoutPage() {
             <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
               <h2 className="text-heading-sm text-text-primary">Payment method</h2>
               <p className="mt-1 text-caption text-text-muted">
-                Wallet shortfall surfaces an additional channel automatically;
-                credit terms are gated by your approved limit.
+                Choose online payment or select wallet debit to proceed.
               </p>
               <fieldset className="mt-4">
                 <legend className="sr-only">Choose a payment method</legend>
@@ -934,8 +912,7 @@ export default function CheckoutPage() {
                   {PAYMENT_METHODS.map((m) => {
                     const disabled =
                       (m.id === "wallet" && !walletCoversAll) ||
-                      (m.id === "wallet_plus_razorpay" && walletPaise <= 0) ||
-                      (m.id === "credit_terms" && !creditCovers);
+                      (m.id === "wallet_plus_razorpay" && walletPaise <= 0);
                     return (
                       <label
                         key={m.id}
@@ -967,11 +944,6 @@ export default function CheckoutPage() {
                                 Balance {formatRupees(walletPaise)}
                               </span>
                             )}
-                            {m.id === "credit_terms" && (
-                              <span className="font-mono text-caption text-text-muted">
-                                Avail. {formatRupees(creditAvailablePaise)}
-                              </span>
-                            )}
                           </div>
                           <p className="mt-1 text-caption text-text-muted">{m.desc}</p>
                           {disabled && m.id === "wallet" && (
@@ -981,16 +953,6 @@ export default function CheckoutPage() {
                                 Add funds
                               </Link>{" "}
                               or pick Wallet + Razorpay below.
-                            </p>
-                          )}
-                          {disabled && m.id === "credit_terms" && (
-                            <p className="mt-2 text-caption text-feedback-danger-text">
-                              Order exceeds available credit (
-                              {formatRupees(creditAvailablePaise)}).{" "}
-                              <Link href="/b2b/credit" className="underline-offset-2 hover:underline">
-                                View credit terms
-                              </Link>
-                              .
                             </p>
                           )}
                         </div>
@@ -1008,29 +970,6 @@ export default function CheckoutPage() {
                     Razorpay on the next screen (handover happens after order
                     creation).
                   </p>
-                </div>
-              )}
-
-              {paymentMethodId === "po_upload" && (
-                <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="po-num">PO Number</Label>
-                    <Input
-                      id="po-num"
-                      value={poNumber}
-                      onChange={(e) => setPoNumber(e.currentTarget.value)}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="po-file" required>Upload PO PDF</Label>
-                    <input
-                      id="po-file"
-                      type="file"
-                      accept="application/pdf"
-                      onChange={(e) => setPoFile(e.currentTarget.files?.[0] ?? null)}
-                      className="text-body-sm"
-                    />
-                  </div>
                 </div>
               )}
 
@@ -1117,8 +1056,8 @@ export default function CheckoutPage() {
                   }
                 />
                 <ReviewRow
-                  label="Shipping method"
-                  value={`${shippingMethod?.label ?? "—"} (${shippingMethod?.eta ?? ""})`}
+                  label="Delivery"
+                  value={`${courierMethod?.name ?? pickupMethod?.label ?? "—"} (${courierMethod?.estimatedDelivery ?? pickupMethod?.eta ?? ""})`}
                 />
                 <ReviewRow
                   label="Payment"
@@ -1142,7 +1081,7 @@ export default function CheckoutPage() {
                   className="mt-1 h-4 w-4"
                 />
                 <Label htmlFor="confirm" className="text-body-sm text-text-secondary">
-                  I confirm this purchase order. By placing it, I authorise
+                  I confirm this order. By placing it, I authorise
                   RISITEX to process the listed payment method and dispatch
                   according to the selected shipping method.
                 </Label>
@@ -1224,7 +1163,7 @@ export default function CheckoutPage() {
                 />
               )}
               <Row
-                label={`Shipping · ${shippingMethod?.label ?? "—"}`}
+                label={`Shipping · ${courierMethod?.name ?? pickupMethod?.label ?? "—"}`}
                 value={shippingPaise ? formatRupees(shippingPaise) : "—"}
               />
               {gstLines.map((l) => (

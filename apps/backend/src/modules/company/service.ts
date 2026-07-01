@@ -18,7 +18,7 @@ const GSTIN_REGEX =
   /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}Z[0-9A-Z]{1}$/
 
 export type CompanyApplicationPayload = {
-  gstin: string
+  gstin?: string | null
   trade_name: string
   applicant_email: string
   applicant_phone?: string | null
@@ -48,34 +48,35 @@ class CompanyModuleService extends MedusaService({
     payload: CompanyApplicationPayload
     ip_hash?: string | null
   }) {
-    const gstin = (input.payload.gstin ?? "").toUpperCase()
-    if (!GSTIN_REGEX.test(gstin)) {
-      throw new MedusaError(
-        MedusaError.Types.INVALID_DATA,
-        `GSTIN "${input.payload.gstin}" is not a valid Indian GSTIN.`,
-      )
-    }
+    const gstin = (input.payload.gstin ?? "").toUpperCase().trim() || null
 
-    // Duplicate guard: a pending OR approved company with the same
-    // GSTIN blocks new applications. A previously rejected app does
-    // not block — operator may have been wrong; let them re-apply.
-    const existingCompanies = await this.listCompanies({ gstin })
-    if (existingCompanies.length > 0) {
-      throw new MedusaError(
-        MedusaError.Types.CONFLICT,
-        `A company with GSTIN ${gstin} already exists (status: ${existingCompanies[0]!.status}).`,
-      )
-    }
+    // Only validate & deduplicate GSTIN when provided.
+    if (gstin) {
+      if (!GSTIN_REGEX.test(gstin)) {
+        throw new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          `GSTIN "${input.payload.gstin}" is not a valid Indian GSTIN.`,
+        )
+      }
 
-    const pendingApps = await this.listCompanyApplications({
-      gstin,
-      status: "pending",
-    })
-    if (pendingApps.length > 0) {
-      throw new MedusaError(
-        MedusaError.Types.CONFLICT,
-        `A pending application for GSTIN ${gstin} is already under review.`,
-      )
+      const existingCompanies = await this.listCompanies({ gstin })
+      if (existingCompanies.length > 0) {
+        throw new MedusaError(
+          MedusaError.Types.CONFLICT,
+          `A company with GSTIN ${gstin} already exists (status: ${existingCompanies[0]!.status}).`,
+        )
+      }
+
+      const pendingApps = await this.listCompanyApplications({
+        gstin,
+        status: "pending",
+      })
+      if (pendingApps.length > 0) {
+        throw new MedusaError(
+          MedusaError.Types.CONFLICT,
+          `A pending application for GSTIN ${gstin} is already under review.`,
+        )
+      }
     }
 
     const [app] = await this.createCompanyApplications([
@@ -115,22 +116,43 @@ class CompanyModuleService extends MedusaService({
 
     const payload = app.payload as unknown as CompanyApplicationPayload
 
-    const [company] = await this.createCompanies([
-      {
-        gstin: app.gstin,
-        trade_name: app.trade_name,
-        billing_address: payload.billing_address as unknown as Record<string, unknown>,
-        status: "approved",
-        customer_tier_id: input.customer_tier_id ?? null,
-        sales_rep_id: input.sales_rep_id ?? null,
-        review_notes: input.review_notes ?? null,
-        metadata: {
-          applicant_email: app.applicant_email,
-          applicant_phone: app.applicant_phone,
-          application_id: app.id,
+    // Check if there is already an existing company for this application
+    const existing = await this.listCompanies({
+      applicant_email: app.applicant_email,
+    })
+
+    let company
+    if (existing.length > 0) {
+      const [updated] = await this.updateCompanies([
+        {
+          id: existing[0].id,
+          status: "approved",
+          customer_tier_id: input.customer_tier_id ?? null,
+          sales_rep_id: input.sales_rep_id ?? null,
+          review_notes: input.review_notes ?? null,
         },
-      },
-    ])
+      ])
+      company = updated
+    } else {
+      const [created] = await this.createCompanies([
+        {
+          gstin: app.gstin,
+          applicant_email: app.applicant_email,
+          trade_name: app.trade_name,
+          billing_address: payload.billing_address as unknown as Record<string, unknown>,
+          status: "approved",
+          customer_tier_id: input.customer_tier_id ?? null,
+          sales_rep_id: input.sales_rep_id ?? null,
+          review_notes: input.review_notes ?? null,
+          metadata: {
+            applicant_email: app.applicant_email,
+            applicant_phone: app.applicant_phone,
+            application_id: app.id,
+          },
+        },
+      ])
+      company = created
+    }
 
     await this.updateCompanyApplications([
       {

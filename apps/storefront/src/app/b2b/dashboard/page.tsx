@@ -441,42 +441,6 @@ export default function B2bDashboardPage() {
       {/* Main grid */}
       <section className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="lg:col-span-7 space-y-6">
-          {/* Suggested reorder — derived from the customer's last-90d
-              history. Accept & add drops the line into the cart store
-              with the real medusaVariantId. */}
-          {reorderCandidates.length > 0 && (
-            <div>
-              <div className="flex items-baseline justify-between">
-                <h2 className="font-display text-heading-md text-text-primary">
-                  Suggested reorder
-                </h2>
-                <span className="text-caption text-text-muted">
-                  Based on your last 90 days
-                </span>
-              </div>
-              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                {reorderCandidates.map((c) => (
-                  <AiReorderSuggestion
-                    key={c.variantId}
-                    sku={c.sku}
-                    productName={
-                      c.variantTitle
-                        ? `${c.productName} · ${c.variantTitle}`
-                        : c.productName
-                    }
-                    suggestedQty={c.suggestedQty}
-                    unitPriceMajor={c.unitPriceMajor}
-                    confidence={c.confidence}
-                    rationale={c.rationale}
-                    swatchHex={c.swatchHex}
-                    onAccept={() => {}}
-                    onDismiss={() => handleReorderDismiss(c)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Top SKUs — real data when orders are present */}
           {topSkus.length > 0 && (
             <div className="rounded-lg border border-border-subtle bg-surface-raised p-5">
@@ -560,21 +524,6 @@ export default function B2bDashboardPage() {
 
         {/* Right rail */}
         <aside className="lg:col-span-5 space-y-6">
-          {/* Credit terms — fixture preview until /store/credit-terms lands */}
-          <div className="relative">
-            <CreditTermsPanel
-              terms={{
-                limitMajor: 200000,
-                usedMajor: 84500,
-                netDays: 30,
-                tierLabel: "Gold",
-              }}
-            />
-            <div className="absolute right-3 top-3">
-              <Badge tone="info" size="xs">Preview</Badge>
-            </div>
-          </div>
-
           <NotificationFeed
             title="Activity"
             items={

@@ -11,7 +11,15 @@ import {
   getWholesaleProducts,
 } from "@/lib/wholesale-products";
 import { SignedIn, SignedOut } from "@/components/auth/signed-out";
+import { B2bPriceGate } from "@/components/b2b/b2b-price-gate";
 import { WishlistHeart } from "@/components/wishlist/wishlist-heart";
+import { RequestQuoteModal } from "@/components/product/request-quote-modal";
+import { SizeChartModal } from "@/components/product/size-chart-modal";
+import { ProductQuestions } from "@/components/product/product-questions";
+import { ProductReviews } from "@/components/product/product-reviews";
+
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000";
 
 type Params = { slug: string };
 
@@ -198,31 +206,20 @@ export default async function WholesalePdpPage({
               </SignedOut>
             </div>
             <div className="mt-4 flex flex-wrap gap-3">
-              <Button asChild variant="secondary">
-                <Link
-                  href={
-                    product.documents?.find((d) => d.type === "catalogue")?.url ??
-                    "/demo/poplin-detail.svg"
-                  }
-                >
-                  Download catalogue PDF
-                </Link>
-              </Button>
-              <Button asChild variant="secondary">
-                <Link
-                  href={
-                    product.documents?.find((d) => d.type === "spec_sheet")?.url ??
-                    "/demo/poplin-weave.svg"
-                  }
-                >
-                  Download spec sheet
-                </Link>
-              </Button>
-              <Button asChild variant="ghost">
-                <Link href={`/contact?product=${encodeURIComponent(product.slug)}`}>
-                  Request quote
-                </Link>
-              </Button>
+              <SizeChartModal />
+              <SignedIn>
+                <RequestQuoteModal
+                  productSlug={product.slug}
+                  productName={product.name}
+                />
+              </SignedIn>
+              <SignedOut>
+                <Button asChild variant="ghost">
+                  <Link href={`/contact?product=${encodeURIComponent(product.slug)}`}>
+                    Request quote
+                  </Link>
+                </Button>
+              </SignedOut>
               <Button asChild variant="ghost">
                 <Link
                   href={`/b2b/sample-requests?product=${encodeURIComponent(product.name)}`}
@@ -342,34 +339,36 @@ export default async function WholesalePdpPage({
           </div>
           <div className="lg:col-span-5">
             <h2 className="text-heading-md text-text-primary">Bulk Pricing</h2>
-            <SignedIn>
-              <div className="mt-4 divide-y divide-border-subtle rounded-md border border-border-subtle bg-surface-raised">
-                {(product.tiers ?? []).map((tier) => (
-                  <div
-                    key={tier.minQty}
-                    className="flex items-center justify-between px-4 py-3"
-                  >
-                    <span className="text-body-sm text-text-secondary">
-                      {tier.label ?? "Volume"} {tier.minQty}
-                      {tier.maxQty ? `-${tier.maxQty}` : "+"} pcs
-                    </span>
-                    <span className="font-mono text-body-sm text-text-primary">
-                      Rs {tier.pricePerUnitMajor}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </SignedIn>
-            <SignedOut>
-              <div className="mt-4 rounded-md border border-border-subtle bg-surface-sunken p-5 text-center">
-                <p className="text-body-sm text-text-secondary">
-                  Tier &amp; volume pricing visible after login.
-                </p>
-                <Button asChild className="mt-3" size="sm">
-                  <Link href="/auth/sign-in">Sign in to view</Link>
-                </Button>
-              </div>
-            </SignedOut>
+            <B2bPriceGate
+              approved={
+                <div className="mt-4 divide-y divide-border-subtle rounded-md border border-border-subtle bg-surface-raised">
+                  {(product.tiers ?? []).map((tier) => (
+                    <div
+                      key={tier.minQty}
+                      className="flex items-center justify-between px-4 py-3"
+                    >
+                      <span className="text-body-sm text-text-secondary">
+                        {tier.label ?? "Volume"} {tier.minQty}
+                        {tier.maxQty ? `-${tier.maxQty}` : "+"} pcs
+                      </span>
+                      <span className="font-mono text-body-sm text-text-primary">
+                        Rs {tier.pricePerUnitMajor}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              }
+              unauthenticated={
+                <div className="mt-4 rounded-md border border-border-subtle bg-surface-sunken p-5 text-center">
+                  <p className="text-body-sm text-text-secondary">
+                    Tier &amp; volume pricing visible after login.
+                  </p>
+                  <Button asChild className="mt-3" size="sm">
+                    <Link href="/auth/sign-in">Sign in to view</Link>
+                  </Button>
+                </div>
+              }
+            />
           </div>
         </section>
 
@@ -397,58 +396,14 @@ export default async function WholesalePdpPage({
         </section>
 
         <section className="grid grid-cols-1 gap-6 pb-16 lg:grid-cols-2">
-          <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
-            <h2 className="text-heading-sm text-text-primary">Questions and Answers</h2>
-            {product.questions?.length ? (
-              <ul className="mt-3 space-y-3">
-                {product.questions.map((q) => (
-                  <li key={q.question}>
-                    <p className="text-body-sm font-medium text-text-primary">
-                      Q. {q.question}
-                    </p>
-                    <p className="mt-1 text-body-sm text-text-secondary">
-                      A. {q.answer}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-3 text-body-sm text-text-secondary">
-                No questions yet — submit one via the B2B support channel.
-              </p>
-            )}
-          </section>
-          <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
-            <h2 className="text-heading-sm text-text-primary">Ratings and Reviews</h2>
-            {product.reviews?.length ? (
-              <>
-                <p className="mt-2 text-body-sm text-text-secondary">
-                  {(
-                    product.reviews.reduce((s, r) => s + r.rating, 0) /
-                    product.reviews.length
-                  ).toFixed(1)}
-                  /5 average across {product.reviews.length} verified reviews
-                </p>
-                <ul className="mt-3 space-y-3">
-                  {product.reviews.map((r, i) => (
-                    <li
-                      key={`${r.buyer_type}-${i}`}
-                      className="rounded-sm border border-border-subtle bg-surface-background p-3"
-                    >
-                      <p className="text-caption text-text-muted">
-                        {r.buyer_type} · {r.rating}/5
-                      </p>
-                      <p className="mt-1 text-body-sm text-text-primary">{r.body}</p>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : (
-              <p className="mt-3 text-body-sm text-text-secondary">
-                Reviews sync from backend product feedback when available.
-              </p>
-            )}
-          </section>
+          <ProductQuestions
+            productId={product.medusaId ?? product.slug}
+            metadataQuestions={product.questions}
+          />
+          <ProductReviews
+            productId={product.medusaId ?? product.slug}
+            metadataReviews={product.reviews}
+          />
         </section>
 
         {related.length > 0 && (
@@ -534,11 +489,15 @@ function ProductCardRow({
           <h3 className="mt-2 text-heading-sm text-text-primary">{item.name}</h3>
           <div className="mt-3 flex items-center justify-between">
             <p className="text-body-sm text-text-muted">MOQ {item.moq ?? 0} pcs</p>
-            {item.priceMajor > 0 && (
-              <p className="font-mono text-body-sm text-text-primary">
-                ₹{item.priceMajor}
-              </p>
-            )}
+            <B2bPriceGate
+              approved={
+                item.priceMajor > 0 ? (
+                  <p className="font-mono text-body-sm text-text-primary">
+                    ₹{item.priceMajor}
+                  </p>
+                ) : null
+              }
+            />
           </div>
         </Link>
       ))}

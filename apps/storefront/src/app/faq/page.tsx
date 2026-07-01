@@ -1,13 +1,9 @@
+"use client";
+
 import type { Metadata } from "next";
+import * as React from "react";
 import { Container } from "@/components/site/container";
 import { Breadcrumb } from "@/components/site/breadcrumb";
-
-export const metadata: Metadata = {
-  title: "FAQ",
-  description:
-    "Answers to common questions about orders, tracking, returns, refunds, and payments at RISITEX.",
-  alternates: { canonical: "/faq" },
-};
 
 const FAQS: { q: string; a: string }[] = [
   {
@@ -41,6 +37,36 @@ const FAQS: { q: string; a: string }[] = [
 ];
 
 export default function FaqPage() {
+  const [openIndex, setOpenIndex] = React.useState<number | null>(null);
+  const headerRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
+
+  const toggle = (index: number) => {
+    setOpenIndex(openIndex === index ? null : index);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        const nextIndex = (index + 1) % FAQS.length;
+        headerRefs.current[nextIndex]?.focus();
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        const prevIndex = (index - 1 + FAQS.length) % FAQS.length;
+        headerRefs.current[prevIndex]?.focus();
+        break;
+      case "Home":
+        e.preventDefault();
+        headerRefs.current[0]?.focus();
+        break;
+      case "End":
+        e.preventDefault();
+        headerRefs.current[FAQS.length - 1]?.focus();
+        break;
+    }
+  };
+
   return (
     <Container>
       <script
@@ -68,14 +94,14 @@ export default function FaqPage() {
 
       <header className="border-b border-border-subtle py-10">
         <p className="text-micro text-text-muted">Help</p>
-        <h1 className="mt-2 text-display-lg text-text-primary">
+        <h1 className="mt-2 text-display-lg text-text-primary font-display">
           Frequently asked questions
         </h1>
         <p className="mt-3 max-w-2xl text-body-md text-text-secondary">
           Quick answers on orders, tracking, returns, and payments. Still stuck?{" "}
           <a
             href="/contact"
-            className="text-text-primary underline underline-offset-4"
+            className="text-text-primary underline underline-offset-4 font-medium"
           >
             Contact us
           </a>
@@ -84,17 +110,48 @@ export default function FaqPage() {
       </header>
 
       <div className="max-w-2xl divide-y divide-border-subtle py-4">
-        {FAQS.map((f) => (
-          <details key={f.q} className="group py-5">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-heading-sm text-text-primary">
-              {f.q}
-              <span className="text-text-muted transition-transform duration-fast group-open:rotate-45">
-                +
-              </span>
-            </summary>
-            <p className="mt-3 text-body-md text-text-secondary">{f.a}</p>
-          </details>
-        ))}
+        {FAQS.map((f, i) => {
+          const isOpen = openIndex === i;
+          return (
+            <div key={f.q} className="py-4">
+              <h2 className="text-heading-sm">
+                <button
+                  type="button"
+                  ref={(el) => {
+                    headerRefs.current[i] = el;
+                  }}
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-answer-${i}`}
+                  id={`faq-header-${i}`}
+                  onClick={() => toggle(i)}
+                  onKeyDown={(e) => handleKeyDown(e, i)}
+                  className="flex w-full items-center justify-between gap-4 text-left font-display text-text-primary hover:text-action-primary-bg transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 py-2 rounded"
+                >
+                  <span>{f.q}</span>
+                  <span
+                    className={`text-text-muted text-xl transform transition-transform duration-normal ${
+                      isOpen ? "rotate-45 text-action-primary-bg" : ""
+                    }`}
+                  >
+                    +
+                  </span>
+                </button>
+              </h2>
+              <div
+                id={`faq-answer-${i}`}
+                role="region"
+                aria-labelledby={`faq-header-${i}`}
+                className={`transition-all duration-normal overflow-hidden ${
+                  isOpen ? "max-h-[200px] opacity-100 mt-2" : "max-h-0 opacity-0"
+                }`}
+              >
+                <p className="text-body-md text-text-secondary leading-relaxed pb-2">
+                  {f.a}
+                </p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </Container>
   );

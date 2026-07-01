@@ -408,10 +408,7 @@ export default function B2bOrdersPage() {
             </thead>
             <tbody>
               {filtered.map((r) => {
-                const detailHref =
-                  r.kind === "order"
-                    ? `/b2b/orders?order=${encodeURIComponent(r.id)}`
-                    : `/b2b/purchase-orders?focus=${encodeURIComponent(r.id)}`;
+                const detailHref = `/b2b/orders/${encodeURIComponent(r.id)}`;
                 return (
                   <tr
                     key={`${r.kind}-${r.id}`}

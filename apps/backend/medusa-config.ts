@@ -246,6 +246,9 @@ export default defineConfig({
         product_questions: {
             resolve: "./src/modules/product-questions",
         },
+        product_reviews: {
+            resolve: "./src/modules/product_reviews",
+        },
         rbac: {
             resolve: "./src/modules/rbac",
         },
@@ -326,6 +329,13 @@ export default defineConfig({
                     },
                 ],
             },
+        },
+        // ── Courier delivery module (Phase 15 — shipping rate calculation)
+        // Provides searchable courier rates by zone for the checkout UI.
+        // Extensible via CourierAdapter pattern for live API integration
+        // (Shiprocket, Pickrr, NimbusPost, Delhivery, Blue Dart, DHL, FedEx).
+        courier_delivery: {
+            resolve: "./src/modules/courier_delivery",
         },
         ...analyticsModule,
     },

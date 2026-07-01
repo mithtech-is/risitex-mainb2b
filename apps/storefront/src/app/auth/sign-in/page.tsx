@@ -37,17 +37,11 @@ export default function SignInPage() {
       return;
     }
     try {
-      // Spec: post-registration login routes purely on email/phone verified.
-      // Wholesale application status is handled inside the dashboard, so we
-      // never send a verified user back to /wholesale/apply (which violated
-      // "Do NOT ask the user to register for wholesale again"). For users
-      // who haven't finished email/phone OTPs, the verification-center
-      // dispatches them to the missing step.
-      const status = await getVerificationStatus().catch(() => null);
-      const fullyVerified =
-        !!status && status.email_verified && status.phone_verified;
+      const v = await getVerificationStatus().catch(() => null);
       router.push(
-        fullyVerified ? "/b2b/dashboard" : "/auth/verification-center",
+        v?.email_verified && v?.phone_verified
+          ? "/b2b/dashboard"
+          : "/auth/verification-center",
       );
       router.refresh();
     } catch {

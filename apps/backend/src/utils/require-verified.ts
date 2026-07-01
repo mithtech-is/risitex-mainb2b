@@ -15,8 +15,7 @@ import { Modules } from "@medusajs/framework/utils"
  * /auth/verification-center after sign-up / sign-in, but a malicious
  * (or stale) client can still hit /store/checkout/* directly with the
  * raw bearer token. This gate is the authoritative server-side
- * enforcement of RISITEX's auth standard (email OTP + WhatsApp OTP +
- * password).
+ * enforcement of RISITEX's auth standard (email OTP + WhatsApp OTP).
  *
  * Response on failure (HTTP 403):
  *

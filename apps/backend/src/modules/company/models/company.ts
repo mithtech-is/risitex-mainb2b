@@ -31,10 +31,18 @@ export const Company = model
 
     /**
      * 15-character India GSTIN. Validated at API edge with the
-     * canonical regex. UNIQUE across non-deleted rows so a company
-     * can't double-register.
+     * canonical regex when provided. UNIQUE across non-deleted rows
+     * so a company can't double-register. Nullable so users can
+     * register without a GSTIN and add it later.
      */
-    gstin: model.text(),
+    gstin: model.text().nullable(),
+
+    /**
+     * Applicant email — the email of the customer who registered
+     * this company. Used by the admin search to find companies when
+     * no GSTIN is on file.
+     */
+    applicant_email: model.text(),
 
     /** Legal trade name as recorded with GST. */
     trade_name: model.text(),

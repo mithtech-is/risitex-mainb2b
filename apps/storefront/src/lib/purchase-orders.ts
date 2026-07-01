@@ -57,6 +57,21 @@ export type CreatePurchaseOrderInput = {
   value_major: number;
   expected_payment_date?: string;
   notes?: string;
+  items?: Array<{ variant_id: string; quantity: number }>;
+  billing_address?: {
+    address_1: string;
+    city: string;
+    province: string;
+    postal_code: string;
+    country_code: string;
+  };
+  shipping_address?: {
+    address_1: string;
+    city: string;
+    province: string;
+    postal_code: string;
+    country_code: string;
+  };
 };
 
 export type CreatedPurchaseOrder = {

@@ -74,7 +74,7 @@ describe("requireVerifiedCustomer", () => {
     )
   })
 
-  it("403s with account_not_verified when neither flag is set", async () => {
+  it("403s with account_not_verified when email is not verified", async () => {
     const req = makeReq({
       customerId: "cus_1",
       customer: { metadata: {} },
@@ -84,19 +84,18 @@ describe("requireVerifiedCustomer", () => {
     await requireVerifiedCustomer(req, res as any, next)
     expect(next).not.toHaveBeenCalled()
     expect(res.status).toHaveBeenCalledWith(403)
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        code: "account_not_verified",
-        next: "/auth/verification-center",
-        verification: {
-          email_verified: false,
-          phone_verified: false,
-        },
-      }),
-    )
+    const body = res.json.mock.calls[0]?.[0] as {
+      message: string
+      verification: { email_verified: boolean; phone_verified: boolean }
+    }
+    expect(body.code).toBe("account_not_verified")
+    expect(body.next).toBe("/auth/verification-center")
+    expect(body.message).toMatch(/email.*whatsapp|whatsapp.*email/i)
+    expect(body.verification.email_verified).toBe(false)
+    expect(body.verification.phone_verified).toBe(false)
   })
 
-  it("403s with email-only message when only phone is verified", async () => {
+  it("403s when email is not verified — phone verified alone is not enough", async () => {
     const req = makeReq({
       customerId: "cus_1",
       customer: { metadata: { phone_verified: true } },
@@ -107,14 +106,13 @@ describe("requireVerifiedCustomer", () => {
     expect(res.status).toHaveBeenCalledWith(403)
     const body = res.json.mock.calls[0]?.[0] as {
       message: string
-      verification: { email_verified: boolean; phone_verified: boolean }
+      verification: { email_verified: boolean }
     }
     expect(body.message).toMatch(/email/i)
     expect(body.verification.email_verified).toBe(false)
-    expect(body.verification.phone_verified).toBe(true)
   })
 
-  it("403s with phone-only message when only email is verified", async () => {
+  it("403s when phone is not verified — email verified alone is not enough", async () => {
     const req = makeReq({
       customerId: "cus_1",
       customer: { metadata: { email_verified: true } },
@@ -123,8 +121,12 @@ describe("requireVerifiedCustomer", () => {
     const next = vi.fn()
     await requireVerifiedCustomer(req, res as any, next)
     expect(res.status).toHaveBeenCalledWith(403)
-    const body = res.json.mock.calls[0]?.[0] as { message: string }
+    const body = res.json.mock.calls[0]?.[0] as {
+      message: string
+      verification: { phone_verified: boolean }
+    }
     expect(body.message).toMatch(/whatsapp|phone/i)
+    expect(body.verification.phone_verified).toBe(false)
   })
 
   it("calls next() when both flags are true", async () => {
@@ -145,7 +147,7 @@ describe("requireVerifiedCustomer", () => {
     const req = makeReq({
       customerId: "cus_1",
       customer: {
-        metadata: { email_verified: 1, phone_verified: true },
+        metadata: { email_verified: 1 },
       },
     })
     const res = makeRes()

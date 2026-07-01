@@ -14,6 +14,89 @@ const BACKEND_URL =
 const PUB_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "";
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
+// ── Password policy (mirrors apps/backend/src/utils/password-policy.ts) ──
+const PASSWORD_MIN_LENGTH = 12;
+const PASSWORD_MAX_LENGTH = 128;
+const SPECIAL_RE = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/~`]/;
+const UPPER_RE = /[A-Z]/;
+const LOWER_RE = /[a-z]/;
+const DIGIT_RE = /[0-9]/;
+const WHITESPACE_RE = /\s/;
+
+const COMMON_PASSWORDS = new Set([
+  "password", "password1", "password123", "password1234", "p@ssword",
+  "passw0rd", "p@ssw0rd", "p@ssw0rd!", "passw0rd!", "passw0rd123",
+  "welcome", "welcome1", "welcome123", "welcome@1", "welcome@123",
+  "admin", "admin123", "admin@123", "admin1234", "administrator",
+  "qwerty", "qwerty123", "qwertyuiop", "qazwsx", "asdfgh", "zxcvbn",
+  "letmein", "letmein123", "trustno1", "iloveyou", "monkey", "dragon",
+  "football", "baseball", "sunshine", "shadow", "master",
+  "12345", "123456", "1234567", "12345678", "123456789", "1234567890",
+  "111111", "000000", "654321", "987654321",
+  "abc123", "abcd1234", "abcdef", "abcdefgh",
+  "india@123", "india123", "bharat123", "mumbai123", "delhi123",
+  "changeme", "change123", "changeme123", "default", "default123",
+  "test", "test123", "test1234", "testing", "testing123",
+]);
+
+function validatePassword(password: string, fields: { email: string; first_name: string; last_name: string; mobile: string; pan: string }): string | null {
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return `Must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+  }
+  if (password.length > PASSWORD_MAX_LENGTH) {
+    return `Password is too long (max ${PASSWORD_MAX_LENGTH} characters).`;
+  }
+  if (!UPPER_RE.test(password)) {
+    return "Include at least one uppercase letter (A–Z).";
+  }
+  if (!LOWER_RE.test(password)) {
+    return "Include at least one lowercase letter (a–z).";
+  }
+  if (!DIGIT_RE.test(password)) {
+    return "Include at least one number (0–9).";
+  }
+  if (!SPECIAL_RE.test(password)) {
+    return "Include at least one special character (e.g. !@#$%^&*).";
+  }
+  if (WHITESPACE_RE.test(password)) {
+    return "Password must not contain spaces.";
+  }
+  if (COMMON_PASSWORDS.has(password.toLowerCase())) {
+    return "That password is on a public breach list. Pick something unique.";
+  }
+  if (/^(.)\1+$/.test(password)) {
+    return "Password can't be a single repeated character.";
+  }
+  if (/0123456789|1234567890|abcdefghij|qwertyuiop/i.test(password)) {
+    return "Password can't be a common keyboard sequence.";
+  }
+  // Contextual check — password can't contain any personal info substring
+  const lowered = password.toLowerCase();
+  const ctxTokens: string[] = [];
+  const addToken = (v: string, minLen: number) => {
+    if (!v || v.length < minLen) return;
+    const clean = v.toLowerCase().trim();
+    if (clean.length >= minLen) ctxTokens.push(clean);
+    const digits = clean.replace(/\D/g, "");
+    if (digits.length >= minLen) ctxTokens.push(digits);
+    clean.split(/[^a-z0-9]+/).forEach((part) => {
+      if (part.length >= minLen) ctxTokens.push(part);
+    });
+  };
+  const emailLocal = fields.email.split("@")[0] ?? "";
+  addToken(emailLocal, 3);
+  addToken(fields.first_name, 3);
+  addToken(fields.last_name, 3);
+  addToken(fields.mobile.replace(/\D/g, ""), 6);
+  addToken(fields.pan, 5);
+  for (const t of ctxTokens) {
+    if (lowered.includes(t)) {
+      return "Password can't contain your name, email, phone, PAN, or date of birth.";
+    }
+  }
+  return null;
+}
+
 /**
  * Submit the wholesale application alongside customer creation so the
  * dashboard can render a complete B2B profile on first login. Endpoint
@@ -40,11 +123,7 @@ async function autoSubmitWholesaleApplication(form: {
   pincode: string;
 }): Promise<void> {
   const gstin = form.gstin.trim().toUpperCase();
-  if (!GSTIN_REGEX.test(gstin)) return; // skip — apply form will collect it
-  if (form.address.trim().length < 3) return;
-  if (form.city.trim().length < 1) return;
-  if (form.state.trim().length < 2) return;
-  if (form.pincode.trim().length < 4) return;
+  if (gstin && !GSTIN_REGEX.test(gstin)) return;
   if (form.company_name.trim().length < 2) return;
   const fullName = `${form.first_name.trim()} ${form.last_name.trim()}`.trim();
   const tradeName =
@@ -52,34 +131,40 @@ async function autoSubmitWholesaleApplication(form: {
       ? form.trade_name.trim()
       : form.company_name.trim();
   try {
-    await fetch(`${BACKEND_URL}/store/companies/apply`, {
+    const res = await fetch(`${BACKEND_URL}/store/companies/apply`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-publishable-api-key": PUB_KEY,
       },
       body: JSON.stringify({
-        gstin,
+        gstin: gstin || undefined,
         trade_name: tradeName,
         applicant_email: form.email.trim().toLowerCase(),
         applicant_phone: toIndianE164(form.mobile),
         contact_name: fullName || undefined,
         billing_address: {
-          line1: form.address.trim(),
-          city: form.city.trim(),
-          state: form.state.trim(),
-          postal_code: form.pincode.trim(),
+          line1: form.address.trim() || form.company_name.trim(),
+          city: form.city.trim() || "NA",
+          state: form.state.trim() || "NA",
+          postal_code: form.pincode.trim() || "000000",
           country_code: "in",
         },
       }),
     });
-    // We don't inspect the response: 200 means application stored, 409 means
-    // they already applied (still good — login will see "pending"), 400 means
-    // the backend's stricter validators caught something the form let through,
-    // in which case /wholesale/apply will still be reachable on next sign-in.
-  } catch {
-    // Network failure — signup succeeded, application can still be submitted
-    // later from /wholesale/apply. Don't surface to the user.
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      console.warn(
+        "[autoSubmitWholesaleApplication] application submission failed",
+        res.status,
+        body,
+      );
+    }
+  } catch (err) {
+    console.warn(
+      "[autoSubmitWholesaleApplication] network error submitting application",
+      err,
+    );
   }
 }
 
@@ -128,8 +213,9 @@ export default function BusinessRegistrationPage() {
     e.preventDefault();
     setError(null);
 
-    if (form.password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    const pwErr = validatePassword(form.password, form);
+    if (pwErr) {
+      setError(pwErr);
       return;
     }
     if (form.password !== form.confirm_password) {

@@ -7,7 +7,7 @@ import { Button } from "@risitex/ui/components";
 import { CheckCircle2 } from "lucide-react";
 import { Container } from "@/components/site/container";
 import { RegistrationSteps } from "@/components/auth/registration-steps";
-import { getVerificationStatus } from "@/lib/verification";
+import { getVerificationStatus, getWholesaleApplicationStatus } from "@/lib/verification";
 
 /**
  * /auth/activated — terminal "you're in" screen after both OTPs verify.
@@ -21,10 +21,13 @@ import { getVerificationStatus } from "@/lib/verification";
  * fully-verified yet, redirects them back to the verification center.
  */
 const AUTO_REDIRECT_MS = 2200;
-const POST_REGISTRATION_DESTINATION = "/wholesale/catalogue";
+const POST_REGISTRATION_DESTINATION = "/b2b/dashboard";
 
 export default function ActivatedPage() {
   const router = useRouter();
+  const [status, setStatus] = React.useState<
+    "approved" | "pending" | "no_application" | "loading"
+  >("loading");
   const [companyId, setCompanyId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -36,7 +39,16 @@ export default function ActivatedPage() {
         router.replace("/auth/verification-center");
         return;
       }
-      setCompanyId((s as { company_id?: string | null }).company_id ?? null);
+      const ws = await getWholesaleApplicationStatus().catch(() => null);
+      if (cancelled) return;
+      if (ws === "approved") {
+        setStatus("approved");
+        setCompanyId((s as { company_id?: string | null }).company_id ?? null);
+      } else if (ws === "pending") {
+        setStatus("pending");
+      } else {
+        setStatus("no_application");
+      }
       const t = window.setTimeout(() => {
         router.replace(POST_REGISTRATION_DESTINATION);
       }, AUTO_REDIRECT_MS);
@@ -58,27 +70,56 @@ export default function ActivatedPage() {
               aria-hidden
             />
           </div>
-          <h1 className="mt-6 text-display-lg text-text-primary">
-            Account activated.
-          </h1>
-          <p className="mt-3 text-body-md text-text-muted">
-            Your B2B wholesale account is approved. You can place orders,
-            view tier pricing, and track shipments right away.
-          </p>
-          {companyId && (
-            <p className="mt-2 font-mono text-caption text-text-muted">
-              Company {companyId}
+          {status === "approved" && (
+            <>
+              <h1 className="mt-6 text-display-lg text-text-primary">
+                Account activated.
+              </h1>
+              <p className="mt-3 text-body-md text-text-muted">
+                Your B2B wholesale account is approved. You can place orders,
+                view tier pricing, and track shipments right away.
+              </p>
+              {companyId && (
+                <p className="mt-2 font-mono text-caption text-text-muted">
+                  Company {companyId}
+                </p>
+              )}
+            </>
+          )}
+          {status === "pending" && (
+            <>
+              <h1 className="mt-6 text-display-lg text-text-primary">
+                Account activated.
+              </h1>
+              <p className="mt-3 text-body-md text-text-muted">
+                Your email and phone are verified. Your wholesale application
+                is under review — you&rsquo;ll receive an email once approved.
+              </p>
+            </>
+          )}
+          {status === "no_application" && (
+            <>
+              <h1 className="mt-6 text-display-lg text-text-primary">
+                Email &amp; phone verified.
+              </h1>
+              <p className="mt-3 text-body-md text-text-muted">
+                To access the B2B dashboard and place orders, you need to
+                complete your business profile (GSTIN, business address).
+                You can do this from the catalogue or any page after signing in.
+              </p>
+            </>
+          )}
+          {status !== "loading" && (
+            <p className="mt-6 text-caption text-text-muted">
+              Taking you to the catalogue…
             </p>
           )}
-          <p className="mt-6 text-caption text-text-muted">
-            Taking you to the catalogue…
-          </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg">
-              <Link href="/wholesale/catalogue">Browse catalogue</Link>
+              <Link href="/b2b/dashboard">Go to dashboard</Link>
             </Button>
             <Button asChild size="lg" variant="secondary">
-              <Link href="/b2b/dashboard">Go to dashboard</Link>
+              <Link href="/wholesale/catalogue">Browse catalogue</Link>
             </Button>
           </div>
         </div>

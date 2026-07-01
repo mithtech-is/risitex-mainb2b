@@ -1,4 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { Modules } from "@medusajs/framework/utils"
 import { z } from "zod"
 import {
   PURCHASE_ORDER_MODULE,
@@ -92,6 +93,24 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
         ) => Promise<any>
       }
     ).updatePurchaseOrders([{ id, metadata: nextMeta }])
+
+    // Capture payment on linked Medusa Order by recording a transaction
+    if (existing.order_id) {
+      try {
+        const orderModule = req.scope.resolve(Modules.ORDER)
+        await orderModule.addOrderTransactions({
+          order_id: existing.order_id,
+          amount: existing.value_minor ?? existing.value_major * 100,
+          currency_code: existing.currency_code || "inr",
+          reference: "po_approval",
+          reference_id: id,
+        })
+      } catch (orderErr) {
+        logger.warn(
+          `[approve-payment] failed to register transaction for linked order ${existing.order_id}: ${orderErr instanceof Error ? orderErr.message : orderErr}`
+        )
+      }
+    }
 
     logger.info("PO payment approved by admin", {
       po_id: id,

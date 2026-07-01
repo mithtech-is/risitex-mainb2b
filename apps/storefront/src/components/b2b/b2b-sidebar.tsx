@@ -53,16 +53,11 @@ const GROUPS: SidebarGroup[] = [
     heading: "Ordering",
     items: [
       { href: "/b2b/wishlist", label: "Wishlist", icon: <Heart /> },
-      { href: "/b2b/reorder", label: "Quick Order", icon: <RotateCcw /> },
-      { href: "/b2b/bulk-orders", label: "Bulk Order", icon: <Package2 /> },
-      { href: "/b2b/bulk-reorder", label: "Bulk Reorder", icon: <ShoppingBasket /> },
-      { href: "/b2b/saved-orders", label: "Saved Orders", icon: <FileText /> },
     ],
   },
   {
     heading: "Orders",
     items: [
-      { href: "/b2b/purchase-orders", label: "Purchase Orders", icon: <FileText /> },
       { href: "/b2b/orders", label: "Orders", icon: <ListOrdered /> },
       { href: "/b2b/shipments", label: "Shipments", icon: <Truck /> },
       { href: "/b2b/sample-requests", label: "Sample Requests", icon: <PackageSearch /> },
@@ -72,9 +67,7 @@ const GROUPS: SidebarGroup[] = [
     heading: "Finance",
     items: [
       { href: "/b2b/wallet", label: "Wallet", icon: <Wallet /> },
-      { href: "/b2b/credit", label: "Credit Limit", icon: <CreditCard /> },
       { href: "/b2b/invoices", label: "Invoices", icon: <FileSpreadsheet /> },
-      { href: "/b2b/ai-reorders", label: "AI Reorders", icon: <WandSparkles /> },
     ],
   },
   {
@@ -88,10 +81,6 @@ const GROUPS: SidebarGroup[] = [
     heading: "Account",
     items: [
       { href: "/b2b/profile", label: "Profile", icon: <User /> },
-      { href: "/b2b/company", label: "Company Details", icon: <Building2 /> },
-      { href: "/b2b/addresses", label: "Addresses", icon: <MapPin /> },
-      { href: "/b2b/company-users", label: "Company Users", icon: <Users /> },
-      { href: "/b2b/settings", label: "Settings", icon: <Settings /> },
     ],
   },
 ];

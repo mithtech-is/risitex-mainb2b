@@ -1,5 +1,9 @@
 import { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { PRODUCT_QUESTIONS_MODULE } from "../modules/product-questions"
+import type ProductQuestionsModuleService from "../modules/product-questions/service"
+import { PRODUCT_REVIEWS_MODULE } from "../modules/product_reviews"
+import type ProductReviewsModuleService from "../modules/product_reviews/service"
 
 /**
  * Seeds reusable B2B demo media and product-enrichment metadata.
@@ -7,6 +11,9 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
  * Real uploads can replace this without code changes by writing the same
  * metadata keys on the product:
  *   b2b_media, b2b_documents, b2b_reviews, b2b_questions, b2b_testimonials
+ *
+ * Also seeds Q&A and review records into the product_questions and
+ * product_reviews tables so the frontend reads from the live API.
  *
  * Run:
  *   pnpm exec medusa exec ./src/scripts/seed-b2b-demo-media.ts
@@ -174,4 +181,71 @@ export default async function seedB2BDemoMedia({ container }: ExecArgs) {
   }
 
   logger.info(`[seed:b2b-media] DONE - enriched ${updated} product(s)`)
+
+  // ── Seed product_questions table ────────────────────────────────
+  try {
+    const qaSvc = container.resolve<ProductQuestionsModuleService>(
+      PRODUCT_QUESTIONS_MODULE,
+    )
+    for (const product of products) {
+      const handle = (product.handle ?? product.id) as string
+      const existing = await qaSvc.listProductQuestions(
+        { product_id: handle },
+        { take: 1 },
+      )
+      if (existing.length > 0) {
+        logger.info(`[seed:b2b-questions] already seeded for ${handle}, skipping`)
+        continue
+      }
+      for (const q of DEMO_QUESTIONS) {
+        await qaSvc.createProductQuestions({
+          product_id: handle,
+          customer_name: "Demo buyer",
+          customer_email: "buyer@example.com",
+          question: q.question,
+          answer: q.answer,
+          is_public: true,
+          answered_at: new Date(),
+        })
+      }
+      logger.info(`[seed:b2b-questions] seeded ${DEMO_QUESTIONS.length} Q&A for ${handle}`)
+    }
+    logger.info("[seed:b2b-questions] DONE")
+  } catch (err) {
+    logger.warn("[seed:b2b-questions] failed (non-fatal)", { error: (err as Error).message })
+  }
+
+  // ── Seed product_reviews table ──────────────────────────────────
+  try {
+    const reviewSvc = container.resolve<ProductReviewsModuleService>(
+      PRODUCT_REVIEWS_MODULE,
+    )
+    for (const product of products) {
+      const handle = (product.handle ?? product.id) as string
+      const existing = await reviewSvc.listProductReviews(
+        { product_id: handle },
+        { take: 1 },
+      )
+      if (existing.length > 0) {
+        logger.info(`[seed:b2b-reviews] already seeded for ${handle}, skipping`)
+        continue
+      }
+      for (const r of DEMO_REVIEWS) {
+        await reviewSvc.createProductReviews({
+          product_id: handle,
+          customer_name: r.buyer_type,
+          customer_email: "reviewer@example.com",
+          rating: r.rating,
+          body: r.body,
+          is_public: true,
+          moderated_at: new Date(),
+        })
+      }
+      logger.info(`[seed:b2b-reviews] seeded ${DEMO_REVIEWS.length} reviews for ${handle}`)
+    }
+    logger.info("[seed:b2b-reviews] DONE")
+  } catch (err) {
+    logger.warn(`[seed:b2b-reviews] failed (non-fatal): ${(err as Error).message}`)
+    console.error("FULL ERROR:", err)
+  }
 }

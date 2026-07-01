@@ -973,6 +973,18 @@ export default defineMiddlewares({
             ],
         },
         {
+            matcher: "/admin/product-questions*",
+            middlewares: [
+                authenticate("user", ["session", "bearer"]),
+            ],
+        },
+        {
+            matcher: "/admin/product-reviews*",
+            middlewares: [
+                authenticate("user", ["session", "bearer"]),
+            ],
+        },
+        {
             matcher: "/admin/secure-id-verifications*",
             middlewares: [
                 authenticate("user", ["session", "bearer"]),

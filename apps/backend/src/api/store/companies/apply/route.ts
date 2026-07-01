@@ -1,4 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createHash } from "node:crypto"
 import { z } from "zod"
 import { COMPANY_MODULE, GSTIN_REGEX } from "../../../../modules/company"
@@ -38,7 +39,9 @@ const BodySchema = z.object({
     .refine((v) => GSTIN_REGEX.test(v), {
       message:
         "GSTIN must be a 15-character Indian GSTIN (e.g. 33AAACR5055K1ZK)",
-    }),
+    })
+    .optional()
+    .or(z.literal("")),
   trade_name: z.string().trim().min(2).max(200),
   applicant_email: z.string().email().trim().toLowerCase(),
   applicant_phone: z
@@ -49,7 +52,7 @@ const BodySchema = z.object({
     .optional()
     .or(z.literal("")),
   billing_address: z.object({
-    line1: z.string().trim().min(3).max(200),
+    line1: z.string().trim().min(2).max(200),
     line2: z.string().trim().max(200).optional().or(z.literal("")),
     city: z.string().trim().min(1).max(100),
     state: z.string().trim().min(2).max(100),
@@ -109,6 +112,48 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       payload,
       ip_hash: ipHash,
     })
+
+    // Auto-create company in pending status
+    const [company] = await (companies as unknown as { createCompanies: (a: any[]) => Promise<any[]> }).createCompanies([
+      {
+        gstin: payload.gstin || null,
+        applicant_email: payload.applicant_email,
+        trade_name: payload.trade_name,
+        billing_address: payload.billing_address as unknown as Record<string, unknown>,
+        status: "pending",
+        metadata: {
+          applicant_email: payload.applicant_email,
+          applicant_phone: payload.applicant_phone,
+          application_id: app.id,
+        },
+      },
+    ])
+
+    // Link customer immediately if already registered
+    try {
+      const customerService = req.scope.resolve(Modules.CUSTOMER)
+      const pgConn = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) as {
+        raw: (sql: string, bindings?: unknown[]) => Promise<unknown>
+      }
+      const email = payload.applicant_email
+      const existing = await customerService.listCustomers({ email })
+      const customer = existing[0]
+      if (customer) {
+        await customerService.updateCustomers(customer.id, {
+          metadata: {
+            ...(customer.metadata ?? {}),
+            company_id: company.id,
+          },
+        })
+        await pgConn.raw(
+          `UPDATE customer SET company_id = ?, updated_at = now() WHERE id = ?`,
+          [company.id, customer.id],
+        )
+      }
+    } catch (linkErr) {
+      // Best-effort linkage
+    }
+
     return res.json({
       ok: true,
       application_id: app.id,

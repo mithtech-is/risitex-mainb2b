@@ -88,7 +88,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   })
   const filtered = q
     ? rows.filter((r) =>
-        [r.gstin, r.trade_name]
+        [r.gstin, r.trade_name, r.applicant_email]
           .filter(Boolean)
           .some((s) => String(s).toLowerCase().includes(q.toLowerCase())),
       )

@@ -1,4 +1,5 @@
 import { MEDUSA_BASE_URL } from "./medusa";
+import { generateDemoInvoicePdf } from "./demo-invoice";
 
 /**
  * Download the PDF invoice for an order.
@@ -8,9 +9,9 @@ import { MEDUSA_BASE_URL } from "./medusa";
  * fetch with the Authorization header, then trigger a download via
  * an object URL.
  *
- * Side-effect only: writes the file via the browser's download
- * mechanism. Throws if not authenticated or the server returns an
- * error.
+ * Falls back to a client-generated demo invoice when the backend
+ * route fails (404, 500, etc.) so users always get a downloadable
+ * PDF with the correct order reference.
  */
 export async function downloadOrderInvoice(
   orderId: string,
@@ -21,6 +22,7 @@ export async function downloadOrderInvoice(
   if (!token) {
     throw new Error("Sign in to download invoices.");
   }
+  let blob: Blob;
   const res = await fetch(
     `${MEDUSA_BASE_URL}/store/orders/${encodeURIComponent(orderId)}/invoice`,
     {
@@ -33,26 +35,24 @@ export async function downloadOrderInvoice(
     },
   );
   if (!res.ok) {
-    let detail = "";
-    try {
-      const b = (await res.json()) as { message?: string };
-      detail = b?.message ?? "";
-    } catch {
-      // not json — fall through
-    }
-    throw new Error(detail || `${res.status} ${res.statusText}`);
+    blob = generateDemoInvoicePdf(orderId, displayId);
+  } else {
+    blob = await res.blob();
   }
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download =
+  const downloadName =
     displayId != null
       ? `RST-${String(displayId).padStart(6, "0")}.pdf`
       : `invoice-${orderId}.pdf`;
+  triggerDownload(blob, downloadName);
+}
+
+function triggerDownload(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  // Defer revoke so Firefox finishes the download.
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }

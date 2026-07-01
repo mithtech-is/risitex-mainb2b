@@ -321,9 +321,6 @@ export default function B2bShipmentsPage() {
       </section>
 
       {pendingPOs.length > 0 && (() => {
-        // 4 sections, narrowest-first (so live trackable shipments appear
-        // at the top): dispatched → admin-approved → payment-recorded →
-        // awaiting payment.
         const dispatched = pendingPOs.filter((p) => p.dispatched_at);
         const approved = pendingPOs.filter(
           (p) => p.admin_approved_at && !p.dispatched_at,
@@ -331,19 +328,18 @@ export default function B2bShipmentsPage() {
         const queued = pendingPOs.filter(
           (p) => p.payment_confirmed_at && !p.admin_approved_at,
         );
-        const awaiting = pendingPOs.filter((p) => !p.payment_confirmed_at);
         return (
           <>
             {dispatched.length > 0 && (
               <section
-                aria-label="Dispatched purchase orders"
+                aria-label="Dispatched orders"
                 className="mt-6 rounded-md border border-feedback-success-border bg-feedback-success-bg p-5"
               >
                 <h2 className="text-heading-sm text-feedback-success-text">
-                  {dispatched.length} purchase order{dispatched.length === 1 ? "" : "s"} dispatched
+                  {dispatched.length} order{dispatched.length === 1 ? "" : "s"} dispatched
                 </h2>
                 <p className="mt-1 text-caption text-feedback-success-text/80">
-                  In transit with carrier tracking. Click View PO for the
+                  In transit with carrier tracking. Click View Order for the
                   full timeline.
                 </p>
                 <ul className="mt-4 space-y-2">
@@ -364,15 +360,15 @@ export default function B2bShipmentsPage() {
                           </span>{" "}
                           · dispatched{" "}
                           {p.dispatched_at
-                            ? new Date(p.dispatched_at).toLocaleDateString()
-                            : "—"}
+                             ? new Date(p.dispatched_at).toLocaleDateString()
+                             : "—"}
                         </p>
                       </div>
                       <div className="inline-flex gap-2">
                         <Badge tone="success" size="xs">In transit</Badge>
                         <Button asChild size="xs" variant="tertiary">
-                          <Link href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}>
-                            View PO
+                          <Link href={`/b2b/orders/${encodeURIComponent(p.id)}`}>
+                            View Order
                           </Link>
                         </Button>
                       </div>
@@ -383,14 +379,14 @@ export default function B2bShipmentsPage() {
             )}
             {approved.length > 0 && (
               <section
-                aria-label="Approved purchase orders preparing dispatch"
+                aria-label="Approved orders preparing dispatch"
                 className="mt-6 rounded-md border border-feedback-info-border bg-feedback-info-bg p-5"
               >
                 <h2 className="text-heading-sm text-feedback-info-text">
-                  {approved.length} purchase order{approved.length === 1 ? "" : "s"} approved — preparing dispatch
+                  {approved.length} order{approved.length === 1 ? "" : "s"} approved — preparing dispatch
                 </h2>
                 <p className="mt-1 text-caption text-feedback-info-text/80">
-                  Admin has approved your payment. Ops is preparing the
+                  Admin has approved your order. Ops is preparing the
                   carton — tracking number arrives once it&apos;s handed off
                   to the carrier.
                 </p>
@@ -415,8 +411,8 @@ export default function B2bShipmentsPage() {
                       <div className="inline-flex gap-2">
                         <Badge tone="info" size="xs">Preparing dispatch</Badge>
                         <Button asChild size="xs" variant="tertiary">
-                          <Link href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}>
-                            View PO
+                          <Link href={`/b2b/orders/${encodeURIComponent(p.id)}`}>
+                            View Order
                           </Link>
                         </Button>
                       </div>
@@ -427,16 +423,14 @@ export default function B2bShipmentsPage() {
             )}
             {queued.length > 0 && (
               <section
-                aria-label="Purchase orders awaiting admin approval"
+                aria-label="Orders awaiting admin approval"
                 className="mt-6 rounded-md border border-feedback-info-border bg-feedback-info-bg p-5"
               >
                 <h2 className="text-heading-sm text-feedback-info-text">
-                  {queued.length} purchase order{queued.length === 1 ? "" : "s"} awaiting admin approval
+                  {queued.length} order{queued.length === 1 ? "" : "s"} awaiting admin approval
                 </h2>
                 <p className="mt-1 text-caption text-feedback-info-text/80">
-                  Payment proof recorded. Admin reviews against the
-                  bank/gateway statement and approves — usually within 1
-                  business day.
+                  Payment confirmed. Admin reviews against the bank/gateway statement and approves — usually within 5-6 minutes.
                 </p>
                 <ul className="mt-4 space-y-2">
                   {queued.map((p) => (
@@ -457,49 +451,8 @@ export default function B2bShipmentsPage() {
                       <div className="inline-flex gap-2">
                         <Badge tone="info" size="xs">Awaiting approval</Badge>
                         <Button asChild size="xs" variant="tertiary">
-                          <Link href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}>
-                            View PO
-                          </Link>
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            {awaiting.length > 0 && (
-              <section
-                aria-label="Purchase orders awaiting payment"
-                className="mt-6 rounded-md border border-feedback-warning-border bg-feedback-warning-bg p-5"
-              >
-                <h2 className="text-heading-sm text-feedback-warning-text">
-                  {awaiting.length} purchase order{awaiting.length === 1 ? "" : "s"} awaiting payment
-                </h2>
-                <p className="mt-1 text-caption text-feedback-warning-text/80">
-                  Open each PO to record payment proof (UTR / Txn ID / Cheque #).
-                  Once payment is confirmed, the PO moves to "queued for dispatch"
-                  and a tracking number is generated.
-                </p>
-                <ul className="mt-4 space-y-2">
-                  {awaiting.map((p) => (
-                    <li
-                      key={p.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-feedback-warning-border bg-surface-background p-4"
-                    >
-                      <div>
-                        <p className="font-mono text-body-sm text-text-primary">
-                          {p.po_number}
-                        </p>
-                        <p className="mt-0.5 text-caption text-text-muted">
-                          ₹{Number(p.value_major ?? 0).toLocaleString("en-IN")} · placed{" "}
-                          {new Date(p.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="inline-flex gap-2">
-                        <Badge tone="warning" size="xs">Awaiting payment</Badge>
-                        <Button asChild size="xs">
-                          <Link href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}>
-                            Confirm payment
+                          <Link href={`/b2b/orders/${encodeURIComponent(p.id)}`}>
+                            View Order
                           </Link>
                         </Button>
                       </div>

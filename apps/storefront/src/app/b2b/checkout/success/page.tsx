@@ -3,129 +3,69 @@
 import * as React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Button, Badge } from "@risitex/ui/components";
+import { Button } from "@risitex/ui/components";
 import { B2bTopbar } from "@/components/b2b/b2b-topbar";
-import { CheckCircle2, FileDown, Truck, Receipt, Eye } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
-/**
- * /b2b/checkout/success
- *
- * Terminal screen after a successful Place Order. Reads the result from
- * URL params (the wizard handed them off) so this page never needs auth
- * round-trips to render — the buyer sees their confirmation instantly.
- *
- * Real-money side-effects (wallet debit, invoice issuance, shipment ticket,
- * ERPNext sync) are queued by the backend workflow chain triggered from the
- * PO creation endpoint. The status badges below reflect the workflow steps;
- * "queued" is the expected initial state until each downstream job lands.
- */
 export default function CheckoutSuccessPage() {
   const params = useSearchParams();
   const poId = params?.get("po") ?? "";
   const poNumber = params?.get("num") ?? "";
   const amt = Number(params?.get("amt") ?? 0);
   const pay = params?.get("pay") ?? "";
-  const paymentRecorded = params?.get("pr") === "1";
 
   return (
     <div className="flex min-h-full flex-col gap-6">
       <B2bTopbar
-        title="Order placed"
-        subtitle="Your purchase order is in. Confirmation + dispatch updates follow on email and WhatsApp."
+        title="Order Received"
+        subtitle="Your order is in. Confirmation + dispatch updates follow on email and WhatsApp."
       />
 
-      <section className="flex flex-col gap-4 rounded-md border border-feedback-success-border bg-feedback-success-bg p-6">
-        <div className="flex items-start gap-3">
-          <CheckCircle2 className="mt-1 h-6 w-6 text-feedback-success-text" aria-hidden />
-          <div>
-            <p className="text-heading-md text-feedback-success-text">
-              {paymentRecorded
-                ? "Purchase order placed — payment recorded"
-                : "Purchase order received"}
-            </p>
-            <p className="mt-1 text-body-sm text-feedback-success-text/80">
-              {paymentRecorded
-                ? "We've logged your PO and your payment reference. Finance reconciles against the bank statement / gateway — once admin approves, your shipment ticket and GST invoice will surface in their tabs (usually within 1 business day)."
-                : "We've logged your PO and routed it to ops + finance. Record your payment reference from the PO detail page to move it forward."}
+      <section className="flex flex-col gap-6 rounded-md border border-feedback-success-border bg-feedback-success-bg p-8 shadow-sm">
+        <div className="flex items-start gap-4">
+          <CheckCircle2 className="mt-1 h-8 w-8 text-feedback-success-text shrink-0" aria-hidden />
+          <div className="space-y-3">
+            <h2 className="font-display text-heading-lg text-feedback-success-text">
+              Thank you for placing your order.
+            </h2>
+            <p className="text-body-md text-feedback-success-text leading-relaxed">
+              Your order has been received successfully. It is currently waiting for approval by the RISITEX sales team. Approval usually takes 5–6 minutes during business hours. You will receive a notification once your order is approved.
             </p>
           </div>
         </div>
 
-        <dl className="mt-2 grid grid-cols-1 gap-3 text-body-sm md:grid-cols-2">
-          <Field label="PO Number" value={poNumber || "—"} mono />
-          <Field label="Internal ID" value={poId || "—"} mono />
-          <Field
-            label="Amount"
-            value={amt > 0 ? `₹${amt.toLocaleString("en-IN")}` : "—"}
-          />
-          <Field
-            label="Payment Method"
-            value={prettyPayment(pay)}
-          />
-        </dl>
+        <div className="border-t border-feedback-success-border/30 pt-6">
+          <dl className="grid grid-cols-1 gap-6 text-body-sm sm:grid-cols-3">
+            <Field label="Order Number" value={poNumber || "—"} />
+            <Field
+              label="Estimated Total"
+              value={amt > 0 ? `₹${amt.toLocaleString("en-IN")}` : "—"}
+            />
+            <Field
+              label="Payment Method"
+              value={prettyPayment(pay)}
+            />
+          </dl>
+        </div>
       </section>
 
-      <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
-        <h2 className="text-heading-sm text-text-primary">Workflow status</h2>
-        <p className="mt-1 text-caption text-text-muted">
-          Each downstream step runs asynchronously; status here updates as
-          jobs land.
+      <section className="rounded-md border border-border-subtle bg-surface-raised p-6 space-y-4">
+        <h2 className="text-heading-sm text-text-primary font-display">Next steps</h2>
+        <p className="text-body-sm text-text-muted leading-relaxed">
+          While our team reviews and approves your order, you can manage your B2B account or browse products. Shipment tracking and invoices will become downloadable in their respective tabs as soon as approval is completed.
         </p>
-        <ul className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <StatusRow
-            icon={<CheckCircle2 className="h-4 w-4" />}
-            label="Payment proof"
-            status={paymentRecorded ? "Recorded" : "Pending"}
-          />
-          <StatusRow
-            icon={<Receipt className="h-4 w-4" />}
-            label="Invoice"
-            status={paymentRecorded ? "Awaiting admin approval" : "Queued"}
-          />
-          <StatusRow
-            icon={<Truck className="h-4 w-4" />}
-            label="Shipment ticket"
-            status={paymentRecorded ? "Awaiting admin approval" : "Queued"}
-          />
-          <StatusRow
-            icon={<FileDown className="h-4 w-4" />}
-            label="Wallet ledger"
-            status={
-              pay === "wallet" || pay === "wallet_plus_razorpay"
-                ? "Reserved"
-                : "Not applicable"
-            }
-          />
-          <StatusRow
-            icon={<Eye className="h-4 w-4" />}
-            label="ERPNext sync"
-            status="Queued"
-          />
-        </ul>
-
-        {poId && (
-          <div className="mt-4">
-            <Button asChild size="sm" variant="secondary">
-              <Link href={`/b2b/purchase-orders/${poId}`}>Open PO detail</Link>
-            </Button>
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
-        <h2 className="text-heading-sm text-text-primary">Next steps</h2>
-        <div className="mt-4 flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 pt-2">
           <Button asChild>
-            <Link href="/b2b/purchase-orders">View all purchase orders</Link>
+            <Link href="/b2b/orders">View B2B Orders</Link>
           </Button>
           <Button asChild variant="secondary">
-            <Link href="/b2b/shipments">Track shipments</Link>
+            <Link href="/b2b/shipments">Track Shipments</Link>
           </Button>
           <Button asChild variant="secondary">
-            <Link href="/b2b/invoices">Download invoices</Link>
+            <Link href="/b2b/invoices">Download Invoices</Link>
           </Button>
           <Button asChild variant="ghost">
-            <Link href="/wholesale/catalogue">Continue shopping</Link>
+            <Link href="/wholesale/catalogue">Continue Shopping</Link>
           </Button>
         </div>
       </section>
@@ -133,72 +73,25 @@ export default function CheckoutSuccessPage() {
   );
 }
 
-function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-caption text-feedback-success-text/70">{label}</dt>
-      <dd
-        className={
-          (mono ? "font-mono " : "") +
-          "mt-1 text-body-md text-feedback-success-text"
-        }
-      >
+      <dt className="text-caption text-feedback-success-text/80 font-medium uppercase tracking-wider">{label}</dt>
+      <dd className="mt-1 text-heading-sm text-feedback-success-text font-mono font-bold">
         {value}
       </dd>
     </div>
   );
 }
 
-function StatusRow({
-  icon,
-  label,
-  status,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  status:
-    | "Queued"
-    | "Reserved"
-    | "Not applicable"
-    | "Recorded"
-    | "Pending"
-    | "Awaiting admin approval";
-}) {
-  const tone: "success" | "info" | "warning" | "neutral" =
-    status === "Recorded"
-      ? "success"
-      : status === "Reserved"
-        ? "info"
-        : status === "Not applicable"
-          ? "neutral"
-          : "warning";
-  return (
-    <li className="flex items-center gap-3 rounded-sm border border-border-subtle bg-surface-background p-3">
-      <span className="text-text-muted" aria-hidden>
-        {icon}
-      </span>
-      <span className="flex-1 text-body-sm text-text-primary">{label}</span>
-      <Badge tone={tone}>{status}</Badge>
-    </li>
-  );
-}
-
 function prettyPayment(id: string): string {
   switch (id) {
     case "wallet":
-      return "Wallet";
+      return "Wallet (Auto-Debit)";
     case "wallet_plus_razorpay":
       return "Wallet + Razorpay";
     case "razorpay":
-      return "Razorpay (Card / UPI)";
-    case "credit_terms":
-      return "Credit Terms";
-    case "po_upload":
-      return "Purchase Order Upload";
-    case "bank_transfer":
-      return "Bank Transfer (NEFT / RTGS)";
-    case "proforma":
-      return "Proforma Invoice";
+      return "Razorpay (Online Payment)";
     default:
       return id || "—";
   }

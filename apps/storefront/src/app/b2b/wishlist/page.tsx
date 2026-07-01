@@ -3,11 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Button, EmptyState } from "@risitex/ui/components";
+import { Button, EmptyState, Input, Label, formatINR } from "@risitex/ui/components";
 import { B2bTopbar } from "@/components/b2b/b2b-topbar";
 import { WishlistHeart } from "@/components/wishlist/wishlist-heart";
 import { MEDUSA_BASE_URL } from "@/lib/medusa";
 import { updateCustomerMetadata } from "@/lib/auth";
+import { addToCart, type CartLine } from "@/lib/cart";
+import { createSavedCart, type SavedCartLine } from "@/lib/saved-carts";
+import { ShoppingCart, Save, X, Check } from "lucide-react";
 
 const STORAGE_KEY = "risitex-b2b-wishlist";
 const EVENT_NAME = "risitex:wishlist-changed";
@@ -41,12 +44,6 @@ function writeLocal(slugs: string[]): void {
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 
-/**
- * Fetch the customer's authoritative wishlist from /store/customers/me.metadata
- * and merge it with local state. The merge is union-on-first-load so a buyer
- * who added items on Device A and signs into Device B sees both lists. After
- * the first sync, local writes flow back via updateCustomerMetadata.
- */
 async function fetchRemoteWishlist(token: string | null): Promise<string[]> {
   if (!token) return [];
   try {
@@ -72,9 +69,6 @@ async function fetchRemoteWishlist(token: string | null): Promise<string[]> {
 
 async function fetchProductsBySlugs(slugs: string[]): Promise<ProductRow[]> {
   if (slugs.length === 0) return [];
-  // Use the same publishable key + /store/products endpoint as the catalogue
-  // loader. `handle` accepts a CSV (Medusa expands to `handle IN (…)`), so
-  // one round-trip resolves the whole list.
   const fields = "id,handle,title,thumbnail,*images,metadata,*variants.calculated_price";
   try {
     const url = `${MEDUSA_BASE_URL}/store/products?handle=${encodeURIComponent(
@@ -109,7 +103,7 @@ async function fetchProductsBySlugs(slugs: string[]): Promise<ProductRow[]> {
       return {
         slug: p.handle,
         name: p.title,
-        eyebrow: `Wholesale · ${cat.charAt(0).toUpperCase()}${cat.slice(1)}`,
+        eyebrow: `Wholesale \u00b7 ${cat.charAt(0).toUpperCase()}${cat.slice(1)}`,
         image: p.thumbnail ?? p.images?.[0]?.url ?? "/demo/products/photo-01.jpg",
         moq: Number(meta.moq) || undefined,
         priceMajor,
@@ -126,9 +120,11 @@ export default function WishlistPage() {
   const [products, setProducts] = React.useState<ProductRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState<string | null>(null);
+  const [showSaveDialog, setShowSaveDialog] = React.useState(false);
+  const [saveName, setSaveName] = React.useState("");
+  const [addedToCart, setAddedToCart] = React.useState<Set<string>>(new Set());
 
-  // One-shot remote+local merge on mount; subsequent updates come from the
-  // heart toggle's broadcast.
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -142,8 +138,6 @@ export default function WishlistPage() {
         if (cancelled) return;
         writeLocal(merged);
         setSlugs(merged);
-        // Persist the merged list back if the local set added anything to the
-        // remote one (best-effort; ignore failure when anonymous).
         if (token && merged.length > remote.length) {
           await updateCustomerMetadata({
             metadata: { wishlist: merged },
@@ -165,7 +159,6 @@ export default function WishlistPage() {
       const next = readLocal();
       setSlugs(next);
       fetchProductsBySlugs(next).then(setProducts).catch(() => {});
-      // Mirror to backend (best-effort) so other devices stay in sync.
       const token = window.localStorage.getItem("medusa_auth_token");
       if (token) {
         updateCustomerMetadata({ metadata: { wishlist: next } }).catch(() => {});
@@ -178,24 +171,52 @@ export default function WishlistPage() {
     return () => {
       cancelled = true;
       window.removeEventListener(EVENT_NAME, onChange);
+      window.removeEventListener("storage", onChange);
     };
   }, []);
+
+  const handleAddToCart = (p: ProductRow) => {
+    const line: CartLine = {
+      variantId: p.slug,
+      productSlug: p.slug,
+      productName: p.name,
+      variantTitle: "",
+      unitPriceMajor: p.priceMajor ?? 0,
+      quantity: p.moq ?? 1,
+      moq: p.moq,
+    };
+    addToCart([line]);
+    setAddedToCart((prev) => new Set(prev).add(p.slug));
+  };
+
+  const handleSaveWishlistAsCart = async () => {
+    if (!saveName.trim() || products.length === 0) return;
+    setBusy("save");
+    try {
+      const lines: SavedCartLine[] = products.map((p) => ({
+        variantId: p.slug,
+        productSlug: p.slug,
+        productName: p.name,
+        variantLabel: "",
+        swatchHex: "#A0978A",
+        pricePerUnitMajor: p.priceMajor ?? 0,
+        quantity: p.moq ?? 1,
+      }));
+      await createSavedCart({ name: saveName.trim(), lines });
+      setSaveName("");
+      setShowSaveDialog(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save wishlist as cart");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   if (loading) {
     return (
       <div className="flex min-h-full flex-col gap-6">
-        <B2bTopbar
-          title="Wishlist"
-          subtitle="Products you've saved for future orders"
-        />
-        <p
-          role="status"
-          aria-live="polite"
-          aria-busy="true"
-          className="text-body-sm text-text-muted"
-        >
-          Loading your wishlist…
-        </p>
+        <B2bTopbar title="Wishlist" subtitle="Products you've saved for future orders" />
+        <p className="text-body-sm text-text-muted">Loading your wishlist\u2026</p>
       </div>
     );
   }
@@ -220,10 +241,7 @@ export default function WishlistPage() {
   if (slugs.length === 0) {
     return (
       <div className="flex min-h-full flex-col gap-6">
-        <B2bTopbar
-          title="Wishlist"
-          subtitle="Products you've saved for future orders"
-        />
+        <B2bTopbar title="Wishlist" subtitle="Products you've saved for future orders" />
         <EmptyState
           title="Your wishlist is empty"
           description="Tap the heart icon on any catalogue or product page to save it here."
@@ -237,9 +255,6 @@ export default function WishlistPage() {
     );
   }
 
-  // Some slugs may have been removed from the catalogue since they were
-  // wishlisted. Surface a row for every remembered slug — fall back to a
-  // minimal "handle no longer available" tile so the buyer can prune it.
   const productBySlug = new Map(products.map((p) => [p.slug, p]));
   const stale = slugs.filter((s) => !productBySlug.has(s));
 
@@ -248,7 +263,50 @@ export default function WishlistPage() {
       <B2bTopbar
         title="Wishlist"
         subtitle={`${slugs.length} ${slugs.length === 1 ? "product" : "products"} saved for future orders`}
+        rightActions={
+          products.length > 0 ? (
+            <Button size="sm" onClick={() => setShowSaveDialog(true)}>
+              <Save className="mr-1 h-4 w-4" />
+              Save as cart
+            </Button>
+          ) : undefined
+        }
       />
+
+      {showSaveDialog && (
+        <div className="rounded-lg border border-border-subtle bg-surface-raised p-5">
+          <div className="flex items-baseline justify-between">
+            <p className="text-body-md font-medium text-text-primary">
+              Save wishlist as saved cart
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowSaveDialog(false)}
+              className="text-text-muted hover:text-text-primary"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-3 flex items-end gap-3">
+            <div className="flex-1">
+              <Label htmlFor="wl-cart-name">Cart name</Label>
+              <Input
+                id="wl-cart-name"
+                value={saveName}
+                onChange={(e) => setSaveName(e.currentTarget.value)}
+                placeholder="e.g. Wishlist items"
+              />
+            </div>
+            <Button
+              onClick={handleSaveWishlistAsCart}
+              isLoading={busy === "save"}
+              disabled={!saveName.trim()}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {products.map((p) => (
@@ -281,12 +339,26 @@ export default function WishlistPage() {
                 </Link>
                 <WishlistHeart slug={p.slug} productName={p.name} />
               </div>
-              <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
                 <span className="text-caption text-text-muted">
                   {p.moq ? `MOQ ${p.moq} pcs` : "MOQ on request"}
-                  {p.priceMajor ? ` · ₹${p.priceMajor}${p.unit ?? ""}` : ""}
+                  {p.priceMajor ? ` \u00b7 ${formatINR(p.priceMajor)}${p.unit ?? ""}` : ""}
                 </span>
-                <Button asChild size="sm" variant="secondary">
+              </div>
+              <div className="mt-auto flex flex-wrap gap-2 pt-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleAddToCart(p)}
+                  disabled={addedToCart.has(p.slug)}
+                >
+                  {addedToCart.has(p.slug) ? (
+                    <><Check className="mr-1 h-3.5 w-3.5" /> Added</>
+                  ) : (
+                    <><ShoppingCart className="mr-1 h-3.5 w-3.5" /> Add to cart</>
+                  )}
+                </Button>
+                <Button asChild size="sm" variant="tertiary">
                   <Link
                     href={`/b2b/purchase-orders/new?product=${encodeURIComponent(
                       p.name,
