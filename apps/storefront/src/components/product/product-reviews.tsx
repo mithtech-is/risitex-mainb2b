@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@risitex/ui/components";
 import { MEDUSA_BASE_URL } from "@/lib/medusa";
 import { ReviewSubmit } from "./review-submit";
 
@@ -47,12 +46,12 @@ export function ProductReviews({
   const displayReviews = loaded
     ? reviews
     : (metadataReviews ?? []).map((r, i) => ({
-        id: `meta-${i}`,
-        customer_name: r.buyer_type,
-        rating: r.rating,
-        title: null,
-        body: r.body,
-      }));
+      id: `meta-${i}`,
+      customer_name: r.buyer_type,
+      rating: r.rating,
+      title: null,
+      body: r.body,
+    }));
 
   return (
     <section className="rounded-md border border-border-subtle bg-surface-raised p-5">

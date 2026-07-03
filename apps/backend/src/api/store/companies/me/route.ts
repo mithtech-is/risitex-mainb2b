@@ -234,3 +234,57 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
     },
   })
 }
+
+export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  const customerId = (req as unknown as {
+    auth_context?: { app_metadata?: { customer_id?: string } }
+  }).auth_context?.app_metadata?.customer_id;
+
+  if (!customerId) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
+  const { data: customers } = await query.graph({
+    entity: "customer",
+    fields: ["id", "company_id", "metadata"],
+    filters: { id: customerId },
+  });
+
+  const customer = customers?.[0] as any;
+  if (!customer) {
+    return res.status(404).json({ success: false, message: "Customer not found" });
+  }
+
+  let resolvedCompanyId = customer.company_id;
+  if (!resolvedCompanyId) {
+    try {
+      const pgConn = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) as any;
+      const result = await pgConn.raw(`SELECT company_id FROM customer WHERE id = ? LIMIT 1`, [customer.id]);
+      resolvedCompanyId = result?.rows?.[0]?.company_id;
+    } catch {}
+  }
+  if (!resolvedCompanyId) {
+    const metaCompanyId = customer.metadata?.company_id;
+    if (typeof metaCompanyId === "string" && metaCompanyId.length > 0) {
+      resolvedCompanyId = metaCompanyId;
+    }
+  }
+
+  if (resolvedCompanyId) {
+    const companies = req.scope.resolve<CompanyModuleService>(COMPANY_MODULE);
+    try {
+      const body = req.validatedBody || req.body as any;
+      const updateData: any = { id: resolvedCompanyId };
+      if (body.gstin !== undefined) updateData.gstin = body.gstin;
+      if (body.trade_name !== undefined) updateData.trade_name = body.trade_name;
+      if (body.email !== undefined) updateData.applicant_email = body.email;
+      
+      await companies.updateCompanies(updateData);
+    } catch (e) {
+      console.error("Failed to sync company", e);
+    }
+  }
+
+  return res.json({ success: true });
+}

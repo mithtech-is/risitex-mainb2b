@@ -71,9 +71,8 @@ async function fetchProductsBySlugs(slugs: string[]): Promise<ProductRow[]> {
   if (slugs.length === 0) return [];
   const fields = "id,handle,title,thumbnail,*images,metadata,*variants.calculated_price";
   try {
-    const url = `${MEDUSA_BASE_URL}/store/products?handle=${encodeURIComponent(
-      slugs.join(","),
-    )}&limit=${slugs.length}&fields=${encodeURIComponent(fields)}`;
+    const query = slugs.map((s) => `handle[]=${encodeURIComponent(s)}`).join("&");
+    const url = `${MEDUSA_BASE_URL}/store/products?${query}&limit=${slugs.length}&fields=${encodeURIComponent(fields)}`;
     const res = await fetch(url, {
       headers: { "x-publishable-api-key": PUB_KEY },
     });

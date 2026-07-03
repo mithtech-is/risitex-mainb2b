@@ -17,7 +17,7 @@ const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}Z[0-9A-Z]{1}$/;
 // ── Password policy (mirrors apps/backend/src/utils/password-policy.ts) ──
 const PASSWORD_MIN_LENGTH = 12;
 const PASSWORD_MAX_LENGTH = 128;
-const SPECIAL_RE = /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/~`]/;
+const SPECIAL_RE = /[!@#$%^&*()_+\-=[\]{}|;:,.<>?/~`]/;
 const UPPER_RE = /[A-Z]/;
 const LOWER_RE = /[a-z]/;
 const DIGIT_RE = /[0-9]/;

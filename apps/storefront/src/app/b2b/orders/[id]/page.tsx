@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import Link from "next/link";
@@ -59,7 +59,7 @@ const PAYMENT_METHOD_OPTIONS: Array<{ value: PaymentConfirmation["method"]; labe
 
 export default function PurchaseOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
+  const _router = useRouter();
 
   const [po, setPo] = React.useState<DraftPurchaseOrder | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -181,7 +181,7 @@ export default function PurchaseOrderDetailPage() {
               {dispatched
                 ? "Order dispatched — in transit"
                 : adminApproved
-                  ? "Payment approved — order confirmed"
+                  ? "Order approved and will be dispatched soon"
                   : paymentConfirmed
                     ? "Payment recorded — reconciling with finance"
                     : "Awaiting payment"}
@@ -200,7 +200,7 @@ export default function PurchaseOrderDetailPage() {
               {dispatched
                 ? `Your order has been dispatched${po.dispatch_carrier ? ` via ${po.dispatch_carrier}` : ""}${po.dispatch_tracking_number ? ` (tracking: ${po.dispatch_tracking_number})` : ""}.`
                 : adminApproved
-                  ? "Your payment has been verified. Order is confirmed and will be dispatched soon."
+                  ? "Your order is confirmed and will be dispatched soon."
                   : paymentConfirmed
                     ? `Your payment proof is logged. Finance verifies it against ${
                         po.payment_confirmed_method ?? "the bank statement"
@@ -434,7 +434,7 @@ function PaymentForm({
       <h3 className="text-heading-sm text-text-primary">Confirm payment</h3>
       <p className="mt-1 text-caption text-text-muted">
         Recording payment proof against this {formatINR(poValue)} PO moves it
-        out of "awaiting payment" so ops can begin reconciliation. Finance
+        out of &quot;awaiting payment&quot; so ops can begin reconciliation. Finance
         verifies against the bank statement / gateway before dispatch.
       </p>
 

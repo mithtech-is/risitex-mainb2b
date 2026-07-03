@@ -213,7 +213,7 @@ export function B2bCompanyContextPage({
             ["Status", status],
             ["Tier", tier],
             ["Payment Terms", paymentTerms],
-            ["Sales Rep", salesRep],
+            ...(company?.sales_rep_id ? [["Sales Rep", salesRep] as const] : []),
           ]}
         />
       )}

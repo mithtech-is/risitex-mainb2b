@@ -137,19 +137,14 @@ export default function InvoicesPage() {
                       </div>
                       <div className="inline-flex gap-2">
                         <Badge tone="success" size="xs">Invoice issued</Badge>
-                        <Button asChild size="sm" variant="secondary">
-                          <a
-                            href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}/print`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Download
-                          </a>
-                        </Button>
-                        <Button asChild size="sm" variant="tertiary">
-                          <Link href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}>
-                            View PO
-                          </Link>
+                        <Button 
+                          size="sm" 
+                          variant="secondary"
+                          onClick={() => {
+                            downloadOrderInvoice(p.id, p.po_number).catch(console.error);
+                          }}
+                        >
+                          Download
                         </Button>
                       </div>
                     </li>
@@ -186,11 +181,6 @@ export default function InvoicesPage() {
                       </div>
                       <div className="inline-flex gap-2">
                         <Badge tone="info" size="xs">Awaiting approval</Badge>
-                        <Button asChild size="sm" variant="tertiary">
-                          <Link href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}>
-                            View PO
-                          </Link>
-                        </Button>
                       </div>
                     </li>
                   ))}

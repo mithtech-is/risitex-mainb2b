@@ -3,10 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  AiReorderSuggestion,
   Badge,
   Button,
-  CreditTermsPanel,
   DistributionBar,
   NotificationFeed,
   StatCard,
@@ -330,7 +328,7 @@ export default function B2bDashboardPage() {
     [ordersList, ninetyDaysAgo],
   );
 
-  const reorderCandidates = React.useMemo(
+  const _reorderCandidates = React.useMemo(
     () =>
       buildReorderCandidates(ordersList, ninetyDaysAgo)
         .filter((c) => !dismissedReorder.has(c.variantId))
@@ -338,7 +336,7 @@ export default function B2bDashboardPage() {
     [ordersList, ninetyDaysAgo, dismissedReorder],
   );
 
-  const handleReorderDismiss = (c: ReorderCandidate) => {
+  const _handleReorderDismiss = (c: ReorderCandidate) => {
     setDismissedReorder((s) => {
       const next = new Set(s);
       next.add(c.variantId);

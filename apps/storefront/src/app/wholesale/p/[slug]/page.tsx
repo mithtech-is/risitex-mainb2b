@@ -18,8 +18,7 @@ import { SizeChartModal } from "@/components/product/size-chart-modal";
 import { ProductQuestions } from "@/components/product/product-questions";
 import { ProductReviews } from "@/components/product/product-reviews";
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000";
+
 
 type Params = { slug: string };
 

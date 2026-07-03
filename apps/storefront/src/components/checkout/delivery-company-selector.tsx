@@ -99,9 +99,6 @@ export function DeliveryCompanySelector({
             <span className="shrink-0 text-caption text-text-muted">
               {selected.estimatedDelivery}
             </span>
-            <span className="shrink-0 font-mono text-body-sm text-text-secondary">
-              ₹{selected.chargeRupees.toLocaleString("en-IN")}
-            </span>
           </span>
         ) : (
           <span className="text-text-muted">Select a delivery company</span>
@@ -192,9 +189,6 @@ export function DeliveryCompanySelector({
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-mono text-body-sm text-text-secondary">
-                          ₹{option.chargeRupees.toLocaleString("en-IN")}
-                        </span>
                         {isSelected && (
                           <Check className="h-4 w-4 shrink-0 text-brand-accent" />
                         )}

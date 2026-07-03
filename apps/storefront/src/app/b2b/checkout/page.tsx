@@ -292,7 +292,7 @@ export default function CheckoutPage() {
 
   // ── Form state ─────────────────────────────────────────────────────
   // We default to "use company address" for both. Customer can override.
-  const [billingMode, setBillingMode] = React.useState<"company" | "custom">("company");
+  const [billingMode, _setBillingMode] = React.useState<"company" | "custom">("company");
   const [shippingMode, setShippingMode] = React.useState<"same" | "custom">("same");
   const [customShip, setCustomShip] = React.useState({
     line1: "",
@@ -371,7 +371,7 @@ export default function CheckoutPage() {
   const creditAvailablePaise = credit
     ? Math.round(Number(credit.available_inr ?? 0) * 100)
     : 0;
-  const creditCovers = creditAvailablePaise >= grandTotalPaise;
+  const _creditCovers = creditAvailablePaise >= grandTotalPaise;
 
   // ── Step gating ────────────────────────────────────────────────────
   const company = context?.b2b?.company;
@@ -657,7 +657,7 @@ export default function CheckoutPage() {
               <h2 className="text-heading-sm text-text-primary">Cart review</h2>
               <p className="mt-1 text-caption text-text-muted">
                 Lines came in from the product matrix grid. Adjust by going back
-                to the PDP — saved draft preserves what's here.
+                to the PDP &#8212; saved draft preserves what&apos;s here.
               </p>
               <ul className="mt-4 divide-y divide-border-subtle">
                 {cartLines.length === 0 && productName && (
@@ -862,7 +862,7 @@ export default function CheckoutPage() {
                           {m.label}
                         </span>
                         <span className="font-mono text-body-sm text-text-secondary">
-                          {m.flatRupees > 0 ? `₹${m.flatRupees}` : "Free"} · {m.eta}
+                          {m.eta}
                         </span>
                       </div>
                     </label>

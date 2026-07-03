@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@risitex/ui/components";
 import { MEDUSA_BASE_URL } from "@/lib/medusa";
 import { QuestionSubmit } from "./question-submit";
 

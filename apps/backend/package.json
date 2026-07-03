@@ -5,7 +5,7 @@
   "author": "Mithtech Innovative Solutions",
   "license": "UNLICENSED",
   "scripts": {
-    "build": "medusa build",
+    "build": "node build.js",
     "start": "medusa start",
     "dev": "medusa develop",
     "typecheck": "tsc --noEmit",

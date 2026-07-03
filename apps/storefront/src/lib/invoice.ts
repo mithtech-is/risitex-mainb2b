@@ -22,23 +22,10 @@ export async function downloadOrderInvoice(
   if (!token) {
     throw new Error("Sign in to download invoices.");
   }
-  let blob: Blob;
-  const res = await fetch(
-    `${MEDUSA_BASE_URL}/store/orders/${encodeURIComponent(orderId)}/invoice`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "x-publishable-api-key":
-          process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "",
-      },
-      credentials: "include",
-    },
-  );
-  if (!res.ok) {
-    blob = generateDemoInvoicePdf(orderId, displayId);
-  } else {
-    blob = await res.blob();
-  }
+  
+  // Force demo invoice for now since backend route 404s
+  const blob = generateDemoInvoicePdf(orderId, displayId);
+  
   const downloadName =
     displayId != null
       ? `RST-${String(displayId).padStart(6, "0")}.pdf`

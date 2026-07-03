@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
   DialogPortal,
   DialogOverlay,
 } from "@risitex/ui/components";
@@ -33,6 +34,9 @@ export function AuthModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
         <DialogOverlay />
+        <DialogTitle className="sr-only">
+          {view === "sign-in" ? "Sign in" : "Create account"}
+        </DialogTitle>
         <DialogContent
           hideClose
           className="flex max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl p-0"

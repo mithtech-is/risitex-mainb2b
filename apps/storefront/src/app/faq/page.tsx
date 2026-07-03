@@ -1,6 +1,6 @@
 "use client";
 
-import type { Metadata } from "next";
+
 import * as React from "react";
 import { Container } from "@/components/site/container";
 import { Breadcrumb } from "@/components/site/breadcrumb";
@@ -46,16 +46,18 @@ export default function FaqPage() {
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
     switch (e.key) {
-      case "ArrowDown":
+      case "ArrowDown": {
         e.preventDefault();
         const nextIndex = (index + 1) % FAQS.length;
         headerRefs.current[nextIndex]?.focus();
         break;
-      case "ArrowUp":
+      }
+      case "ArrowUp": {
         e.preventDefault();
         const prevIndex = (index - 1 + FAQS.length) % FAQS.length;
         headerRefs.current[prevIndex]?.focus();
         break;
+      }
       case "Home":
         e.preventDefault();
         headerRefs.current[0]?.focus();

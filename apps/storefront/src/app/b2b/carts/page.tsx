@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  Badge,
   Button,
   EmptyState,
   Input,

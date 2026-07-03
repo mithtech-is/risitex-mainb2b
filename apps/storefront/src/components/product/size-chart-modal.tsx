@@ -3,10 +3,6 @@
 import * as React from "react";
 import { Button } from "@risitex/ui/components";
 
-type SizeValue = {
-  inches: number;
-  label: string; // e.g. "38", "S", etc.
-};
 
 type DimensionRow = {
   name: string; // e.g. "Chest", "Waist"

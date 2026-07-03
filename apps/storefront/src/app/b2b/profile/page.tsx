@@ -70,7 +70,7 @@ const BUSINESS_TYPES = [
 ];
 
 export default function ProfilePage() {
-  const router = useRouter();
+  const _router = useRouter();
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -170,6 +170,8 @@ export default function ProfilePage() {
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
         phone: form.phone.trim(),
+        email: form.email.trim(),
+        company_name: form.company_name.trim(),
         metadata: {
           ...(contextData?.customer?.metadata ?? {}),
           first_name: form.first_name.trim(),
@@ -449,10 +451,12 @@ export default function ProfilePage() {
                 <p className="text-micro text-text-muted uppercase tracking-wider">Default Payment Terms</p>
                 <p className="mt-1 text-body-md text-text-primary">{paymentTerms}</p>
               </div>
-              <div className="border-t border-border-subtle pt-3">
-                <p className="text-micro text-text-muted uppercase tracking-wider">Dedicated Sales Representative</p>
-                <p className="mt-1 text-body-md text-text-primary">{salesRep}</p>
-              </div>
+              {company?.sales_rep_id && (
+                <div className="border-t border-border-subtle pt-3">
+                  <p className="text-micro text-text-muted uppercase tracking-wider">Dedicated Sales Representative</p>
+                  <p className="mt-1 text-body-md text-text-primary">{salesRep}</p>
+                </div>
+              )}
             </div>
           </section>
         </aside>

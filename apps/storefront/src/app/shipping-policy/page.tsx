@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LegalPage, PolicySection, PolicyList } from "@/components/site/legal-page";
 
 export const metadata: Metadata = {
@@ -67,12 +68,12 @@ export default function ShippingPolicyPage() {
         <p>
           Tracking details are shared once your order is dispatched. You can
           follow your shipment any time from{" "}
-          <a
+          <Link
             href="/b2b/orders"
             className="text-text-primary underline underline-offset-4"
           >
             your orders
-          </a>{" "}
+          </Link>{" "}
           — each order has a live status timeline and a link to the courier’s
           tracking page.
         </p>

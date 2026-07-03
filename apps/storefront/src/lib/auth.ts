@@ -89,7 +89,25 @@ export async function updateCustomerMetadata(
 ): Promise<void> {
   for (let i = 0; i <= retries; i++) {
     try {
-      await medusa().store.customer.update(data);
+      const { email, ...customerData } = data;
+      await medusa().store.customer.update(customerData);
+      
+      // Also sync company details
+      const syncData = {
+        gstin: data.metadata?.gstin || data.gstin,
+        trade_name: data.metadata?.trade_name || data.trade_name || data.metadata?.company_name || data.company_name,
+        email: email
+      };
+      
+      try {
+        await medusa().client.fetch("/store/companies/me", {
+          method: "POST",
+          body: syncData
+        });
+      } catch (e) {
+        console.error("Failed to sync company", e);
+      }
+
       return;
     } catch (err) {
       if (i === retries) throw err;

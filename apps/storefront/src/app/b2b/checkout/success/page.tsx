@@ -9,7 +9,7 @@ import { CheckCircle2 } from "lucide-react";
 
 export default function CheckoutSuccessPage() {
   const params = useSearchParams();
-  const poId = params?.get("po") ?? "";
+  const _poId = params?.get("po") ?? "";
   const poNumber = params?.get("num") ?? "";
   const amt = Number(params?.get("amt") ?? 0);
   const pay = params?.get("pay") ?? "";

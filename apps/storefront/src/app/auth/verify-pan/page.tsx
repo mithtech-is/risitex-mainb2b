@@ -175,7 +175,7 @@ export default function VerifyPanPage() {
           Verify your PAN.
         </h1>
         <p className="mt-3 text-body-md text-text-muted">
-          Enter the mobile number registered against your PAN. We'll send a
+           Enter the mobile number registered against your PAN. We&apos;ll send a
           one-time code via WhatsApp (SMS fallback). This step verifies both
           your PAN ownership and your mobile.
         </p>

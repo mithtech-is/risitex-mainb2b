@@ -1,10 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { Button, Input, Label, PasswordInput } from "@risitex/ui/components";
 import { Wordmark } from "@/components/site/wordmark";
-import { signUp, accountExists, updateCustomerMetadata, signIn } from "@/lib/auth";
+import { signUp, accountExists, updateCustomerMetadata } from "@/lib/auth";
 
 type FormData = {
   first_name: string;
@@ -39,7 +38,7 @@ export function SignUpPanel({
   onSuccess: () => void;
   onSwitchToSignIn: () => void;
 }) {
-  const router = useRouter();
+
   const [step, setStep] = React.useState<FormStep>("details");
   const [form, setForm] = React.useState<FormData>(INITIAL_FORM);
   const [error, setError] = React.useState<string | null>(null);
