@@ -96,13 +96,29 @@ export async function updateCustomerMetadata(
       const syncData = {
         gstin: data.metadata?.gstin || data.gstin,
         trade_name: data.metadata?.trade_name || data.trade_name || data.metadata?.company_name || data.company_name,
-        email: email
+        email: email,
+        billing_address: {
+          address_1: data.metadata?.address || "",
+          city: data.metadata?.city || "",
+          province: data.metadata?.state || "",
+          postal_code: data.metadata?.pincode || "",
+          country_code: "IN"
+        }
       };
       
       try {
-        await medusa().client.fetch("/store/companies/me", {
+        let token = "";
+        if (typeof window !== "undefined") {
+          token = window.localStorage.getItem("medusa_auth_token") || "";
+        }
+        await fetch(`${BACKEND_URL}/store/companies/me`, {
           method: "POST",
-          body: syncData
+          headers: {
+            "Content-Type": "application/json",
+            "x-publishable-api-key": PUB_KEY,
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(syncData)
         });
       } catch (e) {
         console.error("Failed to sync company", e);

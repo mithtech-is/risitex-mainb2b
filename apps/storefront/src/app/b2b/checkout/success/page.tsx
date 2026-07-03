@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@risitex/ui/components";
 import { B2bTopbar } from "@/components/b2b/b2b-topbar";
 import { CheckCircle2 } from "lucide-react";
+import { listAllPurchaseOrders } from "@/lib/purchase-orders";
 
 export default function CheckoutSuccessPage() {
   const params = useSearchParams();
@@ -14,11 +15,45 @@ export default function CheckoutSuccessPage() {
   const amt = Number(params?.get("amt") ?? 0);
   const pay = params?.get("pay") ?? "";
 
+  const [isApproved, setIsApproved] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!_poId) return;
+
+    let intervalId: NodeJS.Timeout;
+
+    const checkStatus = async () => {
+      try {
+        const allPos = await listAllPurchaseOrders();
+        const currentPo = allPos.find((p) => p.id === _poId);
+        
+        if (currentPo && (currentPo.admin_approved_at || currentPo.order || currentPo.status === "in_progress" || currentPo.status === "fulfilled")) {
+          setIsApproved(true);
+          if (intervalId) clearInterval(intervalId);
+        }
+      } catch (err) {
+        // Silently fail and try again next tick
+      }
+    };
+
+    // Initial check
+    checkStatus();
+
+    // Poll every 5 seconds
+    intervalId = setInterval(checkStatus, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [_poId]);
+
   return (
     <div className="flex min-h-full flex-col gap-6">
       <B2bTopbar
-        title="Order Received"
-        subtitle="Your order is in. Confirmation + dispatch updates follow on email and WhatsApp."
+        title={isApproved ? "Order Approved" : "Order Received"}
+        subtitle={
+          isApproved 
+            ? "Your order has been approved and will be dispatched soon."
+            : "Your order is in. Confirmation + dispatch updates follow on email and WhatsApp."
+        }
       />
 
       <section className="flex flex-col gap-6 rounded-md border border-feedback-success-border bg-feedback-success-bg p-8 shadow-sm">
@@ -26,10 +61,13 @@ export default function CheckoutSuccessPage() {
           <CheckCircle2 className="mt-1 h-8 w-8 text-feedback-success-text shrink-0" aria-hidden />
           <div className="space-y-3">
             <h2 className="font-display text-heading-lg text-feedback-success-text">
-              Thank you for placing your order.
+              {isApproved ? "Order Approved" : "Thank you for placing your order."}
             </h2>
             <p className="text-body-md text-feedback-success-text leading-relaxed">
-              Your order has been received successfully. It is currently waiting for approval by the RISITEX sales team. Approval usually takes 5–6 minutes during business hours. You will receive a notification once your order is approved.
+              {isApproved 
+                ? "Your order has been approved by the RISITEX sales team and will be dispatched soon. You can track its progress in your shipments dashboard."
+                : "Your order has been received successfully. It is currently waiting for approval by the RISITEX sales team. Approval usually takes 5–6 minutes during business hours. You will receive a notification once your order is approved."
+              }
             </p>
           </div>
         </div>
@@ -52,7 +90,10 @@ export default function CheckoutSuccessPage() {
       <section className="rounded-md border border-border-subtle bg-surface-raised p-6 space-y-4">
         <h2 className="text-heading-sm text-text-primary font-display">Next steps</h2>
         <p className="text-body-sm text-text-muted leading-relaxed">
-          While our team reviews and approves your order, you can manage your B2B account or browse products. Shipment tracking and invoices will become downloadable in their respective tabs as soon as approval is completed.
+          {isApproved 
+            ? "Your order is now approved. Shipment tracking and invoices are available to download from their respective tabs."
+            : "While our team reviews and approves your order, you can manage your B2B account or browse products. Shipment tracking and invoices will become downloadable in their respective tabs as soon as approval is completed."
+          }
         </p>
         <div className="flex flex-wrap gap-3 pt-2">
           <Button asChild>

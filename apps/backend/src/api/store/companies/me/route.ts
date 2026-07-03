@@ -279,6 +279,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       if (body.gstin !== undefined) updateData.gstin = body.gstin;
       if (body.trade_name !== undefined) updateData.trade_name = body.trade_name;
       if (body.email !== undefined) updateData.applicant_email = body.email;
+      if (body.billing_address !== undefined) updateData.billing_address = body.billing_address;
       
       await companies.updateCompanies(updateData);
     } catch (e) {
