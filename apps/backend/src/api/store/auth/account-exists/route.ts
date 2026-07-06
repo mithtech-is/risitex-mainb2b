@@ -58,13 +58,21 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   try {
     // 1. Email — also used by sign-in flow, kept first for parity.
+    //    Check the CUSTOMER (and admin user) tables, NOT the raw
+    //    provider_identity credential: deleting a customer removes the
+    //    customer row but can leave an orphaned emailpass identity behind,
+    //    which used to make a deleted account still read as "registered".
+    //    Keying off a LIVE account frees a deleted customer's email for
+    //    re-registration (the customer-auth-cleanup subscriber also purges
+    //    the orphan credential so the follow-up register succeeds).
     if (email) {
       const e = email.trim().toLowerCase()
       const r = await pg.raw(
-        `SELECT 1 FROM provider_identity
-          WHERE provider = 'emailpass' AND lower(entity_id) = ?
-          LIMIT 1`,
-        [e],
+        `SELECT 1 FROM customer WHERE lower(email) = ? AND deleted_at IS NULL
+         UNION ALL
+         SELECT 1 FROM "user" WHERE lower(email) = ? AND deleted_at IS NULL
+         LIMIT 1`,
+        [e, e],
       )
       if ((r.rows ?? []).length > 0) {
         return res.json({ exists: true, by: "email" })
