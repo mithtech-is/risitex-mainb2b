@@ -4,8 +4,14 @@ import Image from "next/image";
 import { Button } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
 import { Breadcrumb } from "@/components/site/breadcrumb";
-import { CATEGORY_LABELS, type Product } from "@/data/products";
+import { type Product } from "@/data/products";
 import { getWholesaleProducts } from "@/lib/wholesale-products";
+import {
+  getCategoryTree,
+  findByHandle,
+  descendantHandles,
+  type CategoryNode,
+} from "@/lib/categories";
 import { SignedOut, SignedIn } from "@/components/auth/signed-out";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { WishlistHeart } from "@/components/wishlist/wishlist-heart";
@@ -17,16 +23,20 @@ export const metadata: Metadata = {
 };
 
 type Search = {
-  cat?: string;
+  cat?: string; // category handle (hierarchical)
   color?: string;
   size?: string;
+  fabric?: string;
   moq_max?: string;
+  price_max?: string;
   sort?: string;
 };
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: "default", label: "Newest" },
   { value: "name", label: "Name (A–Z)" },
+  { value: "price_asc", label: "Price — low to high" },
+  { value: "price_desc", label: "Price — high to low" },
   { value: "moq_asc", label: "MOQ — low to high" },
   { value: "moq_desc", label: "MOQ — high to low" },
 ];
@@ -38,11 +48,21 @@ function parseCsv(v: string | undefined): string[] {
     .filter(Boolean);
 }
 
-function applyFilters(products: Product[], s: Search): Product[] {
+/** Fabric value from a product's spec sheet, if present. */
+function fabricOf(p: Product): string | undefined {
+  return p.specs.find((sp) => sp.label.toLowerCase() === "fabric")?.value;
+}
+
+function applyFilters(
+  products: Product[],
+  s: Search,
+  catHandleSet: Set<string> | null,
+): Product[] {
   let out = products;
-  if (s.cat) {
-    const cat = s.cat.toLowerCase();
-    out = out.filter((p) => p.category === cat);
+  if (catHandleSet) {
+    out = out.filter((p) =>
+      (p.categoryHandles ?? []).some((h) => catHandleSet.has(h)),
+    );
   }
   const colors = parseCsv(s.color);
   if (colors.length) {
@@ -56,13 +76,30 @@ function applyFilters(products: Product[], s: Search): Product[] {
       p.sizes.some((sz) => sizes.includes(sz.toLowerCase())),
     );
   }
+  const fabrics = parseCsv(s.fabric);
+  if (fabrics.length) {
+    out = out.filter((p) => {
+      const f = fabricOf(p);
+      return f ? fabrics.includes(f.toLowerCase()) : false;
+    });
+  }
   const moqMax = Number(s.moq_max);
   if (Number.isFinite(moqMax) && moqMax > 0) {
     out = out.filter((p) => (p.moq ?? 0) <= moqMax);
   }
+  const priceMax = Number(s.price_max);
+  if (Number.isFinite(priceMax) && priceMax > 0) {
+    out = out.filter((p) => (p.priceMajor ?? 0) <= priceMax);
+  }
   switch (s.sort) {
     case "name":
       out = [...out].sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case "price_asc":
+      out = [...out].sort((a, b) => (a.priceMajor ?? 0) - (b.priceMajor ?? 0));
+      break;
+    case "price_desc":
+      out = [...out].sort((a, b) => (b.priceMajor ?? 0) - (a.priceMajor ?? 0));
       break;
     case "moq_asc":
       out = [...out].sort((a, b) => (a.moq ?? 0) - (b.moq ?? 0));
@@ -98,11 +135,29 @@ export default async function WholesaleCataloguePage({
   searchParams?: Promise<Search>;
 }) {
   const s = (await searchParams) ?? {};
-  const all = await getWholesaleProducts();
-  const filtered = applyFilters(all, s);
+  const [all, tree] = await Promise.all([
+    getWholesaleProducts(),
+    getCategoryTree(),
+  ]);
 
-  // Available facet values are computed from the unfiltered set so the
-  // sidebar doesn't become un-clickable as the buyer narrows the grid.
+  // Resolve the selected category node → the set of its own + descendant
+  // handles, so selecting "Men" or "Jeans" matches everything beneath it.
+  const activeNode = s.cat ? findByHandle(tree, s.cat) : null;
+  const catHandleSet = activeNode
+    ? new Set(descendantHandles(activeNode))
+    : null;
+
+  const filtered = applyFilters(all, s, catHandleSet);
+
+  // How many products live under a category node (incl. descendants).
+  const countUnder = (node: CategoryNode): number => {
+    const handles = new Set(descendantHandles(node));
+    return all.filter((p) =>
+      (p.categoryHandles ?? []).some((h) => handles.has(h)),
+    ).length;
+  };
+
+  // Facets computed from the unfiltered set so the sidebar stays clickable.
   const colorFacets = Array.from(
     new Map(
       all.flatMap((p) =>
@@ -113,19 +168,27 @@ export default async function WholesaleCataloguePage({
   const sizeFacets = Array.from(
     new Set(all.flatMap((p) => p.sizes.map((sz) => sz))),
   )
-    .filter((s) => s && s !== "—" && s !== "per-metre")
+    .filter((sz) => sz && sz !== "—" && sz !== "per-metre")
     .sort();
+  const fabricFacets = Array.from(
+    new Set(all.map(fabricOf).filter((f): f is string => !!f)),
+  ).sort();
   const moqOptions = [50, 100, 200, 500];
+  const priceOptions = [500, 1000, 2000, 5000];
 
   const activeColors = parseCsv(s.color);
   const activeSizes = parseCsv(s.size);
+  const activeFabrics = parseCsv(s.fabric);
   const moqMax = Number(s.moq_max);
+  const priceMax = Number(s.price_max);
 
   const filtersActive =
     !!s.cat ||
     activeColors.length > 0 ||
     activeSizes.length > 0 ||
+    activeFabrics.length > 0 ||
     (Number.isFinite(moqMax) && moqMax > 0) ||
+    (Number.isFinite(priceMax) && priceMax > 0) ||
     (s.sort && s.sort !== "default");
 
   return (
@@ -192,33 +255,33 @@ export default async function WholesaleCataloguePage({
               active={!s.cat}
               label={`All (${all.length})`}
             />
-            {(Object.keys(CATEGORY_LABELS) as Array<keyof typeof CATEGORY_LABELS>).map((c) => {
-              const count = all.filter((p) => p.category === c).length;
-              if (count === 0) return null;
-              return (
-                <FacetLink
-                  key={c}
-                  href={withParam(s, "cat", c)}
-                  active={s.cat === c}
-                  label={`${CATEGORY_LABELS[c]} (${count})`}
+            {tree.length === 0 ? (
+              <p className="px-2 py-1 text-caption text-text-muted">
+                No categories yet.
+              </p>
+            ) : (
+              tree.map((node) => (
+                <CategoryTreeNav
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  activeHandle={s.cat}
+                  search={s}
+                  countUnder={countUnder}
                 />
-              );
-            })}
+              ))
+            )}
           </FacetBlock>
 
           {colorFacets.length > 0 && (
-            <FacetBlock title="Color">
+            <FacetBlock title="Colour">
               <div className="flex flex-wrap gap-2">
                 {colorFacets.map((sw) => {
                   const active = activeColors.includes(sw.value.toLowerCase());
                   return (
                     <Link
                       key={sw.value}
-                      href={withParam(
-                        s,
-                        "color",
-                        toggleCsv(s.color, sw.value),
-                      )}
+                      href={withParam(s, "color", toggleCsv(s.color, sw.value))}
                       aria-pressed={active}
                       title={sw.name}
                       className={[
@@ -266,6 +329,35 @@ export default async function WholesaleCataloguePage({
             </FacetBlock>
           )}
 
+          {fabricFacets.length > 0 && (
+            <FacetBlock title="Fabric">
+              {fabricFacets.map((f) => (
+                <FacetLink
+                  key={f}
+                  href={withParam(s, "fabric", toggleCsv(s.fabric, f))}
+                  active={activeFabrics.includes(f.toLowerCase())}
+                  label={f}
+                />
+              ))}
+            </FacetBlock>
+          )}
+
+          <FacetBlock title="Price max">
+            <FacetLink
+              href={withParam(s, "price_max", undefined)}
+              active={!s.price_max}
+              label="Any"
+            />
+            {priceOptions.map((n) => (
+              <FacetLink
+                key={n}
+                href={withParam(s, "price_max", String(n))}
+                active={s.price_max === String(n)}
+                label={`≤ ₹${n.toLocaleString()}`}
+              />
+            ))}
+          </FacetBlock>
+
           <FacetBlock title="MOQ max">
             <FacetLink
               href={withParam(s, "moq_max", undefined)}
@@ -309,8 +401,8 @@ export default async function WholesaleCataloguePage({
                 No products match these filters
               </h3>
               <p className="mt-2 text-body-md text-text-muted">
-                Try widening MOQ, removing colour/size constraints, or clearing
-                all filters.
+                Try a broader category, widening MOQ/price, or clearing all
+                filters.
               </p>
               <Button asChild variant="secondary" className="mt-4">
                 <Link href="/wholesale/catalogue">Clear all</Link>
@@ -329,9 +421,6 @@ export default async function WholesaleCataloguePage({
                       src={p.image ?? "/demo/products/photo-01.jpg"}
                       alt={p.name}
                       fill
-                      // Mark the first 3 cards as priority so Next preloads them
-                      // for LCP. Everything below the fold uses the default
-                      // lazy-load.
                       priority={idx < 3}
                       sizes="(min-width: 1280px) 33vw, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                       className="object-cover transition-transform duration-normal group-hover:scale-[1.02]"
@@ -347,9 +436,6 @@ export default async function WholesaleCataloguePage({
                       </h3>
                       <WishlistHeart slug={p.slug} productName={p.name} />
                     </div>
-                    <span className="text-caption text-text-muted">
-                      {CATEGORY_LABELS[p.category]}
-                    </span>
                     {p.moq && (
                       <span className="mt-1 text-caption font-medium text-text-secondary">
                         MOQ {p.moq.toLocaleString()} pcs
@@ -363,6 +449,51 @@ export default async function WholesaleCataloguePage({
         </div>
       </div>
     </Container>
+  );
+}
+
+/** Recursive, indented category tree in the filter sidebar. */
+function CategoryTreeNav({
+  node,
+  depth,
+  activeHandle,
+  search,
+  countUnder,
+}: {
+  node: CategoryNode;
+  depth: number;
+  activeHandle: string | undefined;
+  search: Search;
+  countUnder: (n: CategoryNode) => number;
+}) {
+  const count = countUnder(node);
+  const active = activeHandle === node.handle;
+  return (
+    <div>
+      <Link
+        href={withParam(search, "cat", node.handle)}
+        style={{ paddingLeft: `${8 + depth * 14}px` }}
+        className={[
+          "block rounded-sm py-1 pr-2 text-body-sm transition-colors duration-fast",
+          active
+            ? "bg-surface-sunken font-medium text-text-primary"
+            : "text-text-secondary hover:bg-surface-sunken hover:text-text-primary",
+        ].join(" ")}
+      >
+        {node.name}
+        <span className="ml-1 text-caption text-text-muted">({count})</span>
+      </Link>
+      {node.children.map((child) => (
+        <CategoryTreeNav
+          key={child.id}
+          node={child}
+          depth={depth + 1}
+          activeHandle={activeHandle}
+          search={search}
+          countUnder={countUnder}
+        />
+      ))}
+    </div>
   );
 }
 

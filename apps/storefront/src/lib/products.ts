@@ -117,25 +117,13 @@ function adaptMedusaProduct(p: MedusaProduct): Product {
   };
 }
 
-function inferCategoryFromTitle(title: string): Product["category"] {
-  const t = title.toLowerCase();
-  if (/(saree|stole|dupatta|blouse|kurti)/.test(t)) return "women";
-  if (/(fabric|metre|cotton|silk)/.test(t)) return "fabric";
-  if (/(bag|scarf|tie|belt)/.test(t)) return "accessories";
+function inferCategoryFromTitle(_title: string): Product["category"] {
+  // Men-only catalogue.
   return "men";
 }
 
-function humaniseCategory(c: Product["category"]): string {
-  switch (c) {
-    case "men":
-      return "Men";
-    case "women":
-      return "Women";
-    case "fabric":
-      return "Fabric";
-    case "accessories":
-      return "Accessories";
-  }
+function humaniseCategory(_c: Product["category"]): string {
+  return "Men";
 }
 
 function parseSizeFromTitle(t: string): string | undefined {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Container } from "./container";
 import { Wordmark } from "./wordmark";
+import { COMPANY } from "@/lib/company";
 
 const FOOTER_COLUMNS = [
   {
@@ -38,8 +39,8 @@ const FOOTER_COLUMNS = [
 ];
 
 const TRUST_STRIP = [
-  { label: "GST Registered", note: "29ABCDE1234F1Z5" },
-  { label: "Made in India", note: "Tamil Nadu Mills" },
+  { label: "GST Registered", note: COMPANY.gstin },
+  { label: "Made in India", note: "Karnataka, India" },
   { label: "MOQ", note: "From 240 pieces" },
   { label: "Wholesale Pricing", note: "Tier-based discounts" },
 ];
@@ -90,8 +91,8 @@ export function Footer() {
       <Container>
         <div className="flex flex-col items-start justify-between gap-3 border-t border-border-subtle py-6 md:flex-row md:items-center">
           <p className="text-body-sm text-text-muted">
-            &copy; {new Date().getFullYear()} Mithtech Innovative Solutions. All
-            rights reserved.
+            &copy; {new Date().getFullYear()} {COMPANY.name}. All rights
+            reserved.
           </p>
           <ul className="flex flex-wrap gap-x-6 gap-y-2 text-body-sm text-text-muted">
             <li>

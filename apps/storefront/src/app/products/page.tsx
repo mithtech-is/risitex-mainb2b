@@ -6,33 +6,73 @@ import { Container } from "@/components/site/container";
 import { SignedOut } from "@/components/auth/signed-out";
 import { B2bPriceGate } from "@/components/b2b/b2b-price-gate";
 import { getWholesaleProducts } from "@/lib/wholesale-products";
-import { CATEGORY_LABELS } from "@/data/products";
+import { CATEGORY_LABELS, type Product } from "@/data/products";
+import {
+  getCategoryTree,
+  findByHandle,
+  descendantHandles,
+  pathToHandle,
+  deepestPath,
+  type CategoryNode,
+} from "@/lib/categories";
 import { WishlistHeart } from "@/components/wishlist/wishlist-heart";
 
 export const metadata: Metadata = {
   title: "Product Catalogue",
   description:
-    "RISITEX wholesale product catalogue — innerwear, loungewear, fabrics, and accessories at factory-direct pricing.",
+    "RISITEX wholesale product catalogue browsable by category — innerwear, bottom wear, jeans, and more at factory-direct pricing.",
 };
-
-const CATEGORIES = ["All", ...Object.values(CATEGORY_LABELS)] as const;
 
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ category?: string }>;
+  searchParams?: Promise<{ cat?: string; category?: string }>;
 }) {
   const params = (await searchParams) ?? {};
-  const selectedCat = (params.category ?? "all").toLowerCase();
+  // `cat` = Medusa category handle (hierarchical). `category` kept for
+  // backwards-compatible legacy links (men/women/…).
+  const catHandle = params.cat;
 
-  // Source of truth: same loader as /wholesale/catalogue. This guarantees the
-  // card slugs always resolve at the PDP and the price/MOQ render values are
-  // tier-aware when the buyer is signed in.
-  const all = await getWholesaleProducts();
-  const products =
-    selectedCat === "all"
-      ? all
-      : all.filter((p) => p.category === selectedCat);
+  const [all, tree] = await Promise.all([
+    getWholesaleProducts(),
+    getCategoryTree(),
+  ]);
+
+  const activeNode = catHandle ? findByHandle(tree, catHandle) : null;
+
+  // Products under the selected node (self + descendants). Legacy `?category=`
+  // still filters by the flat metadata category so old links don't 404.
+  let products: Product[];
+  if (activeNode) {
+    const handles = new Set(descendantHandles(activeNode));
+    products = all.filter((p) =>
+      (p.categoryHandles ?? []).some((h) => handles.has(h)),
+    );
+  } else if (params.category && params.category.toLowerCase() !== "all") {
+    const legacy = params.category.toLowerCase();
+    products = all.filter((p) => p.category === legacy);
+  } else {
+    products = all;
+  }
+
+  // Drill-down: the trail of ancestors (for going back up) and the children
+  // of the current node (for going deeper). At the root we list top-level
+  // categories.
+  const trail = catHandle ? pathToHandle(tree, catHandle) : [];
+  const options: CategoryNode[] = activeNode ? activeNode.children : tree;
+
+  const countUnder = (node: CategoryNode): number => {
+    const handles = new Set(descendantHandles(node));
+    return all.filter((p) =>
+      (p.categoryHandles ?? []).some((h) => handles.has(h)),
+    ).length;
+  };
+
+  const eyebrowFor = (p: Product): string => {
+    const path = deepestPath(tree, p.categoryHandles ?? []);
+    if (path.length) return path[path.length - 1]!.name;
+    return CATEGORY_LABELS[p.category];
+  };
 
   return (
     <>
@@ -44,8 +84,9 @@ export default async function ProductsPage({
               Wholesale Product Catalogue
             </h1>
             <p className="mt-3 max-w-2xl text-body-lg text-text-secondary">
-              {all.length} SKUs across innerwear, loungewear, fabric, and
-              accessories.{" "}
+              {activeNode
+                ? `${products.length} SKUs in ${trail.map((t) => t.name).join(" › ")}.`
+                : `${all.length} SKUs across the full range.`}{" "}
               <B2bPriceGate
                 approved={<span>Wholesale pricing visible — account approved.</span>}
                 pending={<span>Wholesale pricing visible after account approval.</span>}
@@ -58,24 +99,56 @@ export default async function ProductsPage({
 
       <section className="border-b border-border-subtle">
         <Container>
-          <div className="flex flex-wrap gap-2 pb-6">
-            {CATEGORIES.map((cat) => {
-              const key = cat.toLowerCase();
-              const isActive = selectedCat === key || (cat === "All" && selectedCat === "all");
-              return (
-                <Link
-                  key={cat}
-                  href={cat === "All" ? "/products" : `/products?category=${key}`}
-                  className={
-                    isActive
-                      ? "rounded-full bg-action-primary-bg px-4 py-1.5 text-action-primary-text text-body-sm font-medium"
-                      : "rounded-full border border-border-subtle px-4 py-1.5 text-body-sm text-text-secondary transition-colors hover:bg-surface-sunken hover:text-text-primary"
-                  }
-                >
-                  {cat}
-                </Link>
-              );
-            })}
+          <div className="space-y-3 pb-6">
+            {/* Breadcrumb trail — click any level to jump back up. */}
+            <div className="flex flex-wrap items-center gap-2 text-body-sm">
+              <Link
+                href="/products"
+                className={
+                  !catHandle
+                    ? "rounded-full bg-action-primary-bg px-4 py-1.5 text-action-primary-text font-medium"
+                    : "rounded-full border border-border-subtle px-4 py-1.5 text-text-secondary transition-colors hover:bg-surface-sunken hover:text-text-primary"
+                }
+              >
+                All
+              </Link>
+              {trail.map((node, i) => {
+                const isLast = i === trail.length - 1;
+                return (
+                  <span key={node.handle} className="flex items-center gap-2">
+                    <span className="text-text-muted">›</span>
+                    <Link
+                      href={`/products?cat=${node.handle}`}
+                      className={
+                        isLast
+                          ? "rounded-full bg-action-primary-bg px-4 py-1.5 text-action-primary-text font-medium"
+                          : "rounded-full border border-border-subtle px-4 py-1.5 text-text-secondary transition-colors hover:bg-surface-sunken hover:text-text-primary"
+                      }
+                    >
+                      {node.name}
+                    </Link>
+                  </span>
+                );
+              })}
+            </div>
+
+            {/* Drill-down: children of the current node (or top-level roots). */}
+            {options.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {options.map((node) => (
+                  <Link
+                    key={node.id}
+                    href={`/products?cat=${node.handle}`}
+                    className="rounded-full border border-border-subtle px-4 py-1.5 text-body-sm text-text-secondary transition-colors hover:bg-surface-sunken hover:text-text-primary"
+                  >
+                    {node.name}
+                    <span className="ml-1 text-caption text-text-muted">
+                      ({countUnder(node)})
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </Container>
       </section>
@@ -88,7 +161,7 @@ export default async function ProductsPage({
                 No products in this category yet
               </h3>
               <p className="mt-2 text-body-md text-text-muted">
-                Try a different filter, or browse the full catalogue.
+                Pick another category, or browse the full catalogue.
               </p>
               <Button asChild variant="secondary" className="mt-4">
                 <Link href="/products">View all</Link>
@@ -115,7 +188,7 @@ export default async function ProductsPage({
                     </div>
                     <div className="p-4">
                       <p className="text-caption text-text-muted uppercase tracking-wider">
-                        {CATEGORY_LABELS[p.category]}
+                        {eyebrowFor(p)}
                       </p>
                       <div className="mt-1 flex items-start justify-between gap-2">
                         <h2 className="text-body-md font-medium text-text-primary">

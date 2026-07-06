@@ -10,6 +10,7 @@ import { MEDUSA_BASE_URL } from "@/lib/medusa";
 import { updateCustomerMetadata } from "@/lib/auth";
 import { addToCart, type CartLine } from "@/lib/cart";
 import { createSavedCart, type SavedCartLine } from "@/lib/saved-carts";
+import { PRODUCTS } from "@/data/products";
 import { ShoppingCart, Save, X, Check } from "lucide-react";
 
 const STORAGE_KEY = "risitex-b2b-wishlist";
@@ -67,51 +68,82 @@ async function fetchRemoteWishlist(token: string | null): Promise<string[]> {
   }
 }
 
+// Resolve a wishlist slug from the local demo catalogue (src/data/products).
+// The wholesale catalogue is a MERGE of live Medusa products and these
+// fixtures (see getWholesaleProducts), so a product a buyer wishlisted may
+// only exist as a fixture. Without this fallback such items were wrongly
+// flagged "no longer available in the catalogue".
+function fixtureRow(slug: string): ProductRow | null {
+  const p = PRODUCTS.find((x) => x.slug === slug);
+  if (!p) return null;
+  return {
+    slug: p.slug,
+    name: p.name,
+    eyebrow: p.eyebrow,
+    image: p.image ?? p.images?.[0] ?? "/demo/products/photo-01.jpg",
+    moq: p.moq,
+    priceMajor: p.priceMajor,
+    unit: p.unit ?? "/ pc",
+  };
+}
+
 async function fetchProductsBySlugs(slugs: string[]): Promise<ProductRow[]> {
   if (slugs.length === 0) return [];
   const fields = "id,handle,title,thumbnail,*images,metadata,*variants.calculated_price";
+  let liveRows: ProductRow[] = [];
   try {
     const query = slugs.map((s) => `handle[]=${encodeURIComponent(s)}`).join("&");
     const url = `${MEDUSA_BASE_URL}/store/products?${query}&limit=${slugs.length}&fields=${encodeURIComponent(fields)}`;
     const res = await fetch(url, {
       headers: { "x-publishable-api-key": PUB_KEY },
     });
-    if (!res.ok) return [];
-    const body = (await res.json()) as {
-      products?: {
-        id: string;
-        handle: string;
-        title: string;
-        thumbnail?: string | null;
-        images?: { url?: string }[];
-        metadata?: Record<string, unknown> | null;
-        variants?: {
-          calculated_price?: { calculated_amount?: number | null } | null;
+    if (res.ok) {
+      const body = (await res.json()) as {
+        products?: {
+          id: string;
+          handle: string;
+          title: string;
+          thumbnail?: string | null;
+          images?: { url?: string }[];
+          metadata?: Record<string, unknown> | null;
+          variants?: {
+            calculated_price?: { calculated_amount?: number | null } | null;
+          }[];
         }[];
-      }[];
-    };
-    return (body.products ?? []).map((p) => {
-      const prices = (p.variants ?? [])
-        .map((v) => v.calculated_price?.calculated_amount)
-        .filter((n): n is number => typeof n === "number");
-      const priceMajor = prices.length
-        ? Math.round(Math.min(...prices) / 100)
-        : undefined;
-      const meta = (p.metadata ?? {}) as Record<string, unknown>;
-      const cat = (meta.category as string | undefined) ?? "Wholesale";
-      return {
-        slug: p.handle,
-        name: p.title,
-        eyebrow: `Wholesale \u00b7 ${cat.charAt(0).toUpperCase()}${cat.slice(1)}`,
-        image: p.thumbnail ?? p.images?.[0]?.url ?? "/demo/products/photo-01.jpg",
-        moq: Number(meta.moq) || undefined,
-        priceMajor,
-        unit: cat.toLowerCase().includes("fabric") ? "/ m" : "/ pc",
       };
-    });
+      liveRows = (body.products ?? []).map((p) => {
+        const prices = (p.variants ?? [])
+          .map((v) => v.calculated_price?.calculated_amount)
+          .filter((n): n is number => typeof n === "number");
+        const priceMajor = prices.length
+          ? Math.round(Math.min(...prices) / 100)
+          : undefined;
+        const meta = (p.metadata ?? {}) as Record<string, unknown>;
+        const cat = (meta.category as string | undefined) ?? "Wholesale";
+        return {
+          slug: p.handle,
+          name: p.title,
+          eyebrow: `Wholesale \u00b7 ${cat.charAt(0).toUpperCase()}${cat.slice(1)}`,
+          image: p.thumbnail ?? p.images?.[0]?.url ?? "/demo/products/photo-01.jpg",
+          moq: Number(meta.moq) || undefined,
+          priceMajor,
+          unit: cat.toLowerCase().includes("fabric") ? "/ m" : "/ pc",
+        };
+      });
+    }
   } catch {
-    return [];
+    // fall through to fixtures
   }
+
+  // Backfill any slug the live API didn't return from the demo fixtures so
+  // wishlisted fixture products stay clickable instead of showing as stale.
+  const found = new Set(liveRows.map((r) => r.slug));
+  const fixtureRows = slugs
+    .filter((s) => !found.has(s))
+    .map(fixtureRow)
+    .filter((r): r is ProductRow => r !== null);
+
+  return [...liveRows, ...fixtureRows];
 }
 
 export default function WishlistPage() {
@@ -375,11 +407,19 @@ export default function WishlistPage() {
             key={s}
             className="flex flex-col gap-3 rounded-md border border-dashed border-border-subtle bg-surface-sunken p-5"
           >
-            <p className="text-caption text-text-muted">{s}</p>
+            <Link
+              href={`/wholesale/p/${s}`}
+              className="text-heading-sm text-text-primary hover:underline"
+            >
+              {s}
+            </Link>
             <p className="text-body-sm text-text-secondary">
-              This product is no longer available in the catalogue.
+              Open the product page to view current availability and pricing.
             </p>
-            <div className="mt-auto">
+            <div className="mt-auto flex items-center gap-2">
+              <Button asChild size="sm" variant="secondary">
+                <Link href={`/wholesale/p/${s}`}>View product</Link>
+              </Button>
               <WishlistHeart slug={s} productName={s} />
             </div>
           </article>

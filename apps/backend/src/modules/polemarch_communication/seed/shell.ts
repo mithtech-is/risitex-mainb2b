@@ -175,7 +175,7 @@ ${preview}
     </table>
     <!-- Tagline below card -->
     <div style="margin-top:14px;font-size:11px;color:${BRAND_MUTED};letter-spacing:0.04em;">
-      RISITEX · Erode, Tamil Nadu
+      RISITEX · Bangalore, Karnataka
     </div>
   </td></tr>
 </table>

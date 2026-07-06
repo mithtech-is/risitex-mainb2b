@@ -114,8 +114,8 @@ export default function InvoicesPage() {
                 </h2>
                 <p className="mt-1 text-caption text-feedback-success-text/80">
                   Admin approved the payment — GST invoice is issued.
-                  Download the printable PO file from the detail page; a
-                  finalised tax invoice follows from finance.
+                  Download your invoice below; a finalised tax invoice
+                  follows from finance.
                 </p>
                 <ul className="mt-4 space-y-2">
                   {issued.map((p) => (
@@ -141,7 +141,9 @@ export default function InvoicesPage() {
                           size="sm" 
                           variant="secondary"
                           onClick={() => {
-                            downloadOrderInvoice(p.id, p.po_number).catch(console.error);
+                            downloadOrderInvoice(p.id, p.po_number).catch(
+                              console.error,
+                            );
                           }}
                         >
                           Download

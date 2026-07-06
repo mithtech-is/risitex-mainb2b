@@ -13,14 +13,14 @@ export type Variant = {
   colour: string;
   /** Current inventory state */
   inventoryState:
-    | "in_stock"
-    | "low_stock"
-    | "out_of_stock"
-    | "backorder"
-    | "pre_order"
-    | "made_to_order"
-    | "reserved"
-    | "discontinued";
+  | "in_stock"
+  | "low_stock"
+  | "out_of_stock"
+  | "backorder"
+  | "pre_order"
+  | "made_to_order"
+  | "reserved"
+  | "discontinued";
   /** Numeric stock for low_stock badge */
   stockCount?: number;
 };
@@ -38,13 +38,19 @@ export type Product = {
   medusaId?: string;
   name: string;
   eyebrow: string;
-  /** e.g. "men", "women", "fabric", "accessories" */
-  category: "men" | "women" | "fabric" | "accessories";
+  /** RISITEX is a men-only catalogue. Kept as a named type so the field
+   *  stays explicit and future segments (if ever added) extend here. */
+  category: "men";
   /** FR-2.02 PIX sub-category, e.g. "Woven Inner Boxer", "Boxer Shorts",
    *  "Lounge Shorts", "Pyjama". Optional; drives PLP sub-category filtering. */
   subcategory?: string;
   /** FR-2.02 pattern, e.g. "Solid", "Check", "Print". Optional. */
   pattern?: string;
+  /** Handles of the Medusa Product Categories this product is linked to
+   *  (leaf + any explicitly-tagged ancestors). Drives the hierarchical
+   *  catalogue filter and the PDP breadcrumb. Empty for demo fixtures that
+   *  aren't linked to a live category. */
+  categoryHandles?: string[];
   /** Base wholesale catalogue price in major rupees */
   priceMajor: number;
   /** Optional MRP in major rupees */
@@ -113,7 +119,7 @@ export const PRODUCTS: Product[] = [
       { label: "Construction", value: "Plain weave" },
       { label: "Finish", value: "Pre-shrunk, mercerised" },
       { label: "Care", value: "Cold wash, line dry, iron warm" },
-      { label: "Origin", value: "Tamil Nadu, India" },
+      { label: "Origin", value: "Karnataka, India" },
     ],
     swatches: [
       { value: "natural", name: "Natural", hex: "#F1ECDF" },
@@ -143,133 +149,6 @@ export const PRODUCTS: Product[] = [
       { minQty: 500, maxQty: 999, pricePerUnitMajor: 880, label: "Gold" },
       { minQty: 1000, maxQty: null, pricePerUnitMajor: 820, label: "Platinum" },
     ],
-  },
-  {
-    slug: "handloom-stole",
-    name: "Handloom stole",
-    eyebrow: "Women · Accessories",
-    category: "women",
-    priceMajor: 2599,
-    mrpMajor: 3200,
-    image: "/demo/products/photo-04.jpg",
-    images: [
-      "/demo/products/photo-04.jpg",
-      "/demo/products/photo-05.jpg",
-      "/demo/products/photo-06.jpg",
-    ],
-    description:
-      "Woven on a handloom in Erode. Soft cotton-silk blend with subtle slub. Reversible weave reveals a contrast warp.",
-    specs: [
-      { label: "Fabric", value: "70/30 cotton-silk · 220 GSM" },
-      { label: "Dimensions", value: "210 × 80 cm" },
-      { label: "Origin", value: "Erode, Tamil Nadu" },
-      { label: "Care", value: "Dry clean only" },
-    ],
-    swatches: [
-      { value: "madder", name: "Madder", hex: "#A14826" },
-      { value: "sage", name: "Sage", hex: "#5C8C50" },
-      { value: "ink", name: "Ink", hex: "#0F0F0D" },
-    ],
-    sizes: ["—"],
-    variants: [
-      { id: "h1", sku: "TX-HLS-MDR", size: "—", colour: "madder", inventoryState: "low_stock", stockCount: 6 },
-      { id: "h2", sku: "TX-HLS-SGE", size: "—", colour: "sage", inventoryState: "in_stock" },
-      { id: "h3", sku: "TX-HLS-INK", size: "—", colour: "ink", inventoryState: "in_stock" },
-    ],
-    moq: 60,
-    cartonSize: 12,
-    leadTimeDays: 21,
-    tiers: [
-      { minQty: 1, maxQty: 23, pricePerUnitMajor: 2599 },
-      { minQty: 24, maxQty: 119, pricePerUnitMajor: 1900 },
-      { minQty: 120, maxQty: 359, pricePerUnitMajor: 1700 },
-      { minQty: 360, maxQty: null, pricePerUnitMajor: 1550 },
-    ],
-  },
-  {
-    slug: "poplin-fabric",
-    name: "Cotton poplin (60s)",
-    eyebrow: "Fabric · Per metre",
-    category: "fabric",
-    priceMajor: 240,
-    unit: "/ metre",
-    image: "/demo/products/photo-07.jpg",
-    images: [
-      "/demo/products/photo-07.jpg",
-      "/demo/products/photo-08.jpg",
-      "/demo/products/photo-09.jpg",
-    ],
-    description:
-      "Same cotton poplin we use in our shirting, sold per metre. 110 GSM, 56-inch width. Available in six colours.",
-    specs: [
-      { label: "Composition", value: "100% cotton" },
-      { label: "GSM", value: "110" },
-      { label: "Width", value: "56 inch (142 cm)" },
-      { label: "Finish", value: "Pre-shrunk, mercerised" },
-    ],
-    swatches: [
-      { value: "white", name: "White", hex: "#FFFFFF" },
-      { value: "khadi", name: "Khadi", hex: "#F1ECDF" },
-      { value: "indigo", name: "Indigo", hex: "#2A3F7A" },
-      { value: "charcoal", name: "Charcoal", hex: "#3F3F38" },
-      { value: "ochre", name: "Ochre", hex: "#B58A2F" },
-      { value: "madder", name: "Madder", hex: "#A14826" },
-    ],
-    sizes: ["per-metre"],
-    variants: [
-      { id: "f1", sku: "TX-OPL-WHT", size: "per-metre", colour: "white", inventoryState: "in_stock" },
-      { id: "f2", sku: "TX-OPL-KHD", size: "per-metre", colour: "khadi", inventoryState: "in_stock" },
-      { id: "f3", sku: "TX-OPL-IND", size: "per-metre", colour: "indigo", inventoryState: "in_stock" },
-      { id: "f4", sku: "TX-OPL-CHA", size: "per-metre", colour: "charcoal", inventoryState: "low_stock", stockCount: 18 },
-      { id: "f5", sku: "TX-OPL-OCH", size: "per-metre", colour: "ochre", inventoryState: "in_stock" },
-      { id: "f6", sku: "TX-OPL-MDR", size: "per-metre", colour: "madder", inventoryState: "pre_order" },
-    ],
-    moq: 100,
-    cartonSize: 50,
-    leadTimeDays: 10,
-    tiers: [
-      { minQty: 1, maxQty: 49, pricePerUnitMajor: 240 },
-      { minQty: 50, maxQty: 199, pricePerUnitMajor: 190 },
-      { minQty: 200, maxQty: 999, pricePerUnitMajor: 165 },
-      { minQty: 1000, maxQty: null, pricePerUnitMajor: 150 },
-    ],
-  },
-  {
-    slug: "cropped-jacket",
-    name: "Cropped quilted jacket",
-    eyebrow: "Women · Outerwear",
-    category: "women",
-    priceMajor: 4299,
-    image: "/demo/products/photo-10.jpg",
-    images: [
-      "/demo/products/photo-10.jpg",
-      "/demo/products/photo-11.jpg",
-      "/demo/products/photo-12.jpg",
-    ],
-    description:
-      "Mid-weight quilted jacket with a cropped silhouette. Cotton shell, recycled-fibre fill, ribbed cuffs.",
-    specs: [
-      { label: "Shell", value: "100% cotton twill" },
-      { label: "Fill", value: "Recycled polyester · 120 GSM" },
-      { label: "Length", value: "55 cm centre-back" },
-      { label: "Care", value: "Cold gentle wash" },
-    ],
-    swatches: [
-      { value: "ink", name: "Ink", hex: "#0F0F0D" },
-      { value: "sand", name: "Sand", hex: "#D2BC9A" },
-    ],
-    sizes: ["XS", "S", "M", "L"],
-    variants: [
-      { id: "j1", sku: "TX-CRJ-XS-INK", size: "XS", colour: "ink", inventoryState: "made_to_order" },
-      { id: "j2", sku: "TX-CRJ-S-INK", size: "S", colour: "ink", inventoryState: "made_to_order" },
-      { id: "j3", sku: "TX-CRJ-M-INK", size: "M", colour: "ink", inventoryState: "made_to_order" },
-      { id: "j4", sku: "TX-CRJ-L-INK", size: "L", colour: "ink", inventoryState: "made_to_order" },
-      { id: "j5", sku: "TX-CRJ-S-SND", size: "S", colour: "sand", inventoryState: "made_to_order" },
-      { id: "j6", sku: "TX-CRJ-M-SND", size: "M", colour: "sand", inventoryState: "made_to_order" },
-    ],
-    moq: 50,
-    cartonSize: 10,
-    leadTimeDays: 35,
   },
   {
     slug: "linen-trouser",
@@ -360,7 +239,4 @@ export function getProductsByCategory(
 
 export const CATEGORY_LABELS: Record<Product["category"], string> = {
   men: "Men",
-  women: "Women",
-  fabric: "Fabric",
-  accessories: "Accessories",
 };

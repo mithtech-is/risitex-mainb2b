@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
+import { SignedOut } from "@/components/auth/signed-out";
 
 export const metadata: Metadata = {
   title: "About RISITEX",
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 
 const FACTS = [
   { label: "Founded", value: "1962" },
-  { label: "Manufacturing", value: "Tamil Nadu" },
+  { label: "Manufacturing", value: "Karnataka" },
   { label: "Products", value: "500+" },
   { label: "Dealers Nationwide", value: "50+" },
   { label: "Export Markets", value: "12 countries" },
@@ -18,7 +19,7 @@ const FACTS = [
 ];
 
 const MILESTONES = [
-  { year: "1962", event: "Founded as a family textile mill in Erode, Tamil Nadu" },
+  { year: "1962", event: "Founded as a family textile mill in Bangalore, Karnataka" },
   { year: "1985", event: "Expanded into garment manufacturing with modern sewing lines" },
   { year: "2000", event: "Built in-house quality testing laboratory" },
   { year: "2015", event: "Launched RISITEX brand for wholesale distribution" },
@@ -105,26 +106,29 @@ export default function AboutPage() {
         </Container>
       </section>
 
-      <section className="py-20">
-        <Container width="narrow" className="text-center">
-          <h2 className="text-heading-xl text-text-primary">Partner with RISITEX</h2>
-          <p className="mt-3 text-body-lg text-text-secondary">Join 50+ dealers and distributors nationwide.</p>
-          <div className="mt-8">
-            <Button asChild size="lg">
-              <Link href="/auth/sign-in">Sign In</Link>
-            </Button>
-            <p className="mt-3 text-body-sm text-text-muted">
-              Don&rsquo;t have an account?{" "}
-              <Link
-                href="/auth/sign-up"
-                className="text-text-primary underline-offset-4 hover:underline"
-              >
-                Apply for a wholesale account
-              </Link>
-            </p>
-          </div>
-        </Container>
-      </section>
+      {/* Sign-in CTA — only shown to visitors who aren't logged in. */}
+      <SignedOut>
+        <section className="py-20">
+          <Container width="narrow" className="text-center">
+            <h2 className="text-heading-xl text-text-primary">Partner with RISITEX</h2>
+            <p className="mt-3 text-body-lg text-text-secondary">Join 50+ dealers and distributors nationwide.</p>
+            <div className="mt-8">
+              <Button asChild size="lg">
+                <Link href="/auth/sign-in">Sign In</Link>
+              </Button>
+              <p className="mt-3 text-body-sm text-text-muted">
+                Don&rsquo;t have an account?{" "}
+                <Link
+                  href="/auth/sign-up"
+                  className="text-text-primary underline-offset-4 hover:underline"
+                >
+                  Apply for a wholesale account
+                </Link>
+              </p>
+            </div>
+          </Container>
+        </section>
+      </SignedOut>
     </>
   );
 }

@@ -17,7 +17,7 @@ export default function ShippingPolicyPage() {
       breadcrumbLabel="Shipping Policy"
       intro={
         <p>
-          Orders are shipped from our facilities in Tamil Nadu through trusted
+          Orders are shipped from our facilities in Karnataka through trusted
           courier partners across India.
         </p>
       }

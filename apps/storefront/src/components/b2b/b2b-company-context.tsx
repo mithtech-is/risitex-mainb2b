@@ -70,6 +70,26 @@ export function B2bCompanyContextPage({
     data: CompanyContext | null;
   }>({ loading: true, error: null, data: null });
 
+  // Sales-rep info is only surfaced to users who are themselves an assigned
+  // sales representative — ordinary customers never see it.
+  const [isRep, setIsRep] = React.useState(false);
+
+  React.useEffect(() => {
+    const token = window.localStorage.getItem("medusa_auth_token");
+    if (!token) return;
+    fetch(`${MEDUSA_BASE_URL}/store/rep/me`, {
+      headers: {
+        "x-publishable-api-key":
+          process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "",
+        Authorization: `Bearer ${token}`,
+      },
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : { is_rep: false }))
+      .then((data: { is_rep?: boolean }) => setIsRep(Boolean(data?.is_rep)))
+      .catch(() => setIsRep(false));
+  }, []);
+
   React.useEffect(() => {
     let cancelled = false;
     const token = window.localStorage.getItem("medusa_auth_token");
@@ -152,6 +172,11 @@ export function B2bCompanyContextPage({
     application?.trade_name ??
     metaStr(meta, "company_name") ??
     null;
+  // Legal / registered company name. Prefer the customer-entered legal name,
+  // falling back to the trade name so the field is never blank once a company
+  // exists.
+  const legalName =
+    metaStr(meta, "company_name") ?? company?.trade_name ?? tradeName ?? null;
   const gstin =
     company?.gstin ?? application?.gstin ?? metaStr(meta, "gstin") ?? null;
   const pan = metaStr(meta, "pan") ?? null;
@@ -197,7 +222,7 @@ export function B2bCompanyContextPage({
             ["Email", customer?.email ?? "Not provided"],
             ["Phone", phone ?? "Not provided"],
             ["Customer ID", customer?.id ?? "Not available"],
-            ["Company", tradeName ?? "Not provided"],
+            ["Company", legalName ?? "Not provided"],
             ["Account Status", status],
           ]}
         />
@@ -205,6 +230,7 @@ export function B2bCompanyContextPage({
       {mode === "company" && (
         <InfoGrid
           items={[
+            ["Company Name", legalName ?? "Not provided"],
             ["Trade Name", tradeName ?? "Not provided"],
             ["GSTIN", gstin ?? "Not provided"],
             ["PAN", pan ?? "Not provided"],
@@ -213,7 +239,9 @@ export function B2bCompanyContextPage({
             ["Status", status],
             ["Tier", tier],
             ["Payment Terms", paymentTerms],
-            ...(company?.sales_rep_id ? [["Sales Rep", salesRep] as const] : []),
+            ...(isRep && company?.sales_rep_id
+              ? [["Sales Rep", salesRep] as [string, string]]
+              : []),
           ]}
         />
       )}
@@ -233,7 +261,7 @@ export function B2bCompanyContextPage({
           items={[
             ["Primary User", customer?.email ?? "Not available"],
             ["Role", "Company buyer"],
-            ["Company", company?.trade_name ?? "Not available"],
+            ["Company", legalName ?? "Not available"],
             ["Status", company?.status ?? "Not available"],
           ]}
         />

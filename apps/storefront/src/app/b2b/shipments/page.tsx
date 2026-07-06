@@ -690,7 +690,7 @@ function SelectedPanel({ s }: { s: ShipmentRow }) {
         />
         <Button asChild size="sm" variant="tertiary">
           <a
-            href={`mailto:hello@risitex.com?subject=${encodeURIComponent(
+            href={`mailto:risitexindia@gmail.com?subject=${encodeURIComponent(
               `Shipment issue · ${refLabel(s)}${s.awb ? ` · AWB ${s.awb}` : ""}`,
             )}&body=${encodeURIComponent(
               `Order: ${refLabel(s)}\nAWB: ${s.awb ?? "—"}\nCarrier: ${

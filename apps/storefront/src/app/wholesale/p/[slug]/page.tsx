@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
 import { Breadcrumb } from "@/components/site/breadcrumb";
 import { B2bBuyPanel } from "@/components/product/b2b-buy-panel";
+import { ProductGallery } from "@/components/product/product-gallery";
 import {
   getWholesaleProduct,
   getWholesaleProducts,
 } from "@/lib/wholesale-products";
+import { getCategoryTree, deepestPath } from "@/lib/categories";
 import { SignedIn, SignedOut } from "@/components/auth/signed-out";
 import { B2bPriceGate } from "@/components/b2b/b2b-price-gate";
 import { WishlistHeart } from "@/components/wishlist/wishlist-heart";
@@ -47,42 +48,34 @@ export default async function WholesalePdpPage({
   const product = await getWholesaleProduct(slug);
   if (!product) notFound();
 
-  const allProducts = await getWholesaleProducts();
+  const [allProducts, categoryTree] = await Promise.all([
+    getWholesaleProducts(),
+    getCategoryTree(),
+  ]);
+  // Live category path (Men → Bottom Wear → Jeans → Slim) for the breadcrumb.
+  const categoryPath = deepestPath(categoryTree, product.categoryHandles ?? []);
   const related = allProducts
     .filter((p) => p.slug !== product.slug && p.category === product.category)
     .slice(0, 3);
-  // "Frequently bought together" — cross-category complementary set. Until we
-  // have real co-purchase aggregation in the backend, we surface curated
-  // complementary categories per category. The shape stays identical to
-  // `related` so a future backend swap is a one-line change.
-  const complementary: Record<typeof product.category, typeof product.category[]> = {
-    men: ["fabric", "accessories"],
-    women: ["fabric", "accessories"],
-    fabric: ["men", "women"],
-    accessories: ["men", "women"],
-  };
-  const fbtPool = complementary[product.category];
+  // "Frequently bought together" — men-only catalogue, so surface other men
+  // SKUs not already shown in the related set.
   const fbt = allProducts
     .filter(
       (p) =>
         p.slug !== product.slug &&
-        fbtPool.includes(p.category) &&
         !related.some((r) => r.slug === p.slug),
     )
     .slice(0, 3);
-  // Gallery: prefer native images, then images derived from b2b_media (already
-  // populated by the loader), then a built-in demo-asset fallback. Pads to 4
-  // tiles so the grid stays visually balanced.
-  const baseGallery = product.images?.length
-    ? product.images
-    : [product.image, "/demo/products/photo-08.jpg", "/demo/products/photo-12.jpg"].filter(
-        Boolean,
-      );
-  const gallery = baseGallery as string[];
-  const mediaByRole = (role: string) =>
-    product.b2bMedia?.find((m) => m.role === role)?.url;
-  const videoUrl = mediaByRole("video");
-  const spin360Url = mediaByRole("spin_360");
+  // Gallery: the product's REAL images only (native uploads or loader-derived
+  // b2b_media) — no demo padding. A single-image product then renders one
+  // large image via <ProductGallery> instead of a lonely half-width tile.
+  const galleryImages = (
+    product.images?.length
+      ? product.images
+      : product.image
+        ? [product.image]
+        : []
+  ).filter((u): u is string => !!u);
   const totalStock = product.variants.reduce(
     (sum, variant) =>
       sum +
@@ -91,7 +84,7 @@ export default async function WholesalePdpPage({
         : Number(variant.stockCount ?? product.cartonSize ?? 24)),
     0,
   );
-  const hsn = product.category === "fabric" ? "5208" : "6205";
+  const hsn = "6205";
   const gst = product.priceMajor > 1000 ? "12%" : "5%";
 
   return (
@@ -103,6 +96,10 @@ export default async function WholesalePdpPage({
               { href: "/", label: "Home" },
               { href: "/wholesale", label: "Wholesale" },
               { href: "/wholesale/catalogue", label: "Catalogue" },
+              ...categoryPath.map((c) => ({
+                href: `/wholesale/catalogue?cat=${c.handle}`,
+                label: c.name,
+              })),
               { href: `/wholesale/p/${product.slug}`, label: product.name },
             ]}
           />
@@ -112,53 +109,10 @@ export default async function WholesalePdpPage({
       <Container>
         <div className="grid grid-cols-1 gap-10 py-10 lg:grid-cols-12 lg:gap-12">
           <section className="lg:col-span-6">
-            <div className="grid grid-cols-2 gap-3">
-              {gallery.slice(0, 4).map((src, i) => (
-                <figure
-                  key={`${src}-${i}`}
-                  className="relative aspect-square overflow-hidden rounded-md bg-image-plate ring-1 ring-border-subtle"
-                >
-                  {src ? (
-                    <Image
-                      src={src}
-                      alt={`${product.name} wholesale media ${i + 1}`}
-                      fill
-                      // Hero (i=0) is the page's largest contentful paint —
-                      // preload it. The remaining 3 stay lazy.
-                      priority={i === 0}
-                      sizes="(min-width: 1024px) 25vw, 50vw"
-                      className="h-full w-full object-cover transition-transform duration-slow hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center bg-paper-100 font-display text-[64px] leading-none text-text-muted/30">
-                      {product.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <figcaption className="absolute bottom-2 left-2 rounded-sm bg-surface-background/90 px-2 py-1 text-micro text-text-muted">
-                    {["Product", "Fabric closeup", "Packaging", "Warehouse"][i] ??
-                      "Media"}
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <MediaPlaceholder
-                title="Video"
-                body={
-                  videoUrl
-                    ? "Factory walkthrough video available below."
-                    : "Factory walkthrough available on request."
-                }
-              />
-              <MediaPlaceholder
-                title="360 view"
-                body={
-                  spin360Url
-                    ? "Rotational view available on request."
-                    : "Rotational sample media placeholder."
-                }
-              />
-            </div>
+            <ProductGallery
+              images={galleryImages}
+              productName={product.name}
+            />
           </section>
 
           <section className="lg:col-span-6">
@@ -248,7 +202,7 @@ export default async function WholesalePdpPage({
             title="Availability"
             items={[
               ["Available Stock", `${totalStock} pcs`],
-              ["Warehouse", "RISITEX Tiruppur DC"],
+              ["Warehouse", "RISITEX Bangalore DC"],
               ["Lead Time", `${product.leadTimeDays ?? 0} days`],
               [
                 "Production Time",
@@ -428,15 +382,6 @@ export default async function WholesalePdpPage({
         )}
       </Container>
     </>
-  );
-}
-
-function MediaPlaceholder({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-md border border-border-subtle bg-surface-raised p-4">
-      <p className="text-micro text-text-muted">{title}</p>
-      <p className="mt-2 text-body-sm text-text-primary">{body}</p>
-    </div>
   );
 }
 

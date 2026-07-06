@@ -86,7 +86,7 @@ export function ShippingGstEstimate({
   gstRatePercent?: number;
   defaultState?: string;
 }) {
-  const [stateName, setStateName] = React.useState(defaultState ?? "Tamil Nadu");
+  const [stateName, setStateName] = React.useState(defaultState ?? "Karnataka");
   const [pincode, setPincode] = React.useState("");
   const sellerCode = GST_SELLER_STATE;
   const buyerCode = gstStateCode(stateName) ?? "";

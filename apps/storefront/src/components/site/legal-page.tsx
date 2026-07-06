@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Container } from "./container";
 import { Breadcrumb } from "./breadcrumb";
+import { COMPANY } from "@/lib/company";
 
 /**
  * Shared shell for legal / policy / info pages (Privacy, Terms,
@@ -36,7 +37,18 @@ export function LegalPage({
             ...(effective ? { datePublished: effective } : {}),
             publisher: {
               "@type": "Organization",
-              name: "RISITEX",
+              name: COMPANY.name,
+              email: COMPANY.email,
+              telephone: COMPANY.phone,
+              taxID: COMPANY.gstin,
+              address: {
+                "@type": "PostalAddress",
+                streetAddress: COMPANY.address,
+                addressLocality: COMPANY.city,
+                addressRegion: COMPANY.state,
+                postalCode: COMPANY.postalCode,
+                addressCountry: "IN",
+              },
             },
           }),
         }}

@@ -89,10 +89,10 @@ export default function PrivacyPage() {
         <p>
           For privacy questions or grievances, reach us at{" "}
           <a
-            href="mailto:support@risitex.com"
+            href="mailto:risitexindia@gmail.com"
             className="text-text-primary underline underline-offset-4"
           >
-            support@risitex.com
+            risitexindia@gmail.com
           </a>
           .
         </p>

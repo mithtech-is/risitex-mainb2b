@@ -203,8 +203,8 @@ export default async function seedDefaults({
     try {
         const result = await pg.raw(
             `INSERT INTO polemarch_brand_config
-               (id, brand_name, storefront_url, support_email, created_at, updated_at)
-             VALUES ('default', 'Risitex', 'https://risitex.com', NULL, now(), now())
+               (id, brand_name, company_name, storefront_url, support_email, support_phone, address, created_at, updated_at)
+             VALUES ('default', 'RISITEX', 'RISITEX', 'https://risitex.com', 'risitexindia@gmail.com', '+91 8660381681', '#48-34-10, 4th Floor, 1st Cross, Lalbagh Road, Bangalore 560027', now(), now())
              ON CONFLICT (id) WHERE deleted_at IS NULL DO NOTHING
              RETURNING id`,
         )

@@ -68,10 +68,10 @@ export default function RefundPolicyPage() {
         <p>
           Submit a return request through customer support at{" "}
           <a
-            href="mailto:support@risitex.com"
+            href="mailto:risitexindia@gmail.com"
             className="text-text-primary underline underline-offset-4"
           >
-            support@risitex.com
+            risitexindia@gmail.com
           </a>{" "}
           with your order number.
         </p>

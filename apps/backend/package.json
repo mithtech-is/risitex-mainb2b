@@ -17,7 +17,8 @@
     "seed:b2b-media": "medusa exec ./src/scripts/seed-b2b-demo-media.ts",
     "seed:pix-catalog": "medusa exec ./src/scripts/seed-pix-catalog.ts",
     "preflight:purge": "medusa exec ./src/scripts/preflight-purge-check.ts",
-    "seed:courier": "medusa exec ./src/scripts/seed-courier-rates.ts"
+    "seed:courier": "medusa exec ./src/scripts/seed-courier-rates.ts",
+    "seed:categories": "medusa exec ./src/scripts/seed-categories.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1057.0",

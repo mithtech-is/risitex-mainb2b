@@ -66,8 +66,8 @@ export default function PurchaseOrderDetailPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [invoiceBusy, setInvoiceBusy] = React.useState(false);
 
-  const load = React.useCallback(async () => {
-    setLoading(true);
+  const load = React.useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     setError(null);
     try {
       // Resolve the focused PO from the list endpoint ΓÇö the underlying
@@ -99,6 +99,18 @@ export default function PurchaseOrderDetailPage() {
 
   React.useEffect(() => {
     void load();
+  }, [load]);
+
+  // Re-poll so the buyer sees the status flip to the green "approved /
+  // dispatched" state moments after the admin acts — without a manual reload.
+  React.useEffect(() => {
+    const refresh = () => void load({ silent: true });
+    const interval = window.setInterval(refresh, 20_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+    };
   }, [load]);
 
   if (loading) {
@@ -137,13 +149,6 @@ export default function PurchaseOrderDetailPage() {
     (po.metadata?.notes as string | undefined) ??
     (po.metadata?.payment_confirmed_notes as string | undefined) ??
     "";
-
-  const fileUrl =
-    po.file_url && !po.file_url.includes("placeholder")
-      ? po.file_url.startsWith("http")
-        ? po.file_url
-        : `${MEDUSA_BASE_URL}${po.file_url.startsWith("/") ? "" : "/"}${po.file_url}`
-      : null;
 
   return (
     <div className="flex min-h-full flex-col gap-6">
@@ -301,15 +306,7 @@ export default function PurchaseOrderDetailPage() {
           )}
 
           <div className="mt-5 flex flex-wrap gap-3">
-            {fileUrl && (
-              <Button asChild variant="secondary" size="sm">
-                <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-                  <FileText className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                  Open PO file
-                </a>
-              </Button>
-            )}
-            {(linkedToOrder || adminApproved) && po.order?.id && (
+            {(linkedToOrder || adminApproved) && (
               <Button
                 variant="secondary"
                 size="sm"
@@ -317,9 +314,11 @@ export default function PurchaseOrderDetailPage() {
                 onClick={async () => {
                   setInvoiceBusy(true);
                   try {
+                    // Prefer the linked Medusa order id; fall back to the PO id
+                    // (the backend invoice route resolves either).
                     await downloadOrderInvoice(
-                      po.order!.id,
-                      po.order!.display_id,
+                      po.order?.id ?? po.id,
+                      po.order?.display_id ?? po.po_number,
                     );
                   } catch (e) {
                     alert(e instanceof Error ? e.message : "Invoice download failed");

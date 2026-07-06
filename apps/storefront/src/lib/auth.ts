@@ -92,16 +92,23 @@ export async function updateCustomerMetadata(
       const { email, ...customerData } = data;
       await medusa().store.customer.update(customerData);
       
-      // Also sync company details
+      // Also sync company details. The backend mirrors these onto BOTH the
+      // linked company record AND the customer row (native company_name +
+      // metadata.gstin) so the admin's customer/company views stay in step
+      // with whatever the buyer edits here.
+      const meta = (data.metadata ?? {}) as Record<string, unknown>;
       const syncData = {
-        gstin: data.metadata?.gstin || data.gstin,
-        trade_name: data.metadata?.trade_name || data.trade_name || data.metadata?.company_name || data.company_name,
+        gstin: meta.gstin || data.gstin,
+        company_name: meta.company_name || data.company_name,
+        trade_name:
+          meta.trade_name || data.trade_name || meta.company_name || data.company_name,
         email: email,
+        phone: meta.phone || data.phone,
         billing_address: {
-          address_1: data.metadata?.address || "",
-          city: data.metadata?.city || "",
-          province: data.metadata?.state || "",
-          postal_code: data.metadata?.pincode || "",
+          address_1: meta.address || "",
+          city: meta.city || "",
+          province: meta.state || "",
+          postal_code: meta.pincode || "",
           country_code: "IN"
         }
       };

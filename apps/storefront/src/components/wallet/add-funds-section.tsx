@@ -283,9 +283,9 @@ function AddFundsForm({
         After submitting, e-mail your transfer screenshot to{" "}
         <a
           className="text-text-primary underline-offset-4 hover:underline"
-          href="mailto:finance@risitex.com"
+          href="mailto:risitexindia@gmail.com"
         >
-          finance@risitex.com
+          risitexindia@gmail.com
         </a>{" "}
         — the team verifies the inflow and credits your wallet manually.
       </p>

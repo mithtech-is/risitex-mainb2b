@@ -94,12 +94,13 @@ export default async function seedCheckout({ container }: ExecArgs) {
       input: {
         locations: [
           {
-            name: "Erode HQ",
+            name: "Bangalore HQ",
             address: {
-              address_1: "RISITEX HQ",
-              city: "Erode",
+              address_1: "#48-34-10, 4th Floor, 1st Cross, Lalbagh Road",
+              city: "Bangalore",
+              province: "Karnataka",
               country_code: "in",
-              postal_code: "638001",
+              postal_code: "560027",
             },
           },
         ],

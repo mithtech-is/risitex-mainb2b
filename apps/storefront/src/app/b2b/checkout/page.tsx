@@ -823,8 +823,7 @@ export default function CheckoutPage() {
               <h2 className="text-heading-sm text-text-primary">Delivery company</h2>
               <p className="mt-1 text-caption text-text-muted">
                 Select a courier partner for this shipment. Freight is charged at
-                dispatch against the carrier&apos;s actual bill; shown here is an
-                indicative cost.
+                dispatch against the carrier&apos;s actual bill.
               </p>
 
               <div className="mt-4">

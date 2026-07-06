@@ -12,30 +12,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@risitex/ui/components";
-import { MapPin, Phone, Mail } from "lucide-react";
+import { MapPin, Phone, Mail, FileText, ExternalLink } from "lucide-react";
 import { Container } from "@/components/site/container";
 import { MEDUSA_BASE_URL } from "@/lib/medusa";
+import { COMPANY } from "@/lib/company";
 
 const PUB_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "";
 
 const OFFICES = [
   {
-    city: "Erode",
-    address: "12 Mill Road, Erode 638001, Tamil Nadu",
-    phone: "+91 99440 12345",
-    email: "erode@risitex.com",
-  },
-  {
-    city: "Tirupur",
-    address: "Block C, KNG Pudur, Tirupur 641608, Tamil Nadu",
-    phone: "+91 99440 67890",
-    email: "tirupur@risitex.com",
-  },
-  {
-    city: "Mumbai (showroom)",
-    address: "Ground floor, Lower Parel, Mumbai 400013, Maharashtra",
-    phone: "+91 22 6789 1234",
-    email: "mumbai@risitex.com",
+    city: COMPANY.city,
+    address: COMPANY.address,
+    phone: COMPANY.phone,
+    email: COMPANY.email,
+    gstin: COMPANY.gstin,
+    maps: COMPANY.mapsUrl,
   },
 ];
 
@@ -234,6 +225,21 @@ export default function ContactPage() {
                         <Mail className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" />
                         <a href={`mailto:${o.email}`} className="hover:text-text-primary transition-colors duration-fast">
                           {o.email}
+                        </a>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" />
+                        <span>GSTIN: {o.gstin}</span>
+                      </li>
+                      <li>
+                        <a
+                          href={o.maps}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-body-sm font-medium text-text-primary hover:underline"
+                        >
+                          <ExternalLink className="h-4 w-4 shrink-0" />
+                          Get directions
                         </a>
                       </li>
                     </ul>

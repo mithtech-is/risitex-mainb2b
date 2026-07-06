@@ -1,5 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { COMPANY_MODULE } from "../../../../modules/company"
 import type { CompanyModuleService } from "../../../../modules/company"
 
@@ -256,6 +256,32 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(404).json({ success: false, message: "Customer not found" });
   }
 
+  const body = (req.validatedBody || req.body || {}) as Record<string, any>;
+
+  // Mirror the buyer-edited fields onto the CUSTOMER row too, so the admin's
+  // customer detail view (native company_name) and any GSTIN-derived logic
+  // stay in sync with the company record — not just the company.
+  try {
+    const customerModule = req.scope.resolve(Modules.CUSTOMER) as any;
+    const nextMeta: Record<string, unknown> = {
+      ...((customer.metadata as Record<string, unknown> | null) ?? {}),
+    };
+    if (body.gstin !== undefined) nextMeta.gstin = body.gstin;
+    if (body.company_name !== undefined) nextMeta.company_name = body.company_name;
+    if (body.trade_name !== undefined) nextMeta.trade_name = body.trade_name;
+
+    const customerUpdate: Record<string, unknown> = { metadata: nextMeta };
+    if (typeof body.company_name === "string" && body.company_name.length > 0) {
+      customerUpdate.company_name = body.company_name;
+    }
+    if (typeof body.phone === "string" && body.phone.length > 0) {
+      customerUpdate.phone = body.phone;
+    }
+    await customerModule.updateCustomers(customerId, customerUpdate);
+  } catch (e) {
+    console.error("Failed to sync customer record", e);
+  }
+
   let resolvedCompanyId = customer.company_id;
   if (!resolvedCompanyId) {
     try {
@@ -274,13 +300,12 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   if (resolvedCompanyId) {
     const companies = req.scope.resolve<CompanyModuleService>(COMPANY_MODULE);
     try {
-      const body = req.validatedBody || req.body as any;
       const updateData: any = { id: resolvedCompanyId };
       if (body.gstin !== undefined) updateData.gstin = body.gstin;
       if (body.trade_name !== undefined) updateData.trade_name = body.trade_name;
       if (body.email !== undefined) updateData.applicant_email = body.email;
       if (body.billing_address !== undefined) updateData.billing_address = body.billing_address;
-      
+
       await companies.updateCompanies(updateData);
     } catch (e) {
       console.error("Failed to sync company", e);

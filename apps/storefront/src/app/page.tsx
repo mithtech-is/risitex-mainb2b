@@ -6,28 +6,28 @@ import { SignedOut, SignedIn } from "@/components/auth/signed-out";
 
 const CATEGORIES = [
   {
-    href: "/products?category=men",
+    href: "/products?cat=men-innerwear",
     label: "Innerwear",
-    desc: "Boxers, briefs, vests, thermals",
+    desc: "Inner boxers, boxer shorts",
     image: "/demo/products/photo-02.jpg",
   },
   {
-    href: "/products?category=men",
-    label: "Loungewear",
-    desc: "Pyjamas, shorts, night suits",
+    href: "/products?cat=men-bottom-wear",
+    label: "Bottom Wear",
+    desc: "Pyjamas, jeans, trousers",
     image: "/demo/products/photo-15.jpg",
   },
   {
-    href: "/products?category=fabric",
-    label: "Fabrics",
-    desc: "Cotton, linen, blends per metre",
-    image: "/demo/products/photo-08.jpg",
+    href: "/products?cat=men-jeans",
+    label: "Jeans",
+    desc: "Slim, straight, tapered & more",
+    image: "/demo/products/photo-05.jpg",
   },
   {
-    href: "/products?category=women",
-    label: "Accessories",
-    desc: "Socks, scarves, towels",
-    image: "/demo/products/photo-05.jpg",
+    href: "/products?cat=men-pyjamas",
+    label: "Pyjamas",
+    desc: "Comfort loungewear & nightwear",
+    image: "/demo/products/photo-12.jpg",
   },
 ];
 
@@ -129,7 +129,7 @@ export default function HomePage() {
                 <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-3 rounded-md bg-surface-background/85 px-4 py-2.5 backdrop-blur-modal">
                   <div>
                     <p className="text-micro uppercase tracking-[0.2em] text-text-muted">
-                      Tiruppur · Tamil Nadu
+                      Bangalore · Karnataka
                     </p>
                     <p className="mt-0.5 text-body-sm text-text-primary">
                       Factory-direct, GST-invoiced, palletised dispatch
@@ -249,7 +249,7 @@ export default function HomePage() {
                 Vertically Integrated Manufacturing
               </h2>
               <p className="mt-4 text-body-lg text-text-secondary">
-                From fibre to finished garment, our facilities in Tamil Nadu
+                From fibre to finished garment, our facilities in Karnataka
                 handle every stage of production with rigorous quality control.
               </p>
               <ul className="mt-6 space-y-3">
@@ -280,7 +280,7 @@ export default function HomePage() {
               <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl ring-1 ring-border-subtle">
                 <Image
                   src="/demo/products/photo-09.jpg"
-                  alt="RISITEX vertically-integrated manufacturing facility, Tamil Nadu"
+                  alt="RISITEX vertically-integrated manufacturing facility, Karnataka"
                   fill
                   sizes="(min-width: 1024px) 60vw, 100vw"
                   className="object-cover"

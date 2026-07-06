@@ -18,7 +18,7 @@ export const JOURNAL_POSTS: JournalPost[] = [
       "Yarn count, weave, finish. A short field guide to the most over-used word in shirting.",
     body: [
       "Poplin is a weave, not a fabric. Specifically, a tight plain weave with a thinner warp and a heavier weft. The result is a smooth, crisp surface that handles ironing well and holds its shape through wash after wash.",
-      "Most poplin you'll buy in India is 40s to 60s yarn count. Ours is 60s — woven on dobby looms in our Erode mill. Higher than 60s reads like silk but pills faster; lower than 40s feels like canvas. 60s is the sweet spot.",
+      "Most poplin you'll buy in India is 40s to 60s yarn count. Ours is 60s — woven on dobby looms in our Bangalore mill. Higher than 60s reads like silk but pills faster; lower than 40s feels like canvas. 60s is the sweet spot.",
       "The mercerised finish is what gives the cotton a faint sheen and the dye that extra punch. Without mercerisation, indigo poplin would look washed out at the first laundering. With it, the colour stays through a thousand cycles.",
     ],
     category: "Craft",
@@ -28,8 +28,8 @@ export const JOURNAL_POSTS: JournalPost[] = [
     imageTone: "#F1ECDF",
   },
   {
-    slug: "inside-erode",
-    title: "Inside Erode — a day in the dyehouse.",
+    slug: "inside-bangalore",
+    title: "Inside Bangalore — a day in the dyehouse.",
     excerpt:
       "Five in the morning, the boilers come on. By eight, the indigo vat is ready. A photo essay.",
     body: [

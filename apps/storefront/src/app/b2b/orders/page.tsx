@@ -83,12 +83,24 @@ function orderToRow(o: Order): UnifiedRow {
 }
 
 function poToRow(p: DraftPurchaseOrder): UnifiedRow {
+  // Surface the admin-approval / dispatch milestones (stamped on the PO
+  // metadata by the backend) as the row status so a buyer immediately sees
+  // "approved" / "dispatched" once the admin acts — instead of the PO's
+  // generic draft/in-progress state.
+  const derivedStatus =
+    p.dispatched_at || p.status === "fulfilled"
+      ? "dispatched"
+      : p.admin_approved_at
+        ? "approved"
+        : p.payment_confirmed_at
+          ? "payment confirmed"
+          : p.status;
   return {
     kind: "po",
     id: p.id,
     label: p.po_number,
     search_id: `${p.id} ${p.po_number}`,
-    status: p.status,
+    status: derivedStatus,
     payment_status: p.status === "draft" ? "pending" : null,
     created_at: p.created_at,
     total_major: Number(p.value_major ?? 0),
@@ -116,7 +128,14 @@ function statusBadgeTone(
   status: string | null | undefined,
 ): "success" | "danger" | "info" | "warning" | "neutral" {
   const s = (status ?? "").toLowerCase();
-  if (s === "delivered" || s === "fulfilled") return "success";
+  if (
+    s === "delivered" ||
+    s === "fulfilled" ||
+    s === "approved" ||
+    s === "confirmed" ||
+    s === "dispatched"
+  )
+    return "success";
   if (s === "canceled" || s === "cancelled") return "danger";
   if (s === "draft") return "warning";
   return "info";
@@ -192,10 +211,23 @@ export default function B2bOrdersPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [q, setQ] = React.useState(focusOrderId);
   const [status, setStatus] = React.useState<string>("all");
+  // Bumped on an interval / window focus to re-poll so admin-side approvals
+  // and dispatches surface here without the buyer manually refreshing.
+  const [tick, setTick] = React.useState(0);
 
   React.useEffect(() => {
     if (focusOrderId) setQ(focusOrderId);
   }, [focusOrderId]);
+
+  React.useEffect(() => {
+    const onFocus = () => setTick((t) => t + 1);
+    const interval = window.setInterval(onFocus, 25_000);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -263,7 +295,7 @@ export default function B2bOrdersPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [tick]);
 
   const all = rows ?? [];
   const filtered = all.filter((r) => {

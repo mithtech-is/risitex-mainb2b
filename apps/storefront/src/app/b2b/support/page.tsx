@@ -105,7 +105,7 @@ export default function SupportPage() {
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Button asChild>
-            <a href={`mailto:support@risitex.com?subject=${subject}&body=${body}`}>
+            <a href={`mailto:risitexindia@gmail.com?subject=${subject}&body=${body}`}>
               Email support
             </a>
           </Button>

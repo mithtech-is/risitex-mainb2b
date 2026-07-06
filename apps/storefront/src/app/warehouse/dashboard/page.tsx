@@ -32,8 +32,8 @@ export default function WarehouseDashboardPage() {
     <>
       <header className="mb-6 flex items-end justify-between">
         <B2bTopbar
-          title="Erode mill · Outbound"
-          subtitle="Tirupur backup · 412 looms · daily capacity 2,800 pcs"
+          title="Bangalore mill · Outbound"
+          subtitle="Backup line · 412 looms · daily capacity 2,800 pcs"
         />
         <Button size="sm">Generate manifest</Button>
       </header>
