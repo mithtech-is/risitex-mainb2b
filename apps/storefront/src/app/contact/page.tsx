@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@risitex/ui/components";
-import { MapPin, Phone, Mail, FileText, ExternalLink } from "lucide-react";
+import { MapPin, Phone, Mail, FileText, ArrowUpRight, Navigation } from "lucide-react";
 import { Container } from "@/components/site/container";
 import { MEDUSA_BASE_URL } from "@/lib/medusa";
 import { COMPANY } from "@/lib/company";
@@ -234,25 +234,48 @@ export default function ContactPage() {
                     </ul>
 
                     {/* Visit us offline — map CTA */}
-                    <div className="mt-5 rounded-lg border border-border-subtle bg-surface-raised p-4">
-                      <div className="flex items-start gap-2">
-                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-accent" />
-                        <div>
-                          <p className="text-body-md font-medium text-text-primary">
+                    <div className="group mt-5 overflow-hidden rounded-xl border border-border-subtle bg-surface-raised shadow-sm transition-shadow duration-fast hover:shadow-md">
+                      {/* Header with a subtle map-grid backdrop */}
+                      <div className="relative flex items-center gap-3 border-b border-border-subtle bg-gradient-to-br from-brand-accent/10 via-surface-raised to-surface-raised px-4 py-4">
+                        <div
+                          aria-hidden
+                          className="pointer-events-none absolute inset-0 opacity-[0.06]"
+                          style={{
+                            backgroundImage:
+                              "linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px)",
+                            backgroundSize: "16px 16px",
+                            color: "var(--brand-accent, #2A3F7A)",
+                          }}
+                        />
+                        <span className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-accent/15 text-brand-accent ring-1 ring-brand-accent/25">
+                          <MapPin className="h-5 w-5" aria-hidden />
+                        </span>
+                        <div className="relative min-w-0">
+                          <p className="text-heading-sm font-semibold text-text-primary">
                             Visit us offline
                           </p>
-                          <p className="mt-0.5 text-caption text-text-muted">
-                            Drop by our {o.city} office — we&rsquo;d love to meet you.
+                          <p className="text-caption text-text-muted">
+                            Walk-ins welcome at our {o.city} office
                           </p>
                         </div>
                       </div>
-                      <Button asChild size="sm" className="mt-3 w-full sm:w-auto">
-                        <a href={o.maps} target="_blank" rel="noopener noreferrer">
-                          <MapPin className="mr-1.5 h-4 w-4" aria-hidden />
-                          Get directions
-                          <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden />
-                        </a>
-                      </Button>
+                      {/* Body */}
+                      <div className="px-4 py-4">
+                        <p className="text-body-sm text-text-secondary">
+                          Prefer to meet in person? Come see the range and talk
+                          volumes face-to-face.
+                        </p>
+                        <Button asChild className="mt-4 w-full justify-center gap-2">
+                          <a href={o.maps} target="_blank" rel="noopener noreferrer">
+                            <Navigation className="h-4 w-4" aria-hidden />
+                            Get directions
+                            <ArrowUpRight
+                              className="h-4 w-4 transition-transform duration-fast group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                              aria-hidden
+                            />
+                          </a>
+                        </Button>
+                      </div>
                     </div>
                   </li>
                 ))}
