@@ -231,18 +231,29 @@ export default function ContactPage() {
                         <FileText className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" />
                         <span>GSTIN: {o.gstin}</span>
                       </li>
-                      <li>
-                        <a
-                          href={o.maps}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-body-sm font-medium text-text-primary hover:underline"
-                        >
-                          <ExternalLink className="h-4 w-4 shrink-0" />
-                          Get directions
-                        </a>
-                      </li>
                     </ul>
+
+                    {/* Visit us offline — map CTA */}
+                    <div className="mt-5 rounded-lg border border-border-subtle bg-surface-raised p-4">
+                      <div className="flex items-start gap-2">
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-accent" />
+                        <div>
+                          <p className="text-body-md font-medium text-text-primary">
+                            Visit us offline
+                          </p>
+                          <p className="mt-0.5 text-caption text-text-muted">
+                            Drop by our {o.city} office — we&rsquo;d love to meet you.
+                          </p>
+                        </div>
+                      </div>
+                      <Button asChild size="sm" className="mt-3 w-full sm:w-auto">
+                        <a href={o.maps} target="_blank" rel="noopener noreferrer">
+                          <MapPin className="mr-1.5 h-4 w-4" aria-hidden />
+                          Get directions
+                          <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden />
+                        </a>
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>
