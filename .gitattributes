@@ -1,0 +1,26 @@
+# Normalise line endings across Windows dev + Linux server.
+# Prevents CRLF/LF churn that turned ~193 real changed lines into a
+# ~1900-line diff during deploys. Text files are stored and checked out
+# as LF on every platform.
+* text=auto eol=lf
+
+# Binary assets — never touch these.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.webp   binary
+*.svg    text eol=lf
+*.pdf    binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.otf    binary
+*.eot    binary
+*.xlsx   binary
+*.xls    binary
+*.zip    binary
+
+# Shell scripts must stay LF (they run on the Linux server).
+*.sh     text eol=lf
