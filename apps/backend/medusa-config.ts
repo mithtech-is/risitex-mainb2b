@@ -84,7 +84,12 @@ export default defineConfig({
         // admin` relative to process.cwd(). The backend/Dockerfile copies
         // the bundle from builder's dist/public/admin → runtime's
         // ./public/admin to bridge the mismatch.
-        disable: false,
+        disable: process.env.DISABLE_MEDUSA_ADMIN === "true",
+        // Raise the admin product/media upload cap from the 1 MB default so
+        // higher-quality images can be uploaded. This bakes into the admin
+        // bundle at build time; the server-side /admin/upload cap in
+        // src/api/middlewares.ts is raised to match.
+        maxUploadFileSize: 10 * 1024 * 1024, // 10 MB
     },
     plugins: [
         // ERPNext (Frappe) sync. Lives as a workspace plugin in

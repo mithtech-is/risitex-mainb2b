@@ -1195,7 +1195,7 @@ export default defineMiddlewares({
                 uploadLimiter,
                 xMw(multer({
                     storage: multer.memoryStorage(),
-                    limits: { fileSize: 2 * 1024 * 1024 },
+                    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB — matches admin.maxUploadFileSize for hi-res product images
                     fileFilter: (req, file, cb) => {
                         const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
                         if (allowedTypes.includes(file.mimetype)) {
