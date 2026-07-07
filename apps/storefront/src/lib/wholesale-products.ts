@@ -27,7 +27,6 @@ const LIVE_PRODUCT_FIELDS = [
   "categories.name",
   "categories.handle",
   "categories.parent_category_id",
-  "type.value",
 ].join(",");
 
 async function fetchB2bPricing(productId: string): Promise<B2bPricing | null> {
@@ -118,7 +117,6 @@ type LiveProduct = {
   categories?:
     | { id: string; name: string; handle: string; parent_category_id?: string | null }[]
     | null;
-  type?: { value?: string | null } | null;
 };
 
 function findOption(options: LiveOption[] | null | undefined, name: RegExp) {
@@ -350,7 +348,9 @@ async function fetchLiveByHandle(handle: string): Promise<LiveProduct | null> {
     const url = `${BACKEND_URL}/store/products?handle=${encodeURIComponent(handle)}&limit=1&fields=${encodeURIComponent(LIVE_PRODUCT_FIELDS)}`;
     const res = await fetch(url, {
       headers: { "x-publishable-api-key": PUB_KEY },
-      next: { revalidate: 60, tags: ["products"] },
+      // Always fresh: category membership must match the admin exactly and
+      // update the moment a product is (un)assigned — no ISR staleness.
+      cache: "no-store",
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { products?: LiveProduct[] };
@@ -370,7 +370,9 @@ async function fetchAllLive(): Promise<LiveProduct[]> {
     const url = `${BACKEND_URL}/store/products?limit=100&fields=${encodeURIComponent(LIVE_PRODUCT_FIELDS)}`;
     const res = await fetch(url, {
       headers: { "x-publishable-api-key": PUB_KEY },
-      next: { revalidate: 60, tags: ["products"] },
+      // Always fresh: category membership must match the admin exactly and
+      // update the moment a product is (un)assigned — no ISR staleness.
+      cache: "no-store",
     });
     if (!res.ok) return [];
     const data = (await res.json()) as { products?: LiveProduct[] };
@@ -380,67 +382,22 @@ async function fetchAllLive(): Promise<LiveProduct[]> {
   }
 }
 
-/** Map of lowercased category name → handle, for the Type→category bridge. */
-async function fetchCategoryHandleByName(): Promise<Map<string, string>> {
-  try {
-    const url = `${BACKEND_URL}/store/product-categories?limit=500&fields=name,handle`;
-    const res = await fetch(url, {
-      headers: { "x-publishable-api-key": PUB_KEY },
-      next: { revalidate: 30, tags: ["products"] },
-    });
-    if (!res.ok) return new Map();
-    const data = (await res.json()) as {
-      product_categories?: { name: string; handle: string }[];
-    };
-    const map = new Map<string, string>();
-    for (const c of data.product_categories ?? []) {
-      if (c.name && c.handle) map.set(c.name.trim().toLowerCase(), c.handle);
-    }
-    return map;
-  } catch {
-    return new Map();
-  }
-}
-
-/**
- * Product Type → category bridge. If the admin set the product's Type to a
- * value matching a category name (e.g. Type "Inner Boxers"), the product is
- * treated as belonging to that category even when only a parent category
- * (or none) was ticked. Makes placement forgiving: picking the Type — or the
- * category — is enough for the product to appear in the right place.
- */
-function bridgeTypeToCategory(
-  handles: string[],
-  live: LiveProduct,
-  nameToHandle: Map<string, string>,
-): string[] {
-  const typeVal = live.type?.value?.trim().toLowerCase();
-  if (!typeVal) return handles;
-  const h = nameToHandle.get(typeVal);
-  if (h && !handles.includes(h)) return [...handles, h];
-  return handles;
-}
-
 export async function getWholesaleProducts(): Promise<Product[]> {
   // Live products take precedence over fixtures sharing the same slug so the
   // catalogue reflects what's actually orderable in Medusa. Fixtures fill in
   // the long-tail demo content (poplin, kurta, etc.) until those land in the
   // backend.
-  const [liveRaw, nameToHandle] = await Promise.all([
-    fetchAllLive(),
-    fetchCategoryHandleByName(),
-  ]);
+  //
+  // Category membership is driven SOLELY by the product's real Medusa
+  // category links (product.categories). So the storefront shows exactly
+  // what the admin assigned — assign a product and it appears; un-assign it
+  // and it disappears — with no Type-based guessing that could diverge.
+  const liveRaw = await fetchAllLive();
   const live = liveRaw.filter((p) => !HIDDEN_HANDLES.has(p.handle));
   const liveMapped = await Promise.all(
-    live.map(async (p) => {
-      const mapped = mapMedusaToProduct(p);
-      mapped.categoryHandles = bridgeTypeToCategory(
-        mapped.categoryHandles ?? [],
-        p,
-        nameToHandle,
-      );
-      return overlayB2b(mapped, await fetchB2bPricing(p.id));
-    }),
+    live.map(async (p) =>
+      overlayB2b(mapMedusaToProduct(p), await fetchB2bPricing(p.id)),
+    ),
   );
   const liveSlugs = new Set(liveMapped.map((p) => p.slug));
   const fixturesWithOverlay = await Promise.all(
@@ -457,13 +414,7 @@ export async function getWholesaleProduct(handle: string): Promise<Product | nul
   // 1) Live Medusa product takes precedence — that's the source of truth.
   const live = await fetchLiveByHandle(handle);
   if (live) {
-    const nameToHandle = await fetchCategoryHandleByName();
     const mapped = mapMedusaToProduct(live);
-    mapped.categoryHandles = bridgeTypeToCategory(
-      mapped.categoryHandles ?? [],
-      live,
-      nameToHandle,
-    );
     return overlayB2b(mapped, await fetchB2bPricing(live.id));
   }
   // 2) Fall back to fixture for demo / pre-seed handles.

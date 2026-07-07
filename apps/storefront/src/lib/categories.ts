@@ -32,7 +32,9 @@ export async function getCategoryTree(): Promise<CategoryNode[]> {
     const url = `${BACKEND_URL}/store/product-categories?limit=500&fields=id,name,handle,rank,parent_category_id`;
     const res = await fetch(url, {
       headers: { "x-publishable-api-key": PUB_KEY },
-      next: { revalidate: 30, tags: ["products"] },
+      // Always fresh: the tree must reflect admin category add/edit/delete
+      // immediately, matching what the admin sees.
+      cache: "no-store",
     });
     if (!res.ok) return [];
     const data = (await res.json()) as { product_categories?: FlatCategory[] };
