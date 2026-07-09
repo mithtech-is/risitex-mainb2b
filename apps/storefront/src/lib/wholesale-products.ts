@@ -96,8 +96,15 @@ function overlayB2b(product: Product, pricing: B2bPricing | null): Product {
     })
     .sort((a, b) => a.minQty - b.minQty);
   const moq = pricing.quantity_rule?.min_qty ?? undefined;
+  const maxQty = pricing.quantity_rule?.max_qty ?? undefined;
   const cartonSize = pricing.quantity_rule?.step_qty ?? undefined;
-  return { ...product, ...(tiers.length ? { tiers } : {}), ...(moq ? { moq } : {}), ...(cartonSize ? { cartonSize } : {}) };
+  return {
+    ...product,
+    ...(tiers.length ? { tiers } : {}),
+    ...(moq ? { moq } : {}),
+    ...(maxQty ? { maxQty } : {}),
+    ...(cartonSize ? { cartonSize } : {}),
+  };
 }
 
 // ────────────────────────────────────────────────────────────────────────────

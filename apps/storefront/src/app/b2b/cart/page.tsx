@@ -17,9 +17,11 @@ import {
   useCart,
   updateQuantity,
   removeFromCart,
+  refreshCartLines,
   totalUnits,
   subtotalMajor,
   type CartLine,
+  type LineRefresh,
 } from "@/lib/cart";
 
 /**
@@ -45,16 +47,59 @@ export default function B2bCartPage() {
   const estGst = Math.round((subtotal * GST_RATE_PCT) / 100);
   const estTotal = subtotal + estGst;
 
-  // MOQ check: a line is in violation if the line's quantity is BELOW its
-  // recorded moq. The PDP enforces this at add-time but a buyer can edit
-  // it down here, so we re-check.
-  const violations = lines
-    .filter((l) => (l.moq ?? 0) > 0 && l.quantity < (l.moq ?? 0))
-    .map((l) => ({
-      variantId: l.variantId,
-      name: l.productName,
-      need: (l.moq ?? 0) - l.quantity,
-    }));
+  // Re-sync each line's price / MOQ / max against the CURRENT backend rules
+  // whenever the set of products in the cart changes. Cart lines snapshot
+  // these at add-time, so without this a rule the admin edited afterwards
+  // (e.g. MOQ 50 → 10) would keep showing the stale value. Keyed on the sorted
+  // slug set so it doesn't re-fire on quantity edits, and refreshCartLines
+  // only writes when something actually changed (no render loop).
+  const slugKey = React.useMemo(
+    () => Array.from(new Set(lines.map((l) => l.productSlug))).sort().join(","),
+    [lines],
+  );
+  React.useEffect(() => {
+    const slugs = slugKey ? slugKey.split(",") : [];
+    if (slugs.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/cart/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slugs }),
+        });
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { lines?: Record<string, LineRefresh> };
+        if (data.lines && !cancelled) refreshCartLines(data.lines);
+      } catch {
+        /* keep the snapshot if the refresh call fails */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [slugKey]);
+
+  // Quantity-rule check per line: BELOW its MOQ (min), or ABOVE its max cap.
+  // The PDP enforces this at add-time but a buyer can edit quantities here.
+  const violations = lines.flatMap((l) => {
+    const out: {
+      variantId: string;
+      name: string;
+      kind: "below_moq" | "above_max";
+      amount: number;
+      limit: number;
+    }[] = [];
+    const moq = l.moq ?? 0;
+    if (moq > 0 && l.quantity < moq) {
+      out.push({ variantId: l.variantId, name: l.productName, kind: "below_moq", amount: moq - l.quantity, limit: moq });
+    }
+    const max = l.maxQty ?? 0;
+    if (max > 0 && l.quantity > max) {
+      out.push({ variantId: l.variantId, name: l.productName, kind: "above_max", amount: l.quantity - max, limit: max });
+    }
+    return out;
+  });
 
   const checkoutHref = React.useMemo(() => {
     // Hand the lines to the existing /b2b/checkout wizard via the
@@ -119,13 +164,22 @@ export default function B2bCartPage() {
               className="rounded-md border border-feedback-warning-border bg-feedback-warning-bg p-4"
             >
               <p className="text-body-sm font-medium text-feedback-warning-text">
-                {violations.length} line{violations.length === 1 ? "" : "s"} below MOQ
+                {violations.length} quantity issue{violations.length === 1 ? "" : "s"} to fix
               </p>
               <ul className="mt-2 space-y-1 text-caption text-feedback-warning-text/90">
                 {violations.slice(0, 5).map((v) => (
-                  <li key={v.variantId}>
-                    • {v.name} — add {v.need.toLocaleString()} more pc
-                    {v.need === 1 ? "" : "s"} to meet MOQ
+                  <li key={`${v.variantId}-${v.kind}`}>
+                    {v.kind === "below_moq" ? (
+                      <>
+                        • {v.name} — add {v.amount.toLocaleString()} more pc
+                        {v.amount === 1 ? "" : "s"} to meet MOQ ({v.limit.toLocaleString()})
+                      </>
+                    ) : (
+                      <>
+                        • {v.name} — reduce by {v.amount.toLocaleString()} pc
+                        {v.amount === 1 ? "" : "s"}; max is {v.limit.toLocaleString()} per order
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -167,7 +221,7 @@ export default function B2bCartPage() {
             </Button>
             {violations.length > 0 && (
               <p className="mt-2 text-caption text-feedback-warning-text">
-                Fix MOQ violations above to enable checkout.
+                Fix the quantity issues above to enable checkout.
               </p>
             )}
           </section>
@@ -191,6 +245,7 @@ function CartLineRow({ line }: { line: CartLine }) {
 
   const lineTotal = line.quantity * line.unitPriceMajor;
   const belowMoq = (line.moq ?? 0) > 0 && line.quantity < (line.moq ?? 0);
+  const aboveMax = (line.maxQty ?? 0) > 0 && line.quantity > (line.maxQty ?? 0);
 
   return (
     <article className="flex flex-wrap items-start gap-4 rounded-md border border-border-subtle bg-surface-raised p-4">
@@ -225,6 +280,11 @@ function CartLineRow({ line }: { line: CartLine }) {
         {belowMoq && (
           <Badge tone="warning" size="xs">
             Below MOQ ({line.moq})
+          </Badge>
+        )}
+        {aboveMax && (
+          <Badge tone="warning" size="xs">
+            Above max ({line.maxQty})
           </Badge>
         )}
       </div>

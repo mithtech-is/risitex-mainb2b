@@ -254,6 +254,7 @@ export function B2bBuyPanel({ product }: { product: Product }) {
         quantity: qty,
         thumbnail: product.images?.[0],
         moq: product.moq,
+        maxQty: product.maxQty,
         cartonSize: product.cartonSize,
       });
       addedUnits += qty;

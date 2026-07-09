@@ -77,8 +77,10 @@ export type Product = {
     pricePerUnitMajor: number;
     label?: string;
   }[];
-  /** MOQ for wholesale buyers */
+  /** MOQ for wholesale buyers (min order qty from the B2B quantity rule) */
   moq?: number;
+  /** Max order qty from the B2B quantity rule (null/undefined = no cap) */
+  maxQty?: number;
   /** Master carton size */
   cartonSize?: number;
   /** Lead time in days for B2B */

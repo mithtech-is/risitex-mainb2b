@@ -31,10 +31,60 @@ export type CartLine = {
   quantity: number;
   thumbnail?: string;
   /** Carried so the cart page can warn on MOQ / case-pack violations
-   *  without a second product lookup. */
+   *  without a second product lookup. Re-hydrated from live backend rules
+   *  on cart load (see refreshCartLines) so an admin changing the MOQ /
+   *  price rule flows into carts that already hold the product. */
   moq?: number;
+  /** Max order qty from the B2B quantity rule (undefined = no cap). */
+  maxQty?: number;
   cartonSize?: number;
 };
+
+/** Live values pulled from the backend for one product slug. */
+export type LineRefresh = {
+  unitPriceMajor?: number;
+  moq?: number;
+  maxQty?: number;
+  cartonSize?: number;
+};
+
+/**
+ * Re-sync stored lines against current backend rules, keyed by productSlug.
+ * Cart lines snapshot price/MOQ at add-time; without this a rule the admin
+ * changed later (or a product added before a fix) would keep showing stale
+ * values. Only provided fields overwrite; quantity is never touched. Writes
+ * back to localStorage so the corrected values persist.
+ */
+export function refreshCartLines(
+  bySlug: Record<string, LineRefresh>,
+): CartLine[] {
+  const cur = safeRead();
+  let changed = false;
+  const next = cur.map((l) => {
+    const r = bySlug[l.productSlug];
+    if (!r) return l;
+    const merged: CartLine = { ...l };
+    if (typeof r.unitPriceMajor === "number" && r.unitPriceMajor !== l.unitPriceMajor) {
+      merged.unitPriceMajor = r.unitPriceMajor;
+      changed = true;
+    }
+    if (r.moq !== l.moq) {
+      merged.moq = r.moq;
+      changed = true;
+    }
+    if (r.maxQty !== l.maxQty) {
+      merged.maxQty = r.maxQty;
+      changed = true;
+    }
+    if (r.cartonSize !== l.cartonSize) {
+      merged.cartonSize = r.cartonSize;
+      changed = true;
+    }
+    return merged;
+  });
+  if (changed) safeWrite(next);
+  return next;
+}
 
 function safeRead(): CartLine[] {
   if (typeof window === "undefined") return [];
