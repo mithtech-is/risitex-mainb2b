@@ -35,7 +35,10 @@ async function fetchB2bPricing(productId: string): Promise<B2bPricing | null> {
       `${BACKEND_URL}/store/b2b-sales/products/${productId}/pricing`,
       {
         headers: { "x-publishable-api-key": PUB_KEY },
-        next: { revalidate: 120, tags: ["products"] },
+        // Always fresh: this carries the B2B visibility flag, so hiding a
+        // product in the admin must drop it from the catalogue immediately
+        // (matches the no-store category tree).
+        cache: "no-store",
       },
     );
     if (!res.ok) return null;
@@ -57,6 +60,10 @@ type B2bPricing = {
     max_qty: number | null;
     step_qty: number | null;
   } | null;
+  /** B2B visibility gate — false when an admin visibility rule hides this
+   *  product from the buyer's audience. Hidden products are dropped from the
+   *  catalogue and their PDP 404s. */
+  visible?: boolean;
 };
 
 function overlayB2b(product: Product, pricing: B2bPricing | null): Product {
@@ -394,17 +401,34 @@ export async function getWholesaleProducts(): Promise<Product[]> {
   // and it disappears — with no Type-based guessing that could diverge.
   const liveRaw = await fetchAllLive();
   const live = liveRaw.filter((p) => !HIDDEN_HANDLES.has(p.handle));
-  const liveMapped = await Promise.all(
-    live.map(async (p) =>
-      overlayB2b(mapMedusaToProduct(p), await fetchB2bPricing(p.id)),
-    ),
+  const liveMappedRaw = await Promise.all(
+    live.map(async (p) => {
+      const pricing = await fetchB2bPricing(p.id);
+      return {
+        product: overlayB2b(mapMedusaToProduct(p), pricing),
+        // B2B visibility gate. A product hidden from this audience by an
+        // admin Visibility rule is dropped from the catalogue. A null pricing
+        // response (transient error) fails OPEN so it never blanks the store.
+        hidden: pricing?.visible === false,
+      };
+    }),
   );
-  const liveSlugs = new Set(liveMapped.map((p) => p.slug));
-  const fixturesWithOverlay = await Promise.all(
-    PRODUCTS.filter((p) => !liveSlugs.has(p.slug)).map(async (p) =>
-      p.medusaId ? overlayB2b(p, await fetchB2bPricing(p.medusaId)) : p,
-    ),
-  );
+  // Slug set spans ALL live products (even hidden ones) so a hidden live
+  // product still suppresses a same-slug demo fixture rather than resurrecting
+  // it.
+  const liveSlugs = new Set(liveMappedRaw.map((x) => x.product.slug));
+  const liveMapped = liveMappedRaw
+    .filter((x) => !x.hidden)
+    .map((x) => x.product);
+  const fixturesWithOverlay = (
+    await Promise.all(
+      PRODUCTS.filter((p) => !liveSlugs.has(p.slug)).map(async (p) => {
+        if (!p.medusaId) return p;
+        const pricing = await fetchB2bPricing(p.medusaId);
+        return pricing?.visible === false ? null : overlayB2b(p, pricing);
+      }),
+    )
+  ).filter((p): p is Product => p !== null);
   return [...liveMapped, ...fixturesWithOverlay];
 }
 
@@ -414,12 +438,16 @@ export async function getWholesaleProduct(handle: string): Promise<Product | nul
   // 1) Live Medusa product takes precedence — that's the source of truth.
   const live = await fetchLiveByHandle(handle);
   if (live) {
-    const mapped = mapMedusaToProduct(live);
-    return overlayB2b(mapped, await fetchB2bPricing(live.id));
+    const pricing = await fetchB2bPricing(live.id);
+    // Hidden from this audience → no PDP (page 404s), matching the catalogue.
+    if (pricing?.visible === false) return null;
+    return overlayB2b(mapMedusaToProduct(live), pricing);
   }
   // 2) Fall back to fixture for demo / pre-seed handles.
   const product = PRODUCTS.find((p) => p.slug === handle) ?? null;
   if (!product) return null;
   if (!product.medusaId) return product;
-  return overlayB2b(product, await fetchB2bPricing(product.medusaId));
+  const pricing = await fetchB2bPricing(product.medusaId);
+  if (pricing?.visible === false) return null;
+  return overlayB2b(product, pricing);
 }
