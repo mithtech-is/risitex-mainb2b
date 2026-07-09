@@ -5,9 +5,19 @@
  * Adding a category in the admin (Women, Kids, …) surfaces here with zero
  * code change.
  */
+// Server-side (RSC/SSR) loader — prefer the internal base URL so category
+// reads go straight to Medusa on localhost, bypassing Caddy/TLS. Non-public
+// env vars, so they never reach client bundles.
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000";
+  process.env.MEDUSA_INTERNAL_URL ??
+  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ??
+  "http://localhost:9000";
 const PUB_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "";
+const INTERNAL_KEY = process.env.INTERNAL_API_KEY ?? "";
+const SERVER_HEADERS: Record<string, string> = {
+  "x-publishable-api-key": PUB_KEY,
+  ...(INTERNAL_KEY ? { "x-internal-key": INTERNAL_KEY } : {}),
+};
 
 export type CategoryNode = {
   id: string;
@@ -31,7 +41,7 @@ export async function getCategoryTree(): Promise<CategoryNode[]> {
   try {
     const url = `${BACKEND_URL}/store/product-categories?limit=500&fields=id,name,handle,rank,parent_category_id`;
     const res = await fetch(url, {
-      headers: { "x-publishable-api-key": PUB_KEY },
+      headers: SERVER_HEADERS,
       // Always fresh: the tree must reflect admin category add/edit/delete
       // immediately, matching what the admin sees.
       cache: "no-store",

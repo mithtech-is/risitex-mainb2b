@@ -1,9 +1,25 @@
 import type { Product, Swatch, Variant } from "@/data/products";
 import { PRODUCTS } from "@/data/products";
 
+// These loaders run server-side only (RSC/SSR). Prefer an internal base URL so
+// server→backend calls skip Caddy/TLS and go straight to Medusa on localhost.
+// MEDUSA_INTERNAL_URL and INTERNAL_API_KEY are non-public env vars, so they are
+// never inlined into client bundles — client code falls back to the public URL.
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ?? "http://localhost:9000";
+  process.env.MEDUSA_INTERNAL_URL ??
+  process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ??
+  "http://localhost:9000";
 const PUB_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "";
+const INTERNAL_KEY = process.env.INTERNAL_API_KEY ?? "";
+
+// Headers for server-side calls. x-internal-key exempts this trusted SSR
+// traffic from the public store rate limiter (backend storeLimiter.skip) — the
+// catalogue fans out one b2b-sales call per product, which would otherwise
+// saturate the 60/min public bucket and break pricing + the visibility gate.
+const SERVER_HEADERS: Record<string, string> = {
+  "x-publishable-api-key": PUB_KEY,
+  ...(INTERNAL_KEY ? { "x-internal-key": INTERNAL_KEY } : {}),
+};
 
 const LIVE_PRODUCT_FIELDS = [
   "id",
@@ -34,7 +50,7 @@ async function fetchB2bPricing(productId: string): Promise<B2bPricing | null> {
     const res = await fetch(
       `${BACKEND_URL}/store/b2b-sales/products/${productId}/pricing`,
       {
-        headers: { "x-publishable-api-key": PUB_KEY },
+        headers: SERVER_HEADERS,
         // Always fresh: this carries the B2B visibility flag, so hiding a
         // product in the admin must drop it from the catalogue immediately
         // (matches the no-store category tree).
@@ -354,7 +370,7 @@ async function fetchLiveByHandle(handle: string): Promise<LiveProduct | null> {
   try {
     const url = `${BACKEND_URL}/store/products?handle=${encodeURIComponent(handle)}&limit=1&fields=${encodeURIComponent(LIVE_PRODUCT_FIELDS)}`;
     const res = await fetch(url, {
-      headers: { "x-publishable-api-key": PUB_KEY },
+      headers: SERVER_HEADERS,
       // Always fresh: category membership must match the admin exactly and
       // update the moment a product is (un)assigned — no ISR staleness.
       cache: "no-store",
@@ -376,7 +392,7 @@ async function fetchAllLive(): Promise<LiveProduct[]> {
   try {
     const url = `${BACKEND_URL}/store/products?limit=100&fields=${encodeURIComponent(LIVE_PRODUCT_FIELDS)}`;
     const res = await fetch(url, {
-      headers: { "x-publishable-api-key": PUB_KEY },
+      headers: SERVER_HEADERS,
       // Always fresh: category membership must match the admin exactly and
       // update the moment a product is (un)assigned — no ISR staleness.
       cache: "no-store",

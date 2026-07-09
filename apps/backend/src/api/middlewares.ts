@@ -106,6 +106,17 @@ const storeLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     store: makeRateLimitStore("store"),
+    // Exempt trusted server-to-server (SSR) traffic. The Next.js storefront
+    // renders the catalogue server-side and fans out one b2b-sales call per
+    // product; from the backend those all share a single proxy IP and would
+    // otherwise saturate the 60/min public bucket, breaking pricing AND the
+    // visibility gate (a hidden product leaks through on the failed fetch).
+    // The storefront sends INTERNAL_API_KEY only from server code, so it never
+    // reaches the browser and public visitors stay rate-limited normally.
+    skip: (req) => {
+        const secret = process.env.INTERNAL_API_KEY
+        return !!secret && req.headers["x-internal-key"] === secret
+    },
     handler: (req, res) => {
         res.status(429).json({
             message: "Too many requests. Please slow down."
