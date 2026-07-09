@@ -142,8 +142,12 @@ type LiveProduct = {
     | null;
 };
 
+// Option titles are matched against anchored regexes, but admins routinely
+// type a stray trailing/leading space (e.g. "colour "). Trim before testing so
+// "colour "/" Size" still resolve — otherwise a whole option (and its colour
+// swatches) silently vanishes from the storefront matrix.
 function findOption(options: LiveOption[] | null | undefined, name: RegExp) {
-  return options?.find((o) => o.title && name.test(o.title));
+  return options?.find((o) => o.title && name.test(o.title.trim()));
 }
 
 function getOptionValueByTitle(
@@ -151,7 +155,7 @@ function getOptionValueByTitle(
   optionTitleRe: RegExp,
 ): string | undefined {
   const match = (variant.options ?? []).find(
-    (o) => o.option?.title && optionTitleRe.test(o.option.title),
+    (o) => o.option?.title && optionTitleRe.test(o.option.title.trim()),
   );
   return match?.value;
 }
@@ -255,19 +259,21 @@ function mapMedusaToProduct(p: LiveProduct): Product {
     }
   }
 
-  // Lowest variant calculated_price → priceMajor (minor units / 100). Fallback
-  // to 0 so the page renders rather than 500's. Storefront UI handles "0".
-  const calculatedMinor = variants
+  // Lowest variant calculated_price → priceMajor. Medusa v2 stores/returns
+  // money in MAJOR units (decimal rupees), e.g. ₹3,000 → 3000 — NOT minor
+  // paise — so use the amount directly (no /100). Fallback to 0 so the page
+  // renders rather than 500's; the storefront UI handles "0".
+  const calculatedAmounts = variants
     .map((v) => v.calculated_price?.calculated_amount)
     .filter((n): n is number => typeof n === "number" && Number.isFinite(n));
-  const priceMajor = calculatedMinor.length
-    ? Math.round(Math.min(...calculatedMinor) / 100)
+  const priceMajor = calculatedAmounts.length
+    ? Math.round(Math.min(...calculatedAmounts))
     : 0;
-  const originalMinor = variants
+  const originalAmounts = variants
     .map((v) => v.calculated_price?.original_amount)
     .filter((n): n is number => typeof n === "number" && Number.isFinite(n));
-  const mrpMajor = originalMinor.length
-    ? Math.round(Math.max(...originalMinor) / 100)
+  const mrpMajor = originalAmounts.length
+    ? Math.round(Math.max(...originalAmounts))
     : undefined;
 
   const category = inferCategory(p);
