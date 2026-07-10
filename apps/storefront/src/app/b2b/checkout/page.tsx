@@ -291,8 +291,6 @@ export default function CheckoutPage() {
   }, []);
 
   // ── Form state ─────────────────────────────────────────────────────
-  // We default to "use company address" for both. Customer can override.
-  const [billingMode, _setBillingMode] = React.useState<"company" | "custom">("company");
   const [shippingMode, setShippingMode] = React.useState<"same" | "custom">("same");
   const [customShip, setCustomShip] = React.useState({
     line1: "",
@@ -302,6 +300,30 @@ export default function CheckoutPage() {
     contact_name: "",
     contact_phone: "",
   });
+  // Billing address the order actually uses. Seeded from the approved company
+  // record; when that record is incomplete (missing city / PIN / GSTIN — which
+  // otherwise dead-ends the buyer on "Continue"), we let them complete it here
+  // and persist it back to the company so invoices + future orders are correct.
+  const [billing, setBilling] = React.useState({
+    line1: "",
+    city: "",
+    state: "",
+    postal_code: "",
+    gstin: "",
+  });
+  const [billingSeeded, setBillingSeeded] = React.useState(false);
+  React.useEffect(() => {
+    if (billingSeeded || !context) return;
+    const ba = context.b2b?.company?.billing_address;
+    setBilling({
+      line1: ba?.line1 ?? "",
+      city: ba?.city ?? "",
+      state: ba?.state ?? "",
+      postal_code: ba?.postal_code ?? "",
+      gstin: context.b2b?.company?.gstin ?? "",
+    });
+    setBillingSeeded(true);
+  }, [context, billingSeeded]);
   const [shippingMethodId, setShippingMethodId] = React.useState<string>("delhivery_b2b");
   const [paymentMethodId, setPaymentMethodId] = React.useState<PaymentMethodId>("wallet");
   const [coupon, setCoupon] = React.useState<AppliedCoupon | null>(null);
@@ -348,9 +370,7 @@ export default function CheckoutPage() {
   const shippingPaise = (courierMethod?.chargeRupees ?? pickupMethod?.flatRupees ?? 0) * 100;
 
   const shipState =
-    shippingMode === "same"
-      ? context?.b2b?.company?.billing_address?.state
-      : customShip.state;
+    shippingMode === "same" ? billing.state : customShip.state;
   const sellerCode = GST_SELLER_STATE;
   const buyerCode = gstStateCode(shipState ?? "") ?? "";
   const gstRatePercent = 5; // B2B textile default; backend tax provider is final source
@@ -376,15 +396,21 @@ export default function CheckoutPage() {
   // ── Step gating ────────────────────────────────────────────────────
   const company = context?.b2b?.company;
   const hasCompany = !!company?.id;
-  const billingAddressOk =
-    billingMode === "company"
-      ? !!(
-          company?.billing_address?.line1 &&
-          company?.billing_address?.city &&
-          company?.billing_address?.state &&
-          company?.billing_address?.postal_code
-        )
-      : false;
+  // Whether the company record already carries a complete billing address. When
+  // it doesn't, the Address step exposes editable fields so the buyer can
+  // complete it (rather than being stuck with a disabled Continue button).
+  const companyBillingComplete = !!(
+    company?.billing_address?.line1 &&
+    company?.billing_address?.city &&
+    company?.billing_address?.state &&
+    company?.billing_address?.postal_code
+  );
+  const billingAddressOk = !!(
+    billing.line1.trim() &&
+    billing.city.trim() &&
+    billing.state.trim() &&
+    billing.postal_code.trim()
+  );
   const shippingAddressOk =
     shippingMode === "same"
       ? billingAddressOk
@@ -414,10 +440,43 @@ export default function CheckoutPage() {
     return true;
   }
 
-  const goNext = () => {
+  // Persist a completed billing address back to the company so invoices and
+  // future orders carry it. Best-effort — a failure here never blocks checkout
+  // (the order snapshot below still uses the entered values).
+  const [savingBilling, setSavingBilling] = React.useState(false);
+  const persistBillingIfNeeded = async () => {
+    if (companyBillingComplete) return; // nothing was edited
+    setSavingBilling(true);
+    try {
+      await fetch(`${MEDUSA_BASE_URL}/store/companies/me`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          gstin: billing.gstin.trim() || undefined,
+          billing_address: {
+            address_1: billing.line1.trim(),
+            city: billing.city.trim(),
+            province: billing.state.trim(),
+            postal_code: billing.postal_code.trim(),
+            country_code:
+              company?.billing_address?.country_code || "IN",
+          },
+        }),
+      });
+    } catch {
+      /* best-effort — the order still carries the entered address */
+    } finally {
+      setSavingBilling(false);
+    }
+  };
+
+  const goNext = async () => {
     if (step === 1 && canStep2) setStep(2);
-    else if (step === 2 && canStep3) setStep(3);
-    else if (step === 3 && canStep4) setStep(4);
+    else if (step === 2 && canStep3) {
+      await persistBillingIfNeeded();
+      setStep(3);
+    } else if (step === 3 && canStep4) setStep(4);
     else if (step === 4 && canStep5) setStep(5);
   };
   const goBack = () => {
@@ -463,19 +522,19 @@ export default function CheckoutPage() {
           variant_id: line.variantId,
           quantity: line.quantity,
         })),
-        billing_address: company?.billing_address ? {
-          address_1: company.billing_address.line1 || "",
-          city: company.billing_address.city || "",
-          province: company.billing_address.state || "",
-          postal_code: company.billing_address.postal_code || "",
-          country_code: company.billing_address.country_code || "in",
-        } : undefined,
-        shipping_address: shippingMode === "same" && company?.billing_address ? {
-          address_1: company.billing_address.line1 || "",
-          city: company.billing_address.city || "",
-          province: company.billing_address.state || "",
-          postal_code: company.billing_address.postal_code || "",
-          country_code: company.billing_address.country_code || "in",
+        billing_address: {
+          address_1: billing.line1 || "",
+          city: billing.city || "",
+          province: billing.state || "",
+          postal_code: billing.postal_code || "",
+          country_code: company?.billing_address?.country_code || "in",
+        },
+        shipping_address: shippingMode === "same" ? {
+          address_1: billing.line1 || "",
+          city: billing.city || "",
+          province: billing.state || "",
+          postal_code: billing.postal_code || "",
+          country_code: company?.billing_address?.country_code || "in",
         } : {
           address_1: customShip.line1 || "",
           city: customShip.city || "",
@@ -693,22 +752,102 @@ export default function CheckoutPage() {
                 differ (e.g. to a warehouse or contract manufacturer).
               </p>
 
-              {/* Billing */}
-              <div className="mt-4 rounded-sm border border-border-subtle bg-surface-background p-4">
-                <p className="text-micro text-text-muted">Billing</p>
-                <p className="mt-1 text-body-md text-text-primary">
-                  {company?.trade_name ?? "Your company"}
-                </p>
-                <p className="mt-1 text-caption text-text-muted">
-                  {company?.billing_address?.line1 ?? "—"},{" "}
-                  {company?.billing_address?.city ?? "—"},{" "}
-                  {company?.billing_address?.state ?? "—"}{" "}
-                  {company?.billing_address?.postal_code ?? ""}
-                </p>
-                <p className="mt-1 text-caption text-text-muted">
-                  GSTIN: {company?.gstin ?? "—"}
-                </p>
-              </div>
+              {/* Billing — read-only when the company record is complete;
+                  editable (and persisted) when it's missing fields so the
+                  buyer can complete it instead of being stuck. */}
+              {companyBillingComplete ? (
+                <div className="mt-4 rounded-sm border border-border-subtle bg-surface-background p-4">
+                  <p className="text-micro text-text-muted">Billing</p>
+                  <p className="mt-1 text-body-md text-text-primary">
+                    {company?.trade_name ?? "Your company"}
+                  </p>
+                  <p className="mt-1 text-caption text-text-muted">
+                    {billing.line1}, {billing.city}, {billing.state}{" "}
+                    {billing.postal_code}
+                  </p>
+                  <p className="mt-1 text-caption text-text-muted">
+                    GSTIN: {billing.gstin || "—"}
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-4 rounded-sm border border-border-subtle bg-surface-background p-4">
+                  <p className="text-micro text-text-muted">Billing</p>
+                  <p className="mt-1 text-body-md text-text-primary">
+                    {company?.trade_name ?? "Your company"}
+                  </p>
+                  <p className="mt-2 rounded-md bg-feedback-warning-bg px-3 py-2 text-caption text-feedback-warning-text">
+                    Your company billing address is incomplete. Complete it below
+                    to continue — we&rsquo;ll save it to your company profile for
+                    future orders and invoices.
+                  </p>
+                  <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div className="flex flex-col gap-1.5 md:col-span-2">
+                      <Label htmlFor="bill-line1" required>Billing address</Label>
+                      <Input
+                        id="bill-line1"
+                        value={billing.line1}
+                        onChange={(e) =>
+                          setBilling((b) => ({ ...b, line1: e.currentTarget.value }))
+                        }
+                        placeholder="Building, street, area"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="bill-city" required>City</Label>
+                      <Input
+                        id="bill-city"
+                        value={billing.city}
+                        onChange={(e) =>
+                          setBilling((b) => ({ ...b, city: e.currentTarget.value }))
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="bill-state" required>State</Label>
+                      <Input
+                        id="bill-state"
+                        value={billing.state}
+                        onChange={(e) =>
+                          setBilling((b) => ({ ...b, state: e.currentTarget.value }))
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="bill-pin" required>PIN code</Label>
+                      <Input
+                        id="bill-pin"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={billing.postal_code}
+                        onChange={(e) =>
+                          setBilling((b) => ({
+                            ...b,
+                            postal_code: e.currentTarget.value.replace(/\D/g, "").slice(0, 6),
+                          }))
+                        }
+                        placeholder="6 digits"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="bill-gstin">GSTIN (optional)</Label>
+                      <Input
+                        id="bill-gstin"
+                        value={billing.gstin}
+                        onChange={(e) =>
+                          setBilling((b) => ({ ...b, gstin: e.currentTarget.value.toUpperCase() }))
+                        }
+                        placeholder="29ABCDE1234F1Z5"
+                        maxLength={15}
+                        className="font-mono uppercase"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Shipping mode toggle */}
               <fieldset className="mt-5">
@@ -1041,10 +1180,10 @@ export default function CheckoutPage() {
 
               <dl className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <ReviewRow label="Company" value={company?.trade_name ?? "—"} />
-                <ReviewRow label="GSTIN" value={company?.gstin ?? "—"} mono />
+                <ReviewRow label="GSTIN" value={billing.gstin || "—"} mono />
                 <ReviewRow
                   label="Billing"
-                  value={`${company?.billing_address?.line1 ?? "—"}, ${company?.billing_address?.city ?? ""}, ${company?.billing_address?.state ?? ""} ${company?.billing_address?.postal_code ?? ""}`}
+                  value={`${billing.line1 || "—"}, ${billing.city}, ${billing.state} ${billing.postal_code}`}
                 />
                 <ReviewRow
                   label="Shipping"
@@ -1126,6 +1265,7 @@ export default function CheckoutPage() {
               <Button
                 type="button"
                 onClick={goNext}
+                isLoading={step === 2 && savingBilling}
                 disabled={
                   (step === 1 && !canStep2) ||
                   (step === 2 && !canStep3) ||
