@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { scopedKey } from "./user-scope";
 
 /**
  * Client-side B2B cart store.
@@ -89,7 +90,7 @@ export function refreshCartLines(
 function safeRead(): CartLine[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(scopedKey(STORAGE_KEY));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -108,7 +109,7 @@ function safeRead(): CartLine[] {
 function safeWrite(lines: CartLine[]): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
+    window.localStorage.setItem(scopedKey(STORAGE_KEY), JSON.stringify(lines));
     window.dispatchEvent(new Event(CHANGE_EVENT));
   } catch {
     /* quota / private-mode — silently degrade */
@@ -194,13 +195,17 @@ export function useCart(): CartLine[] {
   React.useEffect(() => {
     const onChange = () => setLines(safeRead());
     const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY || e.key === null) onChange();
+      if (e.key === null || e.key.startsWith(STORAGE_KEY)) onChange();
     };
     window.addEventListener(CHANGE_EVENT, onChange);
     window.addEventListener("storage", onStorage);
+    // Sign-in / sign-out changes the scoped key — re-read so a new user never
+    // inherits the previous user's cart (and their own cart is restored).
+    window.addEventListener("risitex:auth-changed", onChange);
     return () => {
       window.removeEventListener(CHANGE_EVENT, onChange);
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener("risitex:auth-changed", onChange);
     };
   }, []);
 

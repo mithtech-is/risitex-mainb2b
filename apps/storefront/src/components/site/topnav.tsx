@@ -10,6 +10,10 @@ import { WalletIconButton } from "@/components/wallet/wallet-icon-button";
 import { AuthModal } from "@/components/auth/auth-modal";
 import { Heart, ShoppingCart, UserRound } from "lucide-react";
 import { getCart } from "@/lib/cart";
+import { scopedKey } from "@/lib/user-scope";
+
+const WISHLIST_KEY = "risitex-b2b-wishlist";
+const CART_KEY = "risitex.b2b.cart.v1";
 
 const NAV = [
   { href: "/about", label: "About" },
@@ -176,7 +180,7 @@ function useNavActionCounts() {
     const load = () => {
       if (cancelled) return;
       setCounts({
-        wishlist: readLocalCount("risitex-b2b-wishlist"),
+        wishlist: readLocalCount(scopedKey(WISHLIST_KEY)),
         cart: recomputeCart(),
       });
     };
@@ -188,7 +192,7 @@ function useNavActionCounts() {
       if (cancelled) return;
       setCounts((c) => ({
         ...c,
-        wishlist: readLocalCount("risitex-b2b-wishlist"),
+        wishlist: readLocalCount(scopedKey(WISHLIST_KEY)),
       }));
     };
     const onCartChange = () => {
@@ -196,17 +200,21 @@ function useNavActionCounts() {
       setCounts((c) => ({ ...c, cart: recomputeCart() }));
     };
     const onStorage = (e: StorageEvent) => {
-      if (e.key === "risitex-b2b-wishlist" || e.key === null) onWishlistChange();
-      if (e.key === "risitex.b2b.cart.v1" || e.key === null) onCartChange();
+      if (e.key === null || e.key.startsWith(WISHLIST_KEY)) onWishlistChange();
+      if (e.key === null || e.key.startsWith(CART_KEY)) onCartChange();
     };
     window.addEventListener("risitex:wishlist-changed", onWishlistChange);
     window.addEventListener("risitex:cart-changed", onCartChange);
     window.addEventListener("storage", onStorage);
+    // Sign-in / sign-out re-scopes both keys — recompute both badges so they
+    // reflect the new user, not whoever was signed in before.
+    window.addEventListener("risitex:auth-changed", load);
     return () => {
       cancelled = true;
       window.removeEventListener("risitex:wishlist-changed", onWishlistChange);
       window.removeEventListener("risitex:cart-changed", onCartChange);
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener("risitex:auth-changed", load);
     };
   }, []);
 

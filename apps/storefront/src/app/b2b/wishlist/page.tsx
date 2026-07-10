@@ -12,6 +12,7 @@ import { addToCart, type CartLine } from "@/lib/cart";
 import { createSavedCart, type SavedCartLine } from "@/lib/saved-carts";
 import { PRODUCTS } from "@/data/products";
 import { ShoppingCart, Save, X, Check } from "lucide-react";
+import { scopedKey } from "@/lib/user-scope";
 
 const STORAGE_KEY = "risitex-b2b-wishlist";
 const EVENT_NAME = "risitex:wishlist-changed";
@@ -29,7 +30,7 @@ type ProductRow = {
 
 function readLocal(): string[] {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(scopedKey(STORAGE_KEY));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     return Array.isArray(parsed)
@@ -41,7 +42,7 @@ function readLocal(): string[] {
 }
 
 function writeLocal(slugs: string[]): void {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(slugs));
+  window.localStorage.setItem(scopedKey(STORAGE_KEY), JSON.stringify(slugs));
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 
@@ -195,14 +196,18 @@ export default function WishlistPage() {
         updateCustomerMetadata({ metadata: { wishlist: next } }).catch(() => {});
       }
     };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === null || e.key.startsWith(STORAGE_KEY)) onChange();
+    };
     window.addEventListener(EVENT_NAME, onChange);
-    window.addEventListener("storage", (e) => {
-      if (e.key === STORAGE_KEY || e.key === null) onChange();
-    });
+    window.addEventListener("storage", onStorage);
+    // Re-read under the new user's namespace on sign-in / sign-out.
+    window.addEventListener("risitex:auth-changed", onChange);
     return () => {
       cancelled = true;
       window.removeEventListener(EVENT_NAME, onChange);
-      window.removeEventListener("storage", onChange);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("risitex:auth-changed", onChange);
     };
   }, []);
 
