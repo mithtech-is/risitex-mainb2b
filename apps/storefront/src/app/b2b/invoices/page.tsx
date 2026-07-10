@@ -7,11 +7,22 @@ import { Check, CreditCard, FileText, Download, ArrowRight } from "lucide-react"
 import { B2bTopbar } from "@/components/b2b/b2b-topbar";
 import { fetchCredit, type CreditInvoice } from "@/lib/credit";
 import { downloadOrderInvoice } from "@/lib/invoice";
+import { medusa } from "@/lib/medusa";
 import {
   listAllPurchaseOrders,
   type DraftPurchaseOrder,
 } from "@/lib/purchase-orders";
 import { COMPANY } from "@/lib/company";
+
+type Order = {
+  id: string;
+  display_id: number | string;
+  status?: string | null;
+  payment_status?: string | null;
+  fulfillment_status?: string | null;
+  created_at: string;
+  total: number;
+};
 
 type CardStatus =
   | "issued"
@@ -82,45 +93,44 @@ export default function InvoicesPage() {
     loading: boolean;
     error: string | null;
     invoices: CreditInvoice[];
-    pendingPOs: DraftPurchaseOrder[];
-  }>({ loading: true, error: null, invoices: [], pendingPOs: [] });
+    pos: DraftPurchaseOrder[];
+    orders: Order[];
+  }>({ loading: true, error: null, invoices: [], pos: [], orders: [] });
 
   React.useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetchCredit().catch((err) => ({
-        invoices: [] as CreditInvoice[],
-        _error: err instanceof Error ? err.message : "Could not load invoices",
-      })),
+      // Native orders are the source of truth for an invoice — the GST invoice
+      // is issued when the order is created. Each independently .catch()es so
+      // one failing source never blanks the page.
+      medusa()
+        .store.order.list({
+          limit: 250,
+          fields:
+            "id,display_id,status,payment_status,fulfillment_status,created_at,total",
+        } as Record<string, unknown>)
+        .then((r) => ((r as { orders?: Order[] }).orders ?? []) as Order[])
+        .catch(() => [] as Order[]),
       listAllPurchaseOrders().catch(() => [] as DraftPurchaseOrder[]),
+      // Credit invoices are OPTIONAL — a buyer with no credit terms fails here;
+      // that must not blank the page.
+      fetchCredit()
+        .then((c) => c.invoices ?? [])
+        .catch(() => [] as CreditInvoice[]),
     ])
-      .then(([credit, pos]) => {
+      .then(([orders, pos, invoices]) => {
         if (cancelled) return;
-        // Credit invoices are an OPTIONAL data source — a buyer with no credit
-        // terms gets a failure here. That must NOT blank the page: the POs
-        // (issued/awaiting invoices) are the primary content and load
-        // independently. So a credit failure just means "no credit invoices".
-        const invoices =
-          "_error" in credit ? [] : (credit.invoices as CreditInvoice[]);
-        const pending = pos.filter(
-          (p) =>
-            (p.status === "draft" || p.status === "in_progress") &&
-            !(p as unknown as { order?: { id?: string } | null }).order?.id,
-        );
-        setState({
-          loading: false,
-          error: null,
-          invoices,
-          pendingPOs: pending,
-        });
+        setState({ loading: false, error: null, invoices, pos, orders });
       })
       .catch((err) => {
         if (!cancelled) {
           setState({
             loading: false,
-            error: err instanceof Error ? err.message : "Could not load invoices",
+            error:
+              err instanceof Error ? err.message : "Could not load invoices",
             invoices: [],
-            pendingPOs: [],
+            pos: [],
+            orders: [],
           });
         }
       });
@@ -129,28 +139,49 @@ export default function InvoicesPage() {
     };
   }, []);
 
-  // Same 4-stage progression as the shipments page: approved (invoice issued)
-  // → payment recorded, awaiting approval → awaiting payment.
-  const issued = state.pendingPOs.filter((p) => p.admin_approved_at);
-  const queued = state.pendingPOs.filter(
-    (p) => p.payment_confirmed_at && !p.admin_approved_at,
+  // Join each native order to its purchase order so the invoice card can show
+  // the approval / payment milestones the order row itself doesn't carry.
+  const poByOrderId = new Map<string, DraftPurchaseOrder>();
+  for (const p of state.pos) {
+    const oid = (p as unknown as { order?: { id?: string } | null }).order?.id;
+    if (oid) poByOrderId.set(oid, p);
+  }
+  // POs not yet promoted to an order (awaiting payment / approval).
+  const orphanPOs = state.pos.filter(
+    (p) => !(p as unknown as { order?: { id?: string } | null }).order?.id,
   );
-  const awaiting = state.pendingPOs.filter((p) => !p.payment_confirmed_at);
+
+  const orderPaid = (o: Order, po?: DraftPurchaseOrder) => {
+    const ps = (o.payment_status ?? "").toLowerCase();
+    return (
+      ps === "captured" ||
+      ps === "paid" ||
+      ps === "partially_refunded" ||
+      !!po?.payment_confirmed_at
+    );
+  };
+  const orderApproved = (po?: DraftPurchaseOrder) => !!po?.admin_approved_at;
 
   const hasAny =
-    state.invoices.length > 0 || state.pendingPOs.length > 0;
+    state.orders.length > 0 ||
+    orphanPOs.length > 0 ||
+    state.invoices.length > 0;
 
+  const orderSum = (arr: Order[]) =>
+    arr.reduce((s, o) => s + Number(o.total ?? 0), 0);
   const poSum = (arr: DraftPurchaseOrder[]) =>
     arr.reduce((s, p) => s + Number(p.value_major ?? 0), 0);
   const invSum = (arr: CreditInvoice[]) =>
     arr.reduce((s, i) => s + Math.round(i.amount_major), 0);
   const totalBilled =
-    poSum(issued) + poSum(queued) + poSum(awaiting) + invSum(state.invoices);
+    orderSum(state.orders) + poSum(orphanPOs) + invSum(state.invoices);
   const paid =
-    poSum(issued) + invSum(state.invoices.filter((i) => i.status === "paid"));
+    orderSum(
+      state.orders.filter((o) => orderPaid(o, poByOrderId.get(o.id))),
+    ) + invSum(state.invoices.filter((i) => i.status === "paid"));
   const outstanding = Math.max(0, totalBilled - paid);
   const count =
-    issued.length + queued.length + awaiting.length + state.invoices.length;
+    state.orders.length + orphanPOs.length + state.invoices.length;
 
   return (
     <div className="flex min-h-full flex-col gap-6">
@@ -206,41 +237,119 @@ export default function InvoicesPage() {
           </div>
 
           <div className="flex flex-col gap-3">
-            {issued.map((p) => (
-              <InvoiceCard
-                key={p.id}
-                status="issued"
-                idLabel={p.po_number}
-                amountMajor={Number(p.value_major ?? 0)}
-                subtitle={`Approved ${shortDate(p.admin_approved_at) ?? "—"} · paid via ${p.payment_confirmed_method ?? "—"}`}
-                paymentMethod={p.payment_confirmed_method}
-                showGstin
-                showDoc
-                steps={[
-                  { label: "Placed", date: shortDate(p.created_at), done: true },
-                  {
-                    label: "Paid",
-                    date: shortDate(p.payment_confirmed_at),
-                    done: !!p.payment_confirmed_at,
-                  },
-                  {
-                    label: "Approved",
-                    date: shortDate(p.admin_approved_at),
-                    done: !!p.admin_approved_at,
-                  },
-                  {
-                    label: "Invoiced",
-                    date: shortDate(p.admin_approved_at),
-                    done: !!p.admin_approved_at,
-                  },
-                ]}
-                actions={
-                  <DownloadInvoiceButton id={p.id} reference={p.po_number} />
-                }
-              />
-            ))}
+            {state.orders.map((o) => {
+              const po = poByOrderId.get(o.id);
+              const approved = orderApproved(po);
+              const paidNow = orderPaid(o, po);
+              const idLabel = `RST-${String(o.display_id).padStart(6, "0")}`;
+              const status: CardStatus = approved
+                ? "issued"
+                : paidNow
+                  ? "awaiting_approval"
+                  : "awaiting_payment";
+              return (
+                <InvoiceCard
+                  key={o.id}
+                  status={status}
+                  idLabel={idLabel}
+                  amountMajor={Number(o.total ?? 0)}
+                  subtitle={
+                    approved
+                      ? `Approved ${shortDate(po?.admin_approved_at) ?? "—"}${po?.payment_confirmed_method ? ` · paid via ${po.payment_confirmed_method}` : ""}`
+                      : paidNow
+                        ? "Payment recorded · awaiting admin approval"
+                        : `Placed ${shortDate(o.created_at) ?? "—"} · awaiting payment`
+                  }
+                  paymentMethod={po?.payment_confirmed_method}
+                  showGstin
+                  showDoc={approved}
+                  steps={[
+                    { label: "Placed", date: shortDate(o.created_at), done: true },
+                    {
+                      label: "Paid",
+                      date: shortDate(po?.payment_confirmed_at),
+                      done: paidNow,
+                    },
+                    {
+                      label: "Approved",
+                      date: shortDate(po?.admin_approved_at),
+                      done: approved,
+                    },
+                    {
+                      label: "Invoiced",
+                      date: shortDate(po?.admin_approved_at),
+                      done: approved,
+                    },
+                  ]}
+                  actions={
+                    approved ? (
+                      <DownloadInvoiceButton
+                        id={o.id}
+                        reference={String(o.display_id)}
+                      />
+                    ) : po && !paidNow ? (
+                      <Button
+                        asChild
+                        size="sm"
+                        rightIcon={<ArrowRight className="h-4 w-4" />}
+                      >
+                        <Link
+                          href={`/b2b/purchase-orders/${encodeURIComponent(po.id)}`}
+                        >
+                          Confirm payment
+                        </Link>
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              );
+            })}
 
-            {state.invoices.map((inv) => {
+            {orphanPOs.map((p) => {
+              const paidPO = !!p.payment_confirmed_at;
+              return (
+                <InvoiceCard
+                  key={p.id}
+                  status={paidPO ? "awaiting_approval" : "awaiting_payment"}
+                  idLabel={p.po_number}
+                  amountMajor={Number(p.value_major ?? 0)}
+                  subtitle={
+                    paidPO
+                      ? `Payment recorded · via ${p.payment_confirmed_method ?? "—"}`
+                      : `Placed ${shortDate(p.created_at) ?? "—"} · record your payment reference`
+                  }
+                  steps={[
+                    { label: "Placed", date: shortDate(p.created_at), done: true },
+                    {
+                      label: "Paid",
+                      date: shortDate(p.payment_confirmed_at),
+                      done: paidPO,
+                    },
+                    { label: "Approved", date: null, done: false },
+                    { label: "Invoiced", date: null, done: false },
+                  ]}
+                  actions={
+                    paidPO ? undefined : (
+                      <Button
+                        asChild
+                        size="sm"
+                        rightIcon={<ArrowRight className="h-4 w-4" />}
+                      >
+                        <Link
+                          href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}
+                        >
+                          Confirm payment
+                        </Link>
+                      </Button>
+                    )
+                  }
+                />
+              );
+            })}
+
+            {state.invoices
+              .filter((inv) => !state.orders.some((o) => o.id === inv.order_id))
+              .map((inv) => {
               const st: CardStatus =
                 inv.status === "paid"
                   ? "paid"
@@ -260,11 +369,7 @@ export default function InvoicesPage() {
                   showDoc
                   steps={[
                     { label: "Issued", date: null, done: true },
-                    {
-                      label: "Paid",
-                      date: null,
-                      done: inv.status === "paid",
-                    },
+                    { label: "Paid", date: null, done: inv.status === "paid" },
                   ]}
                   actions={
                     <DownloadInvoiceButton
@@ -275,51 +380,6 @@ export default function InvoicesPage() {
                 />
               );
             })}
-
-            {queued.map((p) => (
-              <InvoiceCard
-                key={p.id}
-                status="awaiting_approval"
-                idLabel={p.po_number}
-                amountMajor={Number(p.value_major ?? 0)}
-                subtitle={`Payment recorded · via ${p.payment_confirmed_method ?? "—"}`}
-                steps={[
-                  { label: "Placed", date: shortDate(p.created_at), done: true },
-                  {
-                    label: "Paid",
-                    date: shortDate(p.payment_confirmed_at),
-                    done: true,
-                  },
-                  { label: "Approved", date: null, done: false },
-                  { label: "Invoiced", date: null, done: false },
-                ]}
-              />
-            ))}
-
-            {awaiting.map((p) => (
-              <InvoiceCard
-                key={p.id}
-                status="awaiting_payment"
-                idLabel={p.po_number}
-                amountMajor={Number(p.value_major ?? 0)}
-                subtitle={`Placed ${shortDate(p.created_at) ?? "—"} · record your payment reference`}
-                steps={[
-                  { label: "Placed", date: shortDate(p.created_at), done: true },
-                  { label: "Paid", date: null, done: false },
-                  { label: "Approved", date: null, done: false },
-                  { label: "Invoiced", date: null, done: false },
-                ]}
-                actions={
-                  <Button asChild size="sm" rightIcon={<ArrowRight className="h-4 w-4" />}>
-                    <Link
-                      href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}
-                    >
-                      Confirm payment
-                    </Link>
-                  </Button>
-                }
-              />
-            ))}
           </div>
         </>
       )}
