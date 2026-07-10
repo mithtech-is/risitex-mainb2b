@@ -1,5 +1,9 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import {
+  ContainerRegistrationKeys,
+  Modules,
+  QueryContext,
+} from "@medusajs/framework/utils"
 import { z } from "zod"
 import {
   PURCHASE_ORDER_MODULE,
@@ -241,10 +245,19 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     if (input.items && input.items.length > 0) {
       try {
         const variantIds = input.items.map((it) => it.variant_id)
+        // calculated_price needs a pricing context (currency / region),
+        // otherwise the pricing module throws "calculatePrices requires
+        // currency_code in the pricing context" and no native order is created.
         const { data: variants } = await query.graph({
           entity: "variant",
           fields: ["id", "title", "sku", "product.title", "calculated_price.calculated_amount"],
           filters: { id: variantIds },
+          context: {
+            calculated_price: QueryContext({
+              currency_code: "inr",
+              ...(regionId ? { region_id: regionId } : {}),
+            }),
+          },
         })
 
         const orderItems = input.items.map((item) => {
