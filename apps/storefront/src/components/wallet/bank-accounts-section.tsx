@@ -184,10 +184,8 @@ function AddBankForm({
   const [error, setError] = React.useState<string | null>(null);
 
   const ifscOk = IFSC_RE.test(ifsc.trim().toUpperCase());
-  const formOk =
-    holder.trim().length >= 2 &&
-    /^[0-9]{6,18}$/.test(accountNumber.trim()) &&
-    ifscOk;
+  const accountOk = /^[0-9]{6,18}$/.test(accountNumber.trim());
+  const formOk = holder.trim().length >= 2 && accountOk && ifscOk;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,11 +233,19 @@ function AddBankForm({
           <Input
             inputMode="numeric"
             value={accountNumber}
-            onChange={(e) => setAccountNumber(e.currentTarget.value.replace(/\D/g, ""))}
+            onChange={(e) =>
+              setAccountNumber(e.currentTarget.value.replace(/\D/g, "").slice(0, 18))
+            }
             placeholder="6 – 18 digits"
+            maxLength={18}
             required
             className="font-mono"
           />
+          {accountNumber && !accountOk && (
+            <p className="mt-1 text-caption text-feedback-danger-text">
+              Account number must be 6–18 digits.
+            </p>
+          )}
         </div>
         <div>
           <Label size="caption">IFSC code</Label>

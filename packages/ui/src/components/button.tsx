@@ -118,7 +118,15 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : leftIcon}
-        <span className={cn(isLoading && "opacity-70")}>{children}</span>
+        {/* Lay the label out as a centered flex row. Tailwind Preflight sets
+            `svg { display:block }`, so an icon passed as a raw child alongside
+            text would otherwise stack ABOVE the label and get clipped by the
+            button's fixed height. inline-flex keeps icon + text on one line. */}
+        <span
+          className={cn("inline-flex items-center", isLoading && "opacity-70")}
+        >
+          {children}
+        </span>
         {!isLoading && rightIcon}
       </button>
     );
