@@ -96,9 +96,12 @@ export default function InvoicesPage() {
     ])
       .then(([credit, pos]) => {
         if (cancelled) return;
+        // Credit invoices are an OPTIONAL data source — a buyer with no credit
+        // terms gets a failure here. That must NOT blank the page: the POs
+        // (issued/awaiting invoices) are the primary content and load
+        // independently. So a credit failure just means "no credit invoices".
         const invoices =
           "_error" in credit ? [] : (credit.invoices as CreditInvoice[]);
-        const errMsg = "_error" in credit ? credit._error : null;
         const pending = pos.filter(
           (p) =>
             (p.status === "draft" || p.status === "in_progress") &&
@@ -106,7 +109,7 @@ export default function InvoicesPage() {
         );
         setState({
           loading: false,
-          error: errMsg ?? null,
+          error: null,
           invoices,
           pendingPOs: pending,
         });
