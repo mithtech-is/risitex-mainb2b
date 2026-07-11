@@ -15,6 +15,8 @@ import {
 import { SignedOut, SignedIn } from "@/components/auth/signed-out";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { WishlistHeart } from "@/components/wishlist/wishlist-heart";
+import { CatalogueSearch } from "@/components/catalogue/catalogue-search";
+import { FilterDropdown } from "@/components/catalogue/filter-dropdown";
 
 export const metadata: Metadata = {
   title: "Wholesale catalogue",
@@ -24,11 +26,13 @@ export const metadata: Metadata = {
 
 type Search = {
   cat?: string; // category handle (hierarchical)
+  q?: string;
   color?: string;
   size?: string;
   fabric?: string;
   moq_max?: string;
   price_max?: string;
+  availability?: string;
   sort?: string;
 };
 
@@ -59,9 +63,28 @@ function applyFilters(
   catHandleSet: Set<string> | null,
 ): Product[] {
   let out = products;
+  if (s.q && s.q.trim()) {
+    const q = s.q.trim().toLowerCase();
+    out = out.filter((p) => {
+      const hay = [
+        p.name,
+        p.eyebrow,
+        p.description,
+        ...p.variants.map((v) => v.sku),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }
   if (catHandleSet) {
     out = out.filter((p) =>
       (p.categoryHandles ?? []).some((h) => catHandleSet.has(h)),
+    );
+  }
+  if (s.availability === "in_stock") {
+    out = out.filter((p) =>
+      p.variants.some((v) => v.inventoryState !== "out_of_stock"),
     );
   }
   const colors = parseCsv(s.color);
@@ -183,7 +206,9 @@ export default async function WholesaleCataloguePage({
   const priceMax = Number(s.price_max);
 
   const filtersActive =
+    !!s.q ||
     !!s.cat ||
+    !!s.availability ||
     activeColors.length > 0 ||
     activeSizes.length > 0 ||
     activeFabrics.length > 0 ||
@@ -234,47 +259,101 @@ export default async function WholesaleCataloguePage({
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-8 py-8 lg:grid-cols-[240px_1fr]">
-        {/* Filter sidebar */}
-        <aside aria-label="Product filters" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-heading-sm text-text-primary">Filters</h2>
-            {filtersActive && (
-              <Link
-                href="/wholesale/catalogue"
-                className="text-caption text-text-muted hover:text-text-primary"
-              >
-                Clear all
-              </Link>
-            )}
-          </div>
+      <div className="flex flex-col gap-6 py-8">
+        <CatalogueSearch />
 
-          <FacetBlock title="Category">
-            <FacetLink
-              href={withParam(s, "cat", undefined)}
-              active={!s.cat}
-              label={`All (${all.length})`}
-            />
-            {tree.length === 0 ? (
-              <p className="px-2 py-1 text-caption text-text-muted">
-                No categories yet.
-              </p>
-            ) : (
-              tree.map((node) => (
-                <CategoryTreeNav
-                  key={node.id}
-                  node={node}
-                  depth={0}
-                  activeHandle={s.cat}
-                  search={s}
-                  countUnder={countUnder}
+        {/* Filter row */}
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterDropdown label="Category">
+            <div className="max-h-80 space-y-1 overflow-y-auto">
+              <FacetLink
+                href={withParam(s, "cat", undefined)}
+                active={!s.cat}
+                label={`All (${all.length})`}
+              />
+              {tree.length === 0 ? (
+                <p className="px-2 py-1 text-caption text-text-muted">
+                  No categories yet.
+                </p>
+              ) : (
+                tree.map((node) => (
+                  <CategoryTreeNav
+                    key={node.id}
+                    node={node}
+                    depth={0}
+                    activeHandle={s.cat}
+                    search={s}
+                    countUnder={countUnder}
+                  />
+                ))
+              )}
+            </div>
+          </FilterDropdown>
+
+          <FilterDropdown label="Availability">
+            <div className="space-y-1">
+              <FacetLink
+                href={withParam(s, "availability", undefined)}
+                active={!s.availability}
+                label="Any"
+              />
+              <FacetLink
+                href={withParam(
+                  s,
+                  "availability",
+                  s.availability === "in_stock" ? undefined : "in_stock",
+                )}
+                active={s.availability === "in_stock"}
+                label="In stock"
+              />
+            </div>
+          </FilterDropdown>
+
+          {sizeFacets.length > 0 && (
+            <FilterDropdown label="Size">
+              <div className="flex flex-wrap gap-2">
+                {sizeFacets.map((sz) => {
+                  const active = activeSizes.includes(sz.toLowerCase());
+                  return (
+                    <Link
+                      key={sz}
+                      href={withParam(s, "size", toggleCsv(s.size, sz))}
+                      aria-pressed={active}
+                      className={[
+                        "inline-flex h-7 min-w-9 items-center justify-center rounded-md px-2 text-caption font-mono transition-colors duration-fast",
+                        active
+                          ? "bg-action-primary-bg text-action-primary-text"
+                          : "border border-border-subtle text-text-secondary hover:bg-surface-sunken hover:text-text-primary",
+                      ].join(" ")}
+                    >
+                      {sz}
+                    </Link>
+                  );
+                })}
+              </div>
+            </FilterDropdown>
+          )}
+
+          <FilterDropdown label="Price">
+            <div className="space-y-1">
+              <FacetLink
+                href={withParam(s, "price_max", undefined)}
+                active={!s.price_max}
+                label="Any"
+              />
+              {priceOptions.map((n) => (
+                <FacetLink
+                  key={n}
+                  href={withParam(s, "price_max", String(n))}
+                  active={s.price_max === String(n)}
+                  label={`≤ ₹${n.toLocaleString()}`}
                 />
-              ))
-            )}
-          </FacetBlock>
+              ))}
+            </div>
+          </FilterDropdown>
 
           {colorFacets.length > 0 && (
-            <FacetBlock title="Colour">
+            <FilterDropdown label="Color">
               <div className="flex flex-wrap gap-2">
                 {colorFacets.map((sw) => {
                   const active = activeColors.includes(sw.value.toLowerCase());
@@ -301,97 +380,71 @@ export default async function WholesaleCataloguePage({
                   );
                 })}
               </div>
-            </FacetBlock>
-          )}
-
-          {sizeFacets.length > 0 && (
-            <FacetBlock title="Size">
-              <div className="flex flex-wrap gap-2">
-                {sizeFacets.map((sz) => {
-                  const active = activeSizes.includes(sz.toLowerCase());
-                  return (
-                    <Link
-                      key={sz}
-                      href={withParam(s, "size", toggleCsv(s.size, sz))}
-                      aria-pressed={active}
-                      className={[
-                        "inline-flex h-7 min-w-9 items-center justify-center rounded-md px-2 text-caption font-mono transition-colors duration-fast",
-                        active
-                          ? "bg-action-primary-bg text-action-primary-text"
-                          : "border border-border-subtle text-text-secondary hover:bg-surface-sunken hover:text-text-primary",
-                      ].join(" ")}
-                    >
-                      {sz}
-                    </Link>
-                  );
-                })}
-              </div>
-            </FacetBlock>
+            </FilterDropdown>
           )}
 
           {fabricFacets.length > 0 && (
-            <FacetBlock title="Fabric">
-              {fabricFacets.map((f) => (
-                <FacetLink
-                  key={f}
-                  href={withParam(s, "fabric", toggleCsv(s.fabric, f))}
-                  active={activeFabrics.includes(f.toLowerCase())}
-                  label={f}
-                />
-              ))}
-            </FacetBlock>
+            <FilterDropdown label="Material">
+              <div className="space-y-1">
+                {fabricFacets.map((f) => (
+                  <FacetLink
+                    key={f}
+                    href={withParam(s, "fabric", toggleCsv(s.fabric, f))}
+                    active={activeFabrics.includes(f.toLowerCase())}
+                    label={f}
+                  />
+                ))}
+              </div>
+            </FilterDropdown>
           )}
 
-          <FacetBlock title="Price max">
-            <FacetLink
-              href={withParam(s, "price_max", undefined)}
-              active={!s.price_max}
-              label="Any"
-            />
-            {priceOptions.map((n) => (
+          <FilterDropdown label="MOQ">
+            <div className="space-y-1">
               <FacetLink
-                key={n}
-                href={withParam(s, "price_max", String(n))}
-                active={s.price_max === String(n)}
-                label={`≤ ₹${n.toLocaleString()}`}
+                href={withParam(s, "moq_max", undefined)}
+                active={!s.moq_max}
+                label="Any"
               />
-            ))}
-          </FacetBlock>
+              {moqOptions.map((n) => (
+                <FacetLink
+                  key={n}
+                  href={withParam(s, "moq_max", String(n))}
+                  active={s.moq_max === String(n)}
+                  label={`≤ ${n} pcs`}
+                />
+              ))}
+            </div>
+          </FilterDropdown>
 
-          <FacetBlock title="MOQ max">
-            <FacetLink
-              href={withParam(s, "moq_max", undefined)}
-              active={!s.moq_max}
-              label="Any"
-            />
-            {moqOptions.map((n) => (
-              <FacetLink
-                key={n}
-                href={withParam(s, "moq_max", String(n))}
-                active={s.moq_max === String(n)}
-                label={`≤ ${n} pcs`}
-              />
-            ))}
-          </FacetBlock>
+          <FilterDropdown label="Sort">
+            <div className="space-y-1">
+              {SORT_OPTIONS.map((opt) => (
+                <FacetLink
+                  key={opt.value}
+                  href={withParam(
+                    s,
+                    "sort",
+                    opt.value === "default" ? undefined : opt.value,
+                  )}
+                  active={
+                    (s.sort ?? "default") === opt.value ||
+                    (!s.sort && opt.value === "default")
+                  }
+                  label={opt.label}
+                />
+              ))}
+            </div>
+          </FilterDropdown>
 
-          <FacetBlock title="Sort">
-            {SORT_OPTIONS.map((opt) => (
-              <FacetLink
-                key={opt.value}
-                href={withParam(
-                  s,
-                  "sort",
-                  opt.value === "default" ? undefined : opt.value,
-                )}
-                active={
-                  (s.sort ?? "default") === opt.value ||
-                  (!s.sort && opt.value === "default")
-                }
-                label={opt.label}
-              />
-            ))}
-          </FacetBlock>
-        </aside>
+          {filtersActive && (
+            <Link
+              href="/wholesale/catalogue"
+              className="ml-1 text-caption text-text-muted hover:text-text-primary"
+            >
+              Clear all
+            </Link>
+          )}
+        </div>
 
         {/* Product grid */}
         <div>
