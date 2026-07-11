@@ -21,6 +21,10 @@ export type MatrixCell = {
   stock?: number;
   /** Internal SKU */
   sku?: string;
+  /** Pieces per pack for this cell's variant (1 = single piece). */
+  packSize?: number;
+  /** Max PACKS selectable for this cell (stock ÷ packSize). */
+  maxPacks?: number;
 };
 
 export type MatrixOrderGridProps = {
@@ -153,28 +157,64 @@ export function MatrixOrderGrid({
                     {disabled ? (
                       <span className="text-text-disabled line-through">—</span>
                     ) : (
-                      <input
-                        type="number"
-                        min={0}
-                        max={cell?.stock ?? 99999}
-                        value={value || ""}
-                        onChange={(e) => {
-                          const n = Number(e.currentTarget.value);
-                          onQuantityChange(
-                            row.id,
-                            col.id,
-                            Number.isNaN(n) ? 0 : Math.max(0, n),
-                          );
-                        }}
-                        placeholder="0"
-                        className={cn(
-                          "h-9 w-14 rounded-sm bg-transparent text-center text-body-md text-text-primary outline-none",
-                          "transition-shadow duration-fast",
-                          "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-                          "focus-visible:bg-brand-accent-surface focus-visible:ring-1 focus-visible:ring-brand-accent",
-                          value > 0 && "bg-brand-accent-surface text-brand-accent",
-                        )}
-                      />
+                      <>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            aria-label="Decrease"
+                            className="flex h-7 w-7 items-center justify-center rounded-sm border border-border-subtle text-text-primary disabled:opacity-40"
+                            disabled={value <= 0}
+                            onClick={() =>
+                              onQuantityChange(row.id, col.id, Math.max(0, value - 1))
+                            }
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            max={cell?.maxPacks ?? 99999}
+                            value={value || ""}
+                            onChange={(e) => {
+                              const n = Number(e.currentTarget.value);
+                              const clamped = Number.isNaN(n)
+                                ? 0
+                                : Math.min(
+                                    Math.max(0, n),
+                                    cell?.maxPacks ?? Number.MAX_SAFE_INTEGER,
+                                  );
+                              onQuantityChange(row.id, col.id, clamped);
+                            }}
+                            placeholder="0"
+                            className={cn(
+                              "h-7 w-10 rounded-sm bg-transparent text-center text-body-md text-text-primary outline-none",
+                              "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                              value > 0 && "text-brand-accent",
+                            )}
+                          />
+                          <button
+                            type="button"
+                            aria-label="Increase"
+                            className="flex h-7 w-7 items-center justify-center rounded-sm border border-border-subtle text-text-primary disabled:opacity-40"
+                            disabled={value >= (cell?.maxPacks ?? Infinity)}
+                            onClick={() =>
+                              onQuantityChange(
+                                row.id,
+                                col.id,
+                                Math.min(value + 1, cell?.maxPacks ?? Number.MAX_SAFE_INTEGER),
+                              )
+                            }
+                          >
+                            +
+                          </button>
+                        </div>
+                        {cell?.packSize && cell.packSize > 1 ? (
+                          <div className="mt-0.5 text-[10px] leading-none text-text-muted">
+                            ×{cell.packSize} pcs/pack
+                          </div>
+                        ) : null}
+                      </>
                     )}
                   </td>
                 );
