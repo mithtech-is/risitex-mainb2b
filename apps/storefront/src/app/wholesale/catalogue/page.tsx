@@ -550,23 +550,6 @@ function CategoryTreeNav({
   );
 }
 
-function FacetBlock({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <h3 className="text-caption text-text-muted uppercase tracking-wider">
-        {title}
-      </h3>
-      <div className="mt-2 space-y-1">{children}</div>
-    </div>
-  );
-}
-
 function FacetLink({
   href,
   active,
