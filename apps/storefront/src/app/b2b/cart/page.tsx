@@ -80,9 +80,30 @@ export default function B2bCartPage() {
     };
   }, [slugKey]);
 
-  // Quantity-rule check per line: BELOW its MOQ (min), or ABOVE its max cap.
+  // Quantity-rule check per PRODUCT (aggregate pieces across its variant
+  // lines): BELOW the product MOQ (min), or ABOVE its max cap. MOQ is a
+  // single per-product value counted in individual pieces, so a size run
+  // split across size × colour cells still counts as one order toward MOQ.
   // The PDP enforces this at add-time but a buyer can edit quantities here.
-  const violations = lines.flatMap((l) => {
+  const violations = React.useMemo(() => {
+    const byProduct = new Map<
+      string,
+      { name: string; variantId: string; total: number; moq: number; max: number }
+    >();
+    for (const l of lines) {
+      const prev = byProduct.get(l.productSlug);
+      if (prev) {
+        prev.total += l.quantity;
+      } else {
+        byProduct.set(l.productSlug, {
+          name: l.productName,
+          variantId: l.variantId,
+          total: l.quantity,
+          moq: l.moq ?? 0,
+          max: l.maxQty ?? 0,
+        });
+      }
+    }
     const out: {
       variantId: string;
       name: string;
@@ -90,16 +111,16 @@ export default function B2bCartPage() {
       amount: number;
       limit: number;
     }[] = [];
-    const moq = l.moq ?? 0;
-    if (moq > 0 && l.quantity < moq) {
-      out.push({ variantId: l.variantId, name: l.productName, kind: "below_moq", amount: moq - l.quantity, limit: moq });
-    }
-    const max = l.maxQty ?? 0;
-    if (max > 0 && l.quantity > max) {
-      out.push({ variantId: l.variantId, name: l.productName, kind: "above_max", amount: l.quantity - max, limit: max });
+    for (const p of byProduct.values()) {
+      if (p.moq > 0 && p.total < p.moq) {
+        out.push({ variantId: p.variantId, name: p.name, kind: "below_moq", amount: p.moq - p.total, limit: p.moq });
+      }
+      if (p.max > 0 && p.total > p.max) {
+        out.push({ variantId: p.variantId, name: p.name, kind: "above_max", amount: p.total - p.max, limit: p.max });
+      }
     }
     return out;
-  });
+  }, [lines]);
 
   const checkoutHref = React.useMemo(() => {
     // Hand the lines to the existing /b2b/checkout wizard via the
