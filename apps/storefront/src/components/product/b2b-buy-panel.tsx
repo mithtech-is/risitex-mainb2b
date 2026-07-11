@@ -155,9 +155,18 @@ export function B2bBuyPanel({ product }: { product: Product }) {
     [quantities, packSizeByKey],
   );
 
+  // Sellable units (packs). `product.priceMajor` is the per-VARIANT (per-pack)
+  // price from Medusa, and a Medusa order line's quantity is the sellable-unit
+  // count — so money and the cart/PO line quantity are counted in packs, while
+  // MOQ (a per-product piece floor) is counted in pieces via `totalPieces`.
+  const totalPacks = React.useMemo(
+    () => Object.values(quantities).reduce((s, n) => s + n, 0),
+    [quantities],
+  );
+
   const moq = product.moq ?? 0;
   const meetsMoq = meetsMoqFn(totalPieces, moq);
-  const lineTotalMajor = product.priceMajor * totalPieces;
+  const lineTotalMajor = product.priceMajor * totalPacks;
 
   const maxPacksByKey = React.useMemo(() => {
     const m: Record<string, number> = {};
@@ -214,7 +223,11 @@ export function B2bBuyPanel({ product }: { product: Product }) {
         productName: product.name,
         variantTitle,
         unitPriceMajor,
-        quantity: pieces,
+        // Line quantity is the sellable-unit (pack) count — matches Medusa
+        // order-line semantics and the backend MOQ validator (which derives
+        // pieces = quantity × pack_size). `packSize` is carried so cart/MOQ
+        // can recompute pieces without a product re-fetch.
+        quantity: packs,
         packSize: ps,
         thumbnail: product.images?.[0],
         moq: product.moq,

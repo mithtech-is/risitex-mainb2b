@@ -80,25 +80,28 @@ export default function B2bCartPage() {
     };
   }, [slugKey]);
 
-  // Quantity-rule check per PRODUCT (aggregate pieces across its variant
+  // Quantity-rule check per PRODUCT (aggregate PIECES across its variant
   // lines): BELOW the product MOQ (min), or ABOVE its max cap. MOQ is a
   // single per-product value counted in individual pieces, so a size run
   // split across size × colour cells still counts as one order toward MOQ.
-  // The PDP enforces this at add-time but a buyer can edit quantities here.
+  // A line's quantity is in sellable units (packs); its pieces are
+  // `quantity × packSize`. The PDP enforces this at add-time but a buyer can
+  // edit quantities here.
   const violations = React.useMemo(() => {
     const byProduct = new Map<
       string,
       { name: string; variantId: string; total: number; moq: number; max: number }
     >();
     for (const l of lines) {
+      const pieces = l.quantity * (l.packSize ?? 1);
       const prev = byProduct.get(l.productSlug);
       if (prev) {
-        prev.total += l.quantity;
+        prev.total += pieces;
       } else {
         byProduct.set(l.productSlug, {
           name: l.productName,
           variantId: l.variantId,
-          total: l.quantity,
+          total: pieces,
           moq: l.moq ?? 0,
           max: l.maxQty ?? 0,
         });
