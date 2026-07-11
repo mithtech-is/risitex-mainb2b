@@ -14,7 +14,6 @@ import { getCategoryTree, deepestPath } from "@/lib/categories";
 import { SignedIn, SignedOut } from "@/components/auth/signed-out";
 import { B2bPriceGate } from "@/components/b2b/b2b-price-gate";
 import { WishlistHeart } from "@/components/wishlist/wishlist-heart";
-import { RequestQuoteModal } from "@/components/product/request-quote-modal";
 import { SizeChartModal } from "@/components/product/size-chart-modal";
 import { ProductQuestions } from "@/components/product/product-questions";
 import { ProductReviews } from "@/components/product/product-reviews";
@@ -47,6 +46,8 @@ export default async function WholesalePdpPage({
   const { slug } = await params;
   const product = await getWholesaleProduct(slug);
   if (!product) notFound();
+
+  const sizeChartGarment = garmentFromProduct(product);
 
   const [allProducts, categoryTree] = await Promise.all([
     getWholesaleProducts(),
@@ -129,9 +130,6 @@ export default async function WholesalePdpPage({
                 className="mt-1 h-10 w-10"
               />
             </div>
-            <p className="mt-4 text-body-lg text-text-secondary">
-              {product.description}
-            </p>
 
             <div className="mt-8">
               <SignedIn>
@@ -158,28 +156,8 @@ export default async function WholesalePdpPage({
                 </div>
               </SignedOut>
             </div>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <SizeChartModal />
-              <SignedIn>
-                <RequestQuoteModal
-                  productSlug={product.slug}
-                  productName={product.name}
-                />
-              </SignedIn>
-              <SignedOut>
-                <Button asChild variant="ghost">
-                  <Link href={`/contact?product=${encodeURIComponent(product.slug)}`}>
-                    Request quote
-                  </Link>
-                </Button>
-              </SignedOut>
-              <Button asChild variant="ghost">
-                <Link
-                  href={`/b2b/sample-requests?product=${encodeURIComponent(product.name)}`}
-                >
-                  Request sample
-                </Link>
-              </Button>
+            <div className="mt-4">
+              <SizeChartModal garment={sizeChartGarment} />
             </div>
           </section>
         </div>
@@ -189,13 +167,7 @@ export default async function WholesalePdpPage({
             title="Wholesale Controls"
             items={[
               ["MOQ", `${product.moq ?? 0} pcs`],
-              ["Case Pack", `${product.cartonSize ?? 0} pcs`],
-              ["Master Carton", `${(product.cartonSize ?? 0) * 2 || 0} pcs`],
               ["Minimum Order", `${product.moq ?? 0} pcs`],
-              [
-                "Recommended MOQ",
-                `${Math.max(product.moq ?? 0, product.cartonSize ?? 0)} pcs`,
-              ],
             ]}
           />
           <InfoPanel
@@ -239,92 +211,6 @@ export default async function WholesalePdpPage({
           />
         </div>
 
-        <section className="grid grid-cols-1 gap-6 pb-16 lg:grid-cols-12">
-          <div className="lg:col-span-7">
-            <h2 className="text-heading-md text-text-primary">
-              Size and Quantity Matrix
-            </h2>
-            <div className="mt-4 overflow-x-auto rounded-md border border-border-subtle">
-              <table className="min-w-full divide-y divide-border-subtle text-body-sm">
-                <thead className="bg-surface-raised text-text-muted">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium">Colour</th>
-                    {product.sizes.map((size) => (
-                      <th key={size} className="px-4 py-3 text-left font-medium">
-                        {size}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-subtle">
-                  {product.swatches.map((swatch) => (
-                    <tr key={swatch.value}>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-2">
-                          <span
-                            className="h-3 w-3 rounded-full ring-1 ring-border-subtle"
-                            style={{ backgroundColor: swatch.hex }}
-                          />
-                          {swatch.name}
-                        </span>
-                      </td>
-                      {product.sizes.map((size) => {
-                        const variant = product.variants.find(
-                          (v) => v.size === size && v.colour === swatch.value,
-                        );
-                        return (
-                          <td key={`${swatch.value}-${size}`} className="px-4 py-3">
-                            {variant ? (
-                              <span className="font-mono text-caption text-text-secondary">
-                                {variant.inventoryState.replaceAll("_", " ")}
-                              </span>
-                            ) : (
-                              <span className="text-text-muted">-</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div className="lg:col-span-5">
-            <h2 className="text-heading-md text-text-primary">Bulk Pricing</h2>
-            <B2bPriceGate
-              approved={
-                <div className="mt-4 divide-y divide-border-subtle rounded-md border border-border-subtle bg-surface-raised">
-                  {(product.tiers ?? []).map((tier) => (
-                    <div
-                      key={tier.minQty}
-                      className="flex items-center justify-between px-4 py-3"
-                    >
-                      <span className="text-body-sm text-text-secondary">
-                        {tier.label ?? "Volume"} {tier.minQty}
-                        {tier.maxQty ? `-${tier.maxQty}` : "+"} pcs
-                      </span>
-                      <span className="font-mono text-body-sm text-text-primary">
-                        Rs {tier.pricePerUnitMajor}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              }
-              unauthenticated={
-                <div className="mt-4 rounded-md border border-border-subtle bg-surface-sunken p-5 text-center">
-                  <p className="text-body-sm text-text-secondary">
-                    Tier &amp; volume pricing visible after login.
-                  </p>
-                  <Button asChild className="mt-3" size="sm">
-                    <Link href="/auth/sign-in">Sign in to view</Link>
-                  </Button>
-                </div>
-              }
-            />
-          </div>
-        </section>
-
         <section className="grid grid-cols-1 gap-6 pb-16 lg:grid-cols-3">
           <TextPanel
             title="Distributor Notes"
@@ -359,6 +245,26 @@ export default async function WholesalePdpPage({
           />
         </section>
 
+        <section className="pb-16">
+          <h2 className="font-display text-heading-lg text-text-primary">
+            Product Description
+          </h2>
+          <ul className="mt-6 list-disc space-y-2 pl-6 text-body-md text-text-secondary">
+            {(
+              (product as { descriptionBullets?: string[] }).descriptionBullets
+                ?.length
+                ? (product as { descriptionBullets?: string[] })
+                    .descriptionBullets!
+                : product.description
+                    .split(/[.\n]+/)
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+            ).map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </section>
+
         {related.length > 0 && (
           <section className="pb-10">
             <h2 className="text-heading-md text-text-primary">Related products</h2>
@@ -383,6 +289,20 @@ export default async function WholesalePdpPage({
       </Container>
     </>
   );
+}
+
+function garmentFromProduct(p: {
+  subcategory?: string;
+  eyebrow?: string;
+}): string | undefined {
+  const hay = `${p.subcategory ?? ""} ${p.eyebrow ?? ""}`.toLowerCase();
+  if (/boxer|brief|trunk|inner/.test(hay)) return "Innerwear";
+  if (/vest/.test(hay)) return "Vest";
+  if (/t-?shirt|tee/.test(hay)) return "T-Shirt";
+  if (/jean|denim/.test(hay)) return "Jeans";
+  if (/trouser|chino|pant/.test(hay)) return "Trouser";
+  if (/shirt/.test(hay)) return "Shirt";
+  return undefined;
 }
 
 function InfoPanel({
