@@ -40,7 +40,7 @@ const JEANS_CHART: SizeChartData = {
     { name: "Waist", sizes: { "30": 30, "32": 32, "34": 34, "36": 36 } },
     { name: "Hip", sizes: { "30": 38, "32": 40, "34": 42, "36": 44 } },
     { name: "Inseam", sizes: { "30": 32, "32": 32, "34": 32, "36": 32 } },
-    { name: "Rise", sizes: { "30": 10, "32": 10.5, "34": 11, "36": 11.5 } },
+    { name: "Bottom", sizes: { "30": 13, "32": 13.5, "34": 14, "36": 14.5 } },
   ],
 };
 
@@ -55,10 +55,20 @@ const TROUSER_CHART: SizeChartData = {
 };
 
 const INNERWEAR_CHART: SizeChartData = {
-  sizes: ["S", "M", "L", "XL"],
+  sizes: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
   dimensions: [
-    { name: "Waist (To Fit)", sizes: { "S": 28, "M": 32, "L": 36, "XL": 40 } },
+    {
+      name: "Waist (To Fit)",
+      // Range low bounds in inches; the display shows the low–high band.
+      sizes: { S: 28, M: 32, L: 36, XL: 40, "2XL": 44, "3XL": 48, "4XL": 52 },
+    },
   ],
+};
+
+// Innerwear waist bands (low–high, inches) shown verbatim in the table.
+const INNERWEAR_WAIST_RANGES: Record<string, [number, number]> = {
+  S: [28, 30], M: [32, 34], L: [36, 38], XL: [40, 42],
+  "2XL": [44, 46], "3XL": [48, 50], "4XL": [52, 54],
 };
 
 const VEST_CHART: SizeChartData = {
@@ -98,12 +108,21 @@ const MEASURING_GUIDE: Record<string, string[]> = {
   Inseam: [
     "Measure from the crotch point down to the bottom ankle along the inner leg seam.",
   ],
+  Bottom: [
+    "Measure the width across the bottom leg opening, then double it for the full circumference.",
+  ],
 };
 
-export function SizeChartModal() {
+export function SizeChartModal({ garment }: { garment?: string } = {}) {
   const [open, setOpen] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<string>("Shirt");
+  const [activeTab, setActiveTab] = React.useState<string>(
+    garment && CHARTS[garment] ? garment : "Shirt",
+  );
   const [unit, setUnit] = React.useState<"in" | "cm">("in");
+
+  React.useEffect(() => {
+    if (garment && CHARTS[garment]) setActiveTab(garment);
+  }, [garment]);
 
   const currentChart = CHARTS[activeTab];
 
@@ -113,6 +132,19 @@ export function SizeChartModal() {
     }
     const cm = Math.round(inches * 2.54 * 10) / 10;
     return `${cm} cm`;
+  };
+
+  const renderCell = (row: DimensionRow, sz: string): string => {
+    if (activeTab === "Innerwear" && INNERWEAR_WAIST_RANGES[sz]) {
+      const [lo, hi] = INNERWEAR_WAIST_RANGES[sz];
+      if (unit === "cm") {
+        const hiCm = Math.round(hi * 2.54 * 10) / 10;
+        const loCm = Math.round(lo * 2.54 * 10) / 10;
+        return `${loCm}–${hiCm} cm`;
+      }
+      return `${lo}"–${hi}"`;
+    }
+    return formatVal(row.sizes[sz] ?? 0);
   };
 
   return (
@@ -211,7 +243,7 @@ export function SizeChartModal() {
                               key={sz}
                               className="px-4 py-3 text-center text-text-primary font-mono"
                             >
-                              {formatVal(row.sizes[sz] ?? 0)}
+                              {renderCell(row, sz)}
                             </td>
                           ))}
                         </tr>
