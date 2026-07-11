@@ -196,7 +196,8 @@ Make sure `pnpm docker:up` succeeded and the ports in `apps/backend/.env`
 ## Domain primer (textile-specific concepts a generic Medusa store doesn't have)
 
 - **Matrix ordering** — a SKU is a size × color grid; buyers fill quantities into a matrix instead of clicking each variant.
-- **MOQ (Minimum Order Quantity)** — varies per customer tier and per SKU; enforced server-side via the B2B pricing rules engine.
+- **MOQ (Minimum Order Quantity)** — a single per-product value counted in **individual pieces**; enforced server-side via the B2B pricing rules engine and on the PDP bulk-order grid.
+- **Variant packs** — a variant can be sold as a multi-piece pack (e.g. a "30-36" pack of 4). Set the integer key **`pack_size`** in the variant's **metadata** in Medusa Admin (absent/`1` = single piece). The wholesale grid counts each selected pack as `pack_size` individual pieces toward MOQ and pricing.
 - **Master Carton** — units per carton; some SKUs must round up to whole cartons.
 - **Customer tiers** — drive pricing, MOQ, credit limits, and product visibility.
 - **Sales rep + affiliate attribution** — reps act on behalf of B2B customers; commissions and referral rewards are tracked.
