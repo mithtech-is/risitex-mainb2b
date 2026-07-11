@@ -39,6 +39,8 @@ export type CartLine = {
   /** Max order qty from the B2B quantity rule (undefined = no cap). */
   maxQty?: number;
   cartonSize?: number;
+  /** Pack size (pieces per pack) the line's quantity was ordered in, for display. */
+  packSize?: number;
 };
 
 /** Live values pulled from the backend for one product slug. */

@@ -5,9 +5,7 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import {
   Button,
-  MarginCalculator,
   MatrixOrderGrid,
-  TierLadder,
   formatINR,
   type MatrixCell,
   type MatrixDimensionValue,
@@ -15,11 +13,11 @@ import {
 import type { Product } from "@/data/products";
 import {
   fetchAvailability,
-  clampToAvailable,
   type AvailabilityRow,
 } from "@/lib/availability";
 import { addToCart, type CartLine } from "@/lib/cart";
 import { MEDUSA_BASE_URL } from "@/lib/medusa";
+import { packSizeOf, cellPieces, maxPacksForStock, meetsMoq as meetsMoqFn } from "@/lib/moq-pack";
 
 export function B2bBuyPanel({ product }: { product: Product }) {
   const [b2bStatus, setB2bStatus] = React.useState<string | null>(null);
@@ -119,12 +117,16 @@ export function B2bBuyPanel({ product }: { product: Product }) {
               ? 0
               : variant.stockCount ?? 999;
           const avail = availability.get(variant.sku);
+          const ps = packSizeOf(variant.packSize);
+          const stock = avail ? avail.available ?? fixtureStock : fixtureStock;
           out.push({
             rowId: r.id,
             colId: c.id,
             variantId: variant.id,
             sku: variant.sku,
-            stock: avail ? avail.available ?? fixtureStock : fixtureStock,
+            stock,
+            packSize: ps,
+            maxPacks: maxPacksForStock(stock, ps),
           });
         } else {
           out.push({ rowId: r.id, colId: c.id, stock: 0 });
@@ -135,77 +137,38 @@ export function B2bBuyPanel({ product }: { product: Product }) {
   }, [effectiveRows, cols, product.variants, rows.length, availability]);
 
   const [quantities, setQuantities] = React.useState<Record<string, number>>({});
-  const totalQty = Object.values(quantities).reduce((s, n) => s + n, 0);
 
-  const moq = product.moq ?? 0;
-  const meetsMoq = totalQty >= moq;
-  const cartonSize = product.cartonSize ?? 0;
-  const fullCartons = cartonSize ? Math.floor(totalQty / cartonSize) : 0;
-  const looseUnits = cartonSize ? totalQty - fullCartons * cartonSize : 0;
-
-  const currentTier = React.useMemo(() => {
-    if (!product.tiers) return null;
-    return (
-      product.tiers.find(
-        (t) =>
-          totalQty >= t.minQty &&
-          (t.maxQty === null || totalQty <= t.maxQty),
-      ) ?? product.tiers[0]
-    );
-  }, [product.tiers, totalQty]);
-
-  const lineTotalMajor = currentTier
-    ? currentTier.pricePerUnitMajor * totalQty
-    : product.priceMajor * totalQty;
-
-  // Per-cell sellable stock, keyed like the quantity map.
-  const stockByKey = React.useMemo(() => {
-    const m: Record<string, number | undefined> = {};
-    for (const cell of cells) {
-      m[`${cell.rowId}_${cell.colId}`] = cell.stock;
-    }
+  // `quantities` holds PACK counts keyed by `${rowId}_${colId}`.
+  // Total PIECES = Σ(packCount × packSize).
+  const packSizeByKey = React.useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const cell of cells) m[`${cell.rowId}_${cell.colId}`] = cell.packSize ?? 1;
     return m;
   }, [cells]);
 
-  // FR-9.02: the grid's number input doesn't hard-cap typed values, so clamp
-  // each keyed quantity to what's available before it lands in the cart.
-  const handleQty = (rowId: string, colId: string, qty: number) => {
-    const key = `${rowId}_${colId}`;
-    const capped = clampToAvailable(qty, stockByKey[key] ?? null);
-    setQuantities((prev) => ({ ...prev, [key]: capped }));
-  };
+  const totalPieces = React.useMemo(
+    () =>
+      Object.entries(quantities).reduce(
+        (sum, [key, packs]) => sum + cellPieces(packs, packSizeByKey[key] ?? 1),
+        0,
+      ),
+    [quantities, packSizeByKey],
+  );
 
-  // FR-3.02 master carton single-click: distribute one carton's units across
-  // the size curve (first colour column), middle sizes taking any remainder.
-  // Additive — click N times to add N cartons.
-  const canAddCarton = cartonSize > 0 && effectiveRows.length > 0 && cols.length > 0;
-  const handleAddCarton = () => {
-    if (!canAddCarton) return;
-    const firstCol = cols[0];
-    if (!firstCol) return;
-    const colId = firstCol.id;
-    const n = effectiveRows.length;
-    const base = Math.floor(cartonSize / n);
-    const rem = cartonSize - base * n;
-    const mid = (n - 1) / 2;
-    const remSet = new Set(
-      effectiveRows
-        .map((_, i) => i)
-        .sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid))
-        .slice(0, rem),
-    );
-    // FR-9.02: clamp each cell to its available stock so a carton add can
-    // never oversell. Adds as much of the carton as is sellable rather than
-    // blocking outright; cells short on stock simply take less.
-    setQuantities((prev) => {
-      const next = { ...prev };
-      effectiveRows.forEach((r, i) => {
-        const key = `${r.id}_${colId}`;
-        const wanted = (next[key] ?? 0) + base + (remSet.has(i) ? 1 : 0);
-        next[key] = clampToAvailable(wanted, stockByKey[key] ?? null);
-      });
-      return next;
-    });
+  const moq = product.moq ?? 0;
+  const meetsMoq = meetsMoqFn(totalPieces, moq);
+  const lineTotalMajor = product.priceMajor * totalPieces;
+
+  const maxPacksByKey = React.useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const cell of cells) m[`${cell.rowId}_${cell.colId}`] = cell.maxPacks ?? Infinity;
+    return m;
+  }, [cells]);
+
+  const handleQty = (rowId: string, colId: string, packs: number) => {
+    const key = `${rowId}_${colId}`;
+    const capped = Math.min(Math.max(0, packs), maxPacksByKey[key] ?? Infinity);
+    setQuantities((prev) => ({ ...prev, [key]: capped }));
   };
 
   // Inline confirmation banner — replaces the old "redirect straight to
@@ -225,15 +188,15 @@ export function B2bBuyPanel({ product }: { product: Product }) {
 
   const handleAdd = () => {
     if (!meetsMoq) return;
-    const unitPriceMajor = currentTier
-      ? currentTier.pricePerUnitMajor
-      : product.priceMajor;
+    const unitPriceMajor = product.priceMajor;
     const newLines: CartLine[] = [];
     let addedUnits = 0;
     for (const cell of cells) {
       if (!cell.variantId) continue;
-      const qty = quantities[`${cell.rowId}_${cell.colId}`] ?? 0;
-      if (qty <= 0) continue;
+      const packs = quantities[`${cell.rowId}_${cell.colId}`] ?? 0;
+      if (packs <= 0) continue;
+      const ps = packSizeByKey[`${cell.rowId}_${cell.colId}`] ?? 1;
+      const pieces = cellPieces(packs, ps);
       // Reconstruct the variant axis labels so the cart can show
       // "Black / M" without re-loading product data.
       const sizeLabel =
@@ -251,13 +214,13 @@ export function B2bBuyPanel({ product }: { product: Product }) {
         productName: product.name,
         variantTitle,
         unitPriceMajor,
-        quantity: qty,
+        quantity: pieces,
+        packSize: ps,
         thumbnail: product.images?.[0],
         moq: product.moq,
         maxQty: product.maxQty,
-        cartonSize: product.cartonSize,
       });
-      addedUnits += qty;
+      addedUnits += pieces;
     }
     if (newLines.length === 0) return;
     addToCart(newLines);
@@ -297,48 +260,14 @@ export function B2bBuyPanel({ product }: { product: Product }) {
 
   return (
     <div className="flex flex-col gap-8">
-      {product.tiers && product.tiers.length > 0 && (
-        <section>
-          <h2 className="text-heading-md text-text-primary">Tier pricing</h2>
-          <p className="mt-1 text-caption text-text-muted">
-            Excl. GST. Tier resolves on submitted total.
-          </p>
-          <div className="mt-4">
-            <TierLadder
-              tiers={product.tiers}
-              currentQuantity={totalQty || undefined}
-              unitLabel={product.unit?.includes("metre") ? "metres" : "pcs"}
-            />
-          </div>
-        </section>
-      )}
-
-      {currentTier && (
-        <MarginCalculator
-          costPerUnitMajor={currentTier.pricePerUnitMajor}
-          suggestedRetailMajor={product.priceMajor}
-        />
-      )}
-
       <section>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-heading-md text-text-primary">Build your order</h2>
+            <h2 className="text-heading-md text-text-primary">Bulk Order Grid</h2>
             <p className="mt-1 text-caption text-text-muted">
-              Key quantities into the cells you need. Row + column subtotals at
-              the edges.
+              Set pack quantities per size × colour. Totals show individual pieces.
             </p>
           </div>
-          {canAddCarton && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleAddCarton}
-              title="Add one master carton, spread across the size curve"
-            >
-              + 1 master carton · {cartonSize} pcs
-            </Button>
-          )}
         </div>
         <div className="mt-4">
           <MatrixOrderGrid
@@ -352,51 +281,22 @@ export function B2bBuyPanel({ product }: { product: Product }) {
       </section>
 
       <section className="rounded-lg border border-border-subtle bg-surface-raised p-5">
-        <dl className="grid grid-cols-2 gap-4 numerics-tabular md:grid-cols-4">
-          <Stat label="Total units" value={totalQty.toLocaleString()} />
-          <Stat
-            label="Cartons"
-            value={
-              cartonSize
-                ? `${fullCartons}${looseUnits > 0 ? ` + ${looseUnits}` : ""}`
-                : "—"
-            }
-            hint={cartonSize ? `${cartonSize} pcs / carton` : undefined}
-          />
-          <Stat
-            label="Tier"
-            value={currentTier?.label ?? "—"}
-            hint={
-              currentTier ? `${formatINR(currentTier.pricePerUnitMajor)} / pc` : undefined
-            }
-          />
-          <Stat
-            label="Subtotal"
-            value={formatINR(lineTotalMajor)}
-            hint="excl. GST"
-          />
+        <dl className="grid grid-cols-2 gap-4 numerics-tabular md:grid-cols-2">
+          <Stat label="Total pieces" value={totalPieces.toLocaleString()} />
+          <Stat label="Subtotal" value={formatINR(lineTotalMajor)} hint="excl. GST" />
         </dl>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Button
             size="lg"
-            disabled={!meetsMoq || totalQty === 0}
+            disabled={!meetsMoq || totalPieces === 0}
             onClick={handleAdd}
           >
-            {totalQty === 0
+            {totalPieces === 0
               ? "Add quantities first"
               : meetsMoq
-                ? `Add to cart · ${totalQty.toLocaleString()} pcs`
-                : `${(moq - totalQty).toLocaleString()} pcs to MOQ`}
-          </Button>
-          <Button
-            variant="secondary"
-            size="lg"
-            asChild
-          >
-            <a href={`/contact?product=${product.slug}`}>
-              Bulk Enquiry
-            </a>
+                ? `Add to cart · ${totalPieces.toLocaleString()} pcs`
+                : `${(moq - totalPieces).toLocaleString()} pcs to MOQ`}
           </Button>
           <span className="text-caption text-text-muted">
             MOQ {moq.toLocaleString()} pcs · Lead {product.leadTimeDays ?? "—"} days
