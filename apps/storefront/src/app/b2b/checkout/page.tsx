@@ -114,12 +114,9 @@ const COURIER_PROVIDERS: CourierOption[] = [
   { id: "fedex", name: "FedEx", estimatedDelivery: "2–4 days", chargeRupees: 520 },
   { id: "ups", name: "UPS", estimatedDelivery: "3–5 days", chargeRupees: 500 },
   { id: "other_courier", name: "Other Courier Partner", estimatedDelivery: "Carrier dependent", chargeRupees: 0 },
+  { id: "self_pickup", name: "Self pickup", estimatedDelivery: "", chargeRupees: 0 },
+  { id: "none", name: "None", estimatedDelivery: "", chargeRupees: 0 },
 ];
-
-const PICKUP_OPTIONS = [
-  { id: "customer_pickup", label: "Customer Pickup", eta: "Same-day", flatRupees: 0 },
-  { id: "own_transport", label: "Own Transport / 3PL", eta: "Per your carrier", flatRupees: 0 },
-] as const;
 
 const PAYMENT_METHODS = [
   {
@@ -332,6 +329,9 @@ export default function CheckoutPage() {
   );
   const [otherCourierName, setOtherCourierName] = React.useState<string>("");
   const [otherCourierNotes, setOtherCourierNotes] = React.useState<string>("");
+  const [logisticsId, setLogisticsId] = React.useState<string>("");
+  const [transporterId, setTransporterId] = React.useState<string>("");
+  const [logisticsPhone, setLogisticsPhone] = React.useState<string>("");
   // Inline payment-proof capture (FR-4.x):
   //   For methods where the buyer already knows the reference at order time
   //   (UTR / Razorpay txn id / internal PO #), we capture it here instead of
@@ -366,8 +366,7 @@ export default function CheckoutPage() {
   const discountedSubtotalPaise = Math.max(0, subtotalPaise - discountPaise);
 
   const courierMethod = COURIER_PROVIDERS.find((m) => m.id === shippingMethodId);
-  const pickupMethod = PICKUP_OPTIONS.find((m) => m.id === shippingMethodId);
-  const shippingPaise = (courierMethod?.chargeRupees ?? pickupMethod?.flatRupees ?? 0) * 100;
+  const shippingPaise = (courierMethod?.chargeRupees ?? 0) * 100;
 
   const shipState =
     shippingMode === "same" ? billing.state : customShip.state;
@@ -491,10 +490,20 @@ export default function CheckoutPage() {
     try {
       const courierDetail = shippingMethodId === "other_courier"
         ? `Other Courier Partner: ${otherCourierName.trim()}`
-        : `Courier: ${courierMethod?.name ?? pickupMethod?.label ?? "—"}`;
+        : `Courier: ${courierMethod?.name ?? "—"}`;
       const courierNoteDetail = shippingMethodId === "other_courier" && otherCourierNotes.trim()
         ? `Courier Notes: ${otherCourierNotes.trim()}`
         : "";
+      const logisticsDetail =
+        shippingMethodId === "none"
+          ? [
+              logisticsId.trim() && `Logistics ID: ${logisticsId.trim()}`,
+              transporterId.trim() && `Transporter ID: ${transporterId.trim()}`,
+              logisticsPhone.trim() && `Logistics Phone: ${logisticsPhone.trim()}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")
+          : "";
 
       const created = await createPurchaseOrder({
         po_number: poNumber,
@@ -502,6 +511,7 @@ export default function CheckoutPage() {
         notes: [
           courierDetail,
           courierNoteDetail,
+          logisticsDetail,
           notes ? `Notes: ${notes}` : "",
           `Lines: ${cartLines.length} (${variantQtyTotal} units)`,
           `Subtotal: ${formatRupees(subtotalPaise)}`,
@@ -959,9 +969,9 @@ export default function CheckoutPage() {
 
           {step === 3 && (
             <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
-              <h2 className="text-heading-sm text-text-primary">Delivery company</h2>
+              <h2 className="text-heading-sm text-text-primary">Logistics partner</h2>
               <p className="mt-1 text-caption text-text-muted">
-                Select a courier partner for this shipment. Freight is charged at
+                Select a logistics partner for this shipment. Freight is charged at
                 dispatch against the carrier&apos;s actual bill.
               </p>
 
@@ -971,42 +981,32 @@ export default function CheckoutPage() {
                   value={shippingMethodId}
                   onValueChange={setShippingMethodId}
                 />
+                {shippingMethodId === "none" && (
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <input
+                      type="text"
+                      value={logisticsId}
+                      onChange={(e) => setLogisticsId(e.currentTarget.value)}
+                      placeholder="Logistics ID"
+                      className="h-10 w-full rounded-md border border-border-subtle bg-surface-raised px-3 text-body-md text-text-primary"
+                    />
+                    <input
+                      type="text"
+                      value={transporterId}
+                      onChange={(e) => setTransporterId(e.currentTarget.value)}
+                      placeholder="Transporter ID"
+                      className="h-10 w-full rounded-md border border-border-subtle bg-surface-raised px-3 text-body-md text-text-primary"
+                    />
+                    <input
+                      type="tel"
+                      value={logisticsPhone}
+                      onChange={(e) => setLogisticsPhone(e.currentTarget.value)}
+                      placeholder="Phone"
+                      className="h-10 w-full rounded-md border border-border-subtle bg-surface-raised px-3 text-body-md text-text-primary"
+                    />
+                  </div>
+                )}
               </div>
-
-              <fieldset className="mt-5">
-                <legend className="text-body-sm font-medium text-text-primary">
-                  Or choose an alternative
-                </legend>
-                <div className="mt-2 space-y-2">
-                  {PICKUP_OPTIONS.map((m) => (
-                    <label
-                      key={m.id}
-                      className={[
-                        "flex cursor-pointer items-center gap-3 rounded-md border p-3 transition-colors",
-                        shippingMethodId === m.id
-                          ? "border-action-primary-bg bg-surface-sunken"
-                          : "border-border-subtle bg-surface-background hover:bg-surface-sunken",
-                      ].join(" ")}
-                    >
-                      <input
-                        type="radio"
-                        name="shipping_method"
-                        value={m.id}
-                        checked={shippingMethodId === m.id}
-                        onChange={() => setShippingMethodId(m.id)}
-                      />
-                      <div className="flex flex-1 items-baseline justify-between gap-2">
-                        <span className="text-body-md font-medium text-text-primary">
-                          {m.label}
-                        </span>
-                        <span className="font-mono text-body-sm text-text-secondary">
-                          {m.eta}
-                        </span>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
 
               {shippingMethodId === "other_courier" && (
                 <div className="mt-5 border-t border-border-subtle pt-4 space-y-4">
@@ -1195,7 +1195,7 @@ export default function CheckoutPage() {
                 />
                 <ReviewRow
                   label="Delivery"
-                  value={`${courierMethod?.name ?? pickupMethod?.label ?? "—"} (${courierMethod?.estimatedDelivery ?? pickupMethod?.eta ?? ""})`}
+                  value={`${courierMethod?.name ?? "—"}${courierMethod?.estimatedDelivery ? ` (${courierMethod.estimatedDelivery})` : ""}`}
                 />
                 <ReviewRow
                   label="Payment"
@@ -1302,7 +1302,7 @@ export default function CheckoutPage() {
                 />
               )}
               <Row
-                label={`Shipping · ${courierMethod?.name ?? pickupMethod?.label ?? "—"}`}
+                label={`Shipping · ${courierMethod?.name ?? "—"}`}
                 value={shippingPaise ? formatRupees(shippingPaise) : "—"}
               />
               {gstLines.map((l) => (
