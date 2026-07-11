@@ -21,6 +21,7 @@ import {
   type PaymentConfirmation,
 } from "@/lib/purchase-orders";
 import { getCart, clearCart, subtotalMajor } from "@/lib/cart";
+import { fetchB2BLineValidation } from "@/lib/b2b-cart-validation";
 import { gstStateCode, gstBreakdown, GST_SELLER_STATE } from "@/lib/india-gst";
 import {
   DeliveryCompanySelector,
@@ -488,6 +489,30 @@ export default function CheckoutPage() {
     setSubmitError(null);
     setSubmitting(true);
     try {
+      // Server-side B2B validation (per-product MOQ + pack step in pieces, the
+      // wholesale cart floor, and promo/tier stacking) BEFORE creating the PO.
+      // `quantity` is the sellable-unit (pack) count; the backend derives
+      // pieces via pack_size. FAIL OPEN on transport/endpoint errors — order
+      // completion is still hard-guarded server-side, so this is UX only.
+      try {
+        const validation = await fetchB2BLineValidation(
+          cartLines.map((l) => ({ variant_id: l.variantId, quantity: l.quantity })),
+        );
+        if (!validation.ok && validation.violations.length > 0) {
+          setSubmitError(
+            `This order doesn't meet wholesale requirements:\n${validation.violations
+              .map((v) => `• ${v.message}`)
+              .join("\n")}`,
+          );
+          setSubmitting(false);
+          return;
+        }
+      } catch (validationErr) {
+        // Endpoint unavailable / offline — don't block checkout on a
+        // convenience check; the server still enforces on completion.
+        console.warn("B2B line validation skipped:", validationErr);
+      }
+
       const courierDetail = shippingMethodId === "other_courier"
         ? `Other Courier Partner: ${otherCourierName.trim()}`
         : `Courier: ${courierMethod?.name ?? "—"}`;
