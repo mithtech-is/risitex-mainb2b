@@ -23,6 +23,9 @@ export type Variant = {
   | "discontinued";
   /** Numeric stock for low_stock badge */
   stockCount?: number;
+  /** How many individual pieces this variant contains when sold as a pack.
+   *  1 (or absent) = a single piece. e.g. a "30-36" pack of 4 → 4. */
+  packSize?: number;
 };
 
 export type Swatch = {

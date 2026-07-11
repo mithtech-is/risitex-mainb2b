@@ -39,6 +39,7 @@ const LIVE_PRODUCT_FIELDS = [
   "*variants",
   "*variants.options",
   "*variants.calculated_price",
+  "*variants.metadata",
   "categories.id",
   "categories.name",
   "categories.handle",
@@ -243,12 +244,14 @@ function mapMedusaToProduct(p: LiveProduct): Product {
         getOptionValueByTitle(v, /^(colou?r|color)$/i)?.toLowerCase().replace(/\s+/g, "-") ??
         swatches[0]?.value ??
         "natural";
+      const packSize = num((v.metadata as Record<string, unknown> | null | undefined)?.pack_size);
       matrix.push({
         id: v.id,
         sku: v.sku ?? `${p.handle}-${size}-${colourVal}`,
         size,
         colour: colourVal,
         inventoryState: "in_stock",
+        ...(packSize && packSize > 1 ? { packSize } : {}),
       });
     }
   } else {
