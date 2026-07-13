@@ -222,13 +222,10 @@ function garmentFromProduct(p: {
   subcategory?: string;
   eyebrow?: string;
 }): string | undefined {
+  // Only two charts remain: Jeans and Inner Boxer.
   const hay = `${p.subcategory ?? ""} ${p.eyebrow ?? ""}`.toLowerCase();
-  if (/boxer|brief|trunk|inner/.test(hay)) return "Innerwear";
-  if (/vest/.test(hay)) return "Vest";
-  if (/t-?shirt|tee/.test(hay)) return "T-Shirt";
+  if (/boxer|brief|trunk|inner/.test(hay)) return "Inner Boxer";
   if (/jean|denim/.test(hay)) return "Jeans";
-  if (/trouser|chino|pant/.test(hay)) return "Trouser";
-  if (/shirt/.test(hay)) return "Shirt";
   return undefined;
 }
 

@@ -14,26 +14,6 @@ type SizeChartData = {
   dimensions: DimensionRow[];
 };
 
-const SHIRT_CHART: SizeChartData = {
-  sizes: ["38", "40", "42", "44"],
-  dimensions: [
-    { name: "Chest", sizes: { "38": 40, "40": 42, "42": 44, "44": 46 } },
-    { name: "Waist", sizes: { "38": 36, "40": 38, "42": 40, "44": 42 } },
-    { name: "Length", sizes: { "38": 29.5, "40": 30, "42": 30.5, "44": 31 } },
-    { name: "Shoulder", sizes: { "38": 18, "40": 18.5, "42": 19, "44": 19.5 } },
-    { name: "Sleeve", sizes: { "38": 25, "40": 25.5, "42": 26, "44": 26.5 } },
-  ],
-};
-
-const TSHIRT_CHART: SizeChartData = {
-  sizes: ["S", "M", "L", "XL"],
-  dimensions: [
-    { name: "Chest", sizes: { "S": 38, "M": 40, "L": 42, "XL": 44 } },
-    { name: "Length", sizes: { "S": 27, "M": 28, "L": 29, "XL": 30 } },
-    { name: "Sleeve", sizes: { "S": 8, "M": 8.5, "L": 9, "XL": 9.5 } },
-  ],
-};
-
 const JEANS_CHART: SizeChartData = {
   sizes: ["30", "32", "34", "36"],
   dimensions: [
@@ -41,16 +21,6 @@ const JEANS_CHART: SizeChartData = {
     { name: "Hip", sizes: { "30": 38, "32": 40, "34": 42, "36": 44 } },
     { name: "Inseam", sizes: { "30": 32, "32": 32, "34": 32, "36": 32 } },
     { name: "Bottom", sizes: { "30": 13, "32": 13.5, "34": 14, "36": 14.5 } },
-  ],
-};
-
-const TROUSER_CHART: SizeChartData = {
-  sizes: ["30", "32", "34", "36"],
-  dimensions: [
-    { name: "Waist", sizes: { "30": 30, "32": 32, "34": 34, "36": 36 } },
-    { name: "Hip", sizes: { "30": 39, "32": 41, "34": 43, "36": 45 } },
-    { name: "Inseam", sizes: { "30": 31, "32": 31, "34": 31, "36": 31 } },
-    { name: "Rise", sizes: { "30": 9.5, "32": 10, "34": 10.5, "36": 11 } },
   ],
 };
 
@@ -71,20 +41,9 @@ const INNERWEAR_WAIST_RANGES: Record<string, [number, number]> = {
   "2XL": [44, 46], "3XL": [48, 50], "4XL": [52, 54],
 };
 
-const VEST_CHART: SizeChartData = {
-  sizes: ["S", "M", "L", "XL"],
-  dimensions: [
-    { name: "Chest (To Fit)", sizes: { "S": 36, "M": 40, "L": 44, "XL": 48 } },
-  ],
-};
-
 const CHARTS: Record<string, SizeChartData> = {
-  Shirt: SHIRT_CHART,
-  "T-Shirt": TSHIRT_CHART,
   Jeans: JEANS_CHART,
-  Trouser: TROUSER_CHART,
-  Innerwear: INNERWEAR_CHART,
-  Vest: VEST_CHART,
+  "Inner Boxer": INNERWEAR_CHART,
 };
 
 const MEASURING_GUIDE: Record<string, string[]> = {
@@ -116,7 +75,7 @@ const MEASURING_GUIDE: Record<string, string[]> = {
 export function SizeChartModal({ garment }: { garment?: string } = {}) {
   const [open, setOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<string>(
-    garment && CHARTS[garment] ? garment : "Shirt",
+    garment && CHARTS[garment] ? garment : "Jeans",
   );
   const [unit, setUnit] = React.useState<"in" | "cm">("in");
 
@@ -135,7 +94,7 @@ export function SizeChartModal({ garment }: { garment?: string } = {}) {
   };
 
   const renderCell = (row: DimensionRow, sz: string): string => {
-    if (activeTab === "Innerwear" && INNERWEAR_WAIST_RANGES[sz]) {
+    if (activeTab === "Inner Boxer" && INNERWEAR_WAIST_RANGES[sz]) {
       const [lo, hi] = INNERWEAR_WAIST_RANGES[sz];
       if (unit === "cm") {
         const hiCm = Math.round(hi * 2.54 * 10) / 10;
