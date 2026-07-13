@@ -179,6 +179,7 @@ const PostBody = z.object({
   po_number: z.string().min(1).max(60),
   file_url: z.string().url().or(z.string().startsWith("/")),
   value_major: z.number().int().positive().max(100_000_000),
+  shipping_major: z.number().nonnegative().max(100_000_000).optional(),
   expected_payment_date: z.string().datetime().optional(),
   notes: z.string().max(2_000).optional(),
   items: z.array(z.object({
@@ -260,6 +261,17 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
           },
         })
 
+        // Flat 5% B2B GST — mirrors the storefront checkout so the native
+        // order total equals the buyer's billed grand total (subtotal + GST +
+        // shipping). Applied as a tax line so the Medusa admin shows the GST
+        // breakdown rather than an items-only total.
+        const GST_RATE = 5
+        const gstTaxLine = {
+          code: "GST",
+          rate: GST_RATE,
+          description: `GST ${GST_RATE}%`,
+        }
+
         const orderItems = input.items.map((item) => {
           const v = variants.find((x) => x.id === item.variant_id)
           const price = v?.calculated_price?.calculated_amount ?? 100
@@ -269,8 +281,11 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
             sku: v?.sku || "",
             quantity: item.quantity,
             unit_price: price, // in minor units
+            tax_lines: [gstTaxLine],
           }
         })
+
+        const shippingAmount = Number(input.shipping_major ?? 0) || 0
 
         const orderModule = req.scope.resolve(Modules.ORDER)
         const createdOrder = await orderModule.createOrders({
@@ -298,9 +313,10 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
           shipping_methods: [
             {
               name: "Standard B2B Shipping",
-              amount: 0,
-            }
-          ]
+              amount: shippingAmount,
+              tax_lines: shippingAmount > 0 ? [gstTaxLine] : [],
+            },
+          ],
         })
         orderId = createdOrder.id
       } catch (orderErr) {

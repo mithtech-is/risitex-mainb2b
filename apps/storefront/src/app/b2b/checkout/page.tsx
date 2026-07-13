@@ -533,6 +533,7 @@ export default function CheckoutPage() {
       const created = await createPurchaseOrder({
         po_number: poNumber,
         value_major: paiseToRupees(grandTotalPaise),
+        shipping_major: paiseToRupees(shippingPaise),
         notes: [
           courierDetail,
           courierNoteDetail,

@@ -86,7 +86,7 @@ export default function CheckoutSuccessPage() {
           <dl className="grid grid-cols-1 gap-6 text-body-sm sm:grid-cols-3">
             <Field label="Order Number" value={poNumber || "—"} />
             <Field
-              label="Estimated Total"
+              label="Bill Amount"
               value={amt > 0 ? `₹${amt.toLocaleString("en-IN")}` : "—"}
             />
             <Field

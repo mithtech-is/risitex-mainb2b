@@ -55,6 +55,9 @@ export type CreatePurchaseOrderInput = {
   po_number: string;
   file_url: string;
   value_major: number;
+  /** Shipping charge in major rupees — applied to the native order so its
+   *  total matches the buyer's billed grand total. */
+  shipping_major?: number;
   expected_payment_date?: string;
   notes?: string;
   items?: Array<{ variant_id: string; quantity: number }>;
