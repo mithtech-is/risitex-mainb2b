@@ -21,6 +21,8 @@ type OrderMeta = {
   payment_status?: string | null
   upi_transaction_id?: string | null
   amount_paid_major?: number | null
+  razorpay_payment_id?: string | null
+  gateway_charge_major?: number | null
 }
 
 const B2BOrderApprovalWidget = ({ data: order }: { data: any }) => {
@@ -125,13 +127,28 @@ const B2BOrderApprovalWidget = ({ data: order }: { data: any }) => {
             Method:{" "}
             {meta.payment_method === "manual_upi"
               ? "Manual UPI"
-              : meta.payment_method}
+              : meta.payment_method === "razorpay"
+                ? "Razorpay"
+                : meta.payment_method}
             {" · Status: "}
             <span className="font-medium">{meta.payment_status ?? "—"}</span>
           </Text>
           {meta.upi_transaction_id ? (
             <Text size="small" className="text-ui-fg-subtle">
               Txn ID: <span className="font-mono">{meta.upi_transaction_id}</span>
+            </Text>
+          ) : null}
+          {meta.razorpay_payment_id ? (
+            <Text size="small" className="text-ui-fg-subtle">
+              Razorpay Payment ID:{" "}
+              <span className="font-mono">{meta.razorpay_payment_id}</span>
+            </Text>
+          ) : null}
+          {typeof meta.gateway_charge_major === "number" &&
+          meta.gateway_charge_major > 0 ? (
+            <Text size="small" className="text-ui-fg-subtle">
+              Gateway charge: ₹
+              {meta.gateway_charge_major.toLocaleString("en-IN")}
             </Text>
           ) : null}
           {typeof meta.amount_paid_major === "number" ? (
