@@ -12,6 +12,9 @@ import { AuthModal } from "@/components/auth/auth-modal";
 import { Heart, Search, ShoppingCart, UserRound } from "lucide-react";
 import { getCart } from "@/lib/cart";
 import { scopedKey } from "@/lib/user-scope";
+import { MEDUSA_BASE_URL } from "@/lib/medusa";
+
+const PUB_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "";
 
 const WISHLIST_KEY = "risitex-b2b-wishlist";
 const CART_KEY = "risitex.b2b.cart.v1";
@@ -84,40 +87,140 @@ function NavLinks() {
   );
 }
 
+type SearchHit = { id: string; title: string; handle: string; thumbnail: string | null };
+
 /**
- * Inline pill search — always visible in the navbar on md+ screens. Icon sits
- * clear of the placeholder (generous left padding, so they never overlap).
- * Submits to the wholesale catalogue's full-text `q` filter.
+ * Inline pill search with a live product-name typeahead. As you type, matching
+ * product names appear in a dropdown (from Medusa `/store/products?q=`); pick one
+ * to jump straight to its page, or press Enter to see all results in the
+ * catalogue. Icon sits clear of the placeholder (no overlap).
  */
 function NavSearch() {
   const router = useRouter();
   const [q, setQ] = React.useState("");
+  const [hits, setHits] = React.useState<SearchHit[]>([]);
+  const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const wrapRef = React.useRef<HTMLDivElement>(null);
+
+  // Debounced live search against the store products endpoint.
+  React.useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) {
+      setHits([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      fetch(
+        `${MEDUSA_BASE_URL}/store/products?q=${encodeURIComponent(term)}&limit=6&fields=id,title,handle,thumbnail`,
+        { headers: { "x-publishable-api-key": PUB_KEY }, signal: ctrl.signal },
+      )
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          setHits((data?.products ?? []) as SearchHit[]);
+          setLoading(false);
+        })
+        .catch(() => {
+          /* aborted or offline — ignore */
+        });
+    }, 180);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [q]);
+
+  React.useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const go = (href: string) => {
+    setOpen(false);
+    router.push(href);
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const term = q.trim();
-    router.push(
-      term
-        ? `/wholesale/catalogue?q=${encodeURIComponent(term)}`
-        : "/wholesale/catalogue",
-    );
+    go(term ? `/wholesale/catalogue?q=${encodeURIComponent(term)}` : "/wholesale/catalogue");
   };
 
+  const showPanel = open && q.trim().length >= 2;
+
   return (
-    <form onSubmit={submit} role="search" className="relative hidden md:block">
-      <Search
-        className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
-        aria-hidden
-      />
-      <input
-        type="text"
-        value={q}
-        onChange={(e) => setQ(e.currentTarget.value)}
-        placeholder="Search"
-        aria-label="Search all products"
-        className="h-10 w-44 rounded-full bg-surface-sunken pl-10 pr-4 text-body-sm text-text-primary placeholder:text-text-muted outline-none transition-[width,box-shadow] duration-base ease-standard focus:w-56 focus-visible:bg-surface-raised focus-visible:ring-2 focus-visible:ring-border-strong"
-      />
-    </form>
+    <div ref={wrapRef} className="relative hidden md:block">
+      <form onSubmit={submit} role="search">
+        <Search
+          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
+          aria-hidden
+        />
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => {
+            setQ(e.currentTarget.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
+          placeholder="Search"
+          aria-label="Search all products"
+          className="h-10 w-44 rounded-full bg-surface-sunken pl-10 pr-4 text-body-sm text-text-primary placeholder:text-text-muted outline-none transition-[width,box-shadow] duration-base ease-standard focus:w-64 focus-visible:bg-surface-raised focus-visible:ring-2 focus-visible:ring-border-strong"
+        />
+      </form>
+
+      {showPanel && (
+        <div className="absolute right-0 top-full z-popover mt-2 w-[min(88vw,340px)] animate-fade-down overflow-hidden rounded-lg border border-border-subtle bg-surface-raised shadow-popover">
+          {hits.length > 0 ? (
+            <ul className="max-h-[60vh] overflow-y-auto p-1.5">
+              {hits.map((h) => (
+                <li key={h.id}>
+                  <button
+                    type="button"
+                    onClick={() => go(`/wholesale/p/${h.handle}`)}
+                    className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors duration-fast hover:bg-surface-sunken"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-sunken text-caption font-semibold text-text-muted">
+                      {h.thumbnail ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={h.thumbnail} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        (h.title || "?").charAt(0).toUpperCase()
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-body-sm text-text-primary">
+                      {h.title}
+                    </span>
+                  </button>
+                </li>
+              ))}
+              <li className="mt-1 border-t border-border-subtle pt-1">
+                <button
+                  type="button"
+                  onClick={submit}
+                  className="w-full rounded-md px-2 py-2 text-left text-caption font-medium text-text-secondary transition-colors duration-fast hover:bg-surface-sunken hover:text-text-primary"
+                >
+                  See all results for “{q.trim()}”
+                </button>
+              </li>
+            </ul>
+          ) : (
+            <p className="px-3 py-4 text-body-sm text-text-muted">
+              {loading ? "Searching…" : "No products found."}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
