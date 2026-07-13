@@ -24,24 +24,24 @@ export function ProductQuestions({
   const [questions, setQuestions] = React.useState<Question[]>([]);
   const [loaded, setLoaded] = React.useState(false);
 
-  React.useEffect(() => {
-    let cancelled = false;
-    fetch(
-      `${MEDUSA_BASE_URL}/store/product-questions?product_id=${encodeURIComponent(productId)}`,
-      { headers: { "x-publishable-api-key": PUB_KEY } },
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!cancelled) {
-          setQuestions(data?.questions ?? []);
-          setLoaded(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setLoaded(true);
-      });
-    return () => { cancelled = true; };
+  const loadQuestions = React.useCallback(async () => {
+    try {
+      const r = await fetch(
+        `${MEDUSA_BASE_URL}/store/product-questions?product_id=${encodeURIComponent(productId)}`,
+        { headers: { "x-publishable-api-key": PUB_KEY } },
+      );
+      const data = r.ok ? await r.json() : null;
+      if (data) setQuestions(data.questions ?? []);
+    } catch {
+      // keep whatever we already have on a transient failure
+    } finally {
+      setLoaded(true);
+    }
   }, [productId]);
+
+  React.useEffect(() => {
+    void loadQuestions();
+  }, [loadQuestions]);
 
   const displayQuestions = loaded
     ? questions
@@ -68,7 +68,7 @@ export function ProductQuestions({
             )}
           </h2>
         </div>
-        <QuestionSubmit productId={productId} />
+        <QuestionSubmit productId={productId} onSubmitted={loadQuestions} />
       </div>
 
       {displayQuestions.length > 0 ? (

@@ -25,24 +25,24 @@ export function ProductReviews({
   const [reviews, setReviews] = React.useState<Review[]>([]);
   const [loaded, setLoaded] = React.useState(false);
 
-  React.useEffect(() => {
-    let cancelled = false;
-    fetch(
-      `${MEDUSA_BASE_URL}/store/product-reviews?product_id=${encodeURIComponent(productId)}`,
-      { headers: { "x-publishable-api-key": PUB_KEY } },
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!cancelled) {
-          setReviews(data?.reviews ?? []);
-          setLoaded(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setLoaded(true);
-      });
-    return () => { cancelled = true; };
+  const loadReviews = React.useCallback(async () => {
+    try {
+      const r = await fetch(
+        `${MEDUSA_BASE_URL}/store/product-reviews?product_id=${encodeURIComponent(productId)}`,
+        { headers: { "x-publishable-api-key": PUB_KEY } },
+      );
+      const data = r.ok ? await r.json() : null;
+      if (data) setReviews(data.reviews ?? []);
+    } catch {
+      // keep whatever we already have on a transient failure
+    } finally {
+      setLoaded(true);
+    }
   }, [productId]);
+
+  React.useEffect(() => {
+    void loadReviews();
+  }, [loadReviews]);
 
   const displayReviews = loaded
     ? reviews
@@ -79,7 +79,7 @@ export function ProductReviews({
             Ratings &amp; Reviews
           </h2>
         </div>
-        <ReviewSubmit productId={productId} />
+        <ReviewSubmit productId={productId} onSubmitted={loadReviews} />
       </div>
 
       {displayReviews.length > 0 ? (

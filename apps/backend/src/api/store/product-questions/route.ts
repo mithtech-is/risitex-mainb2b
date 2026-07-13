@@ -27,7 +27,9 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 /**
  * POST /store/product-questions
  *
- * Submit a new question. Stored unpublished until an admin answers it.
+ * Submit a new question. Published immediately so other shoppers can see it
+ * (shown as "Awaiting answer" until an admin replies). An admin can hide it
+ * from the inbox by answering and unchecking "Publish on product page".
  * Body: { product_id, customer_name, customer_email, question }
  */
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
@@ -58,7 +60,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     customer_name,
     customer_email,
     question,
-    is_public: false,
+    is_public: true,
   });
 
   res.status(201).json({ question: created });

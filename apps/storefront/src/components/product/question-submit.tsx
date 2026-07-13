@@ -7,7 +7,13 @@ import { getCurrentCustomer } from "@/lib/auth";
 
 const PUB_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "";
 
-export function QuestionSubmit({ productId }: { productId: string }) {
+export function QuestionSubmit({
+  productId,
+  onSubmitted,
+}: {
+  productId: string;
+  onSubmitted?: () => void;
+}) {
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
@@ -47,6 +53,7 @@ export function QuestionSubmit({ productId }: { productId: string }) {
         return;
       }
       setStatus("sent");
+      onSubmitted?.();
     } catch {
       setErrorMsg("Network error — please retry.");
       setStatus("error");
@@ -55,7 +62,13 @@ export function QuestionSubmit({ productId }: { productId: string }) {
 
   return (
     <div>
-      <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        variant="primary"
+        size="sm"
+        onClick={() => setOpen(true)}
+        className="bg-text-primary text-surface-background hover:bg-text-primary hover:opacity-90 active:bg-text-primary"
+      >
         Ask a question
       </Button>
 
@@ -130,7 +143,8 @@ export function QuestionSubmit({ productId }: { productId: string }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-xl border border-feedback-success-border bg-feedback-success-bg p-6 shadow-lg">
             <p className="text-body-sm text-feedback-success-text">
-              Question submitted! We&apos;ll post the answer here once it&apos;s ready.
+              Thanks — your question is now posted for everyone to see. We&apos;ll
+              add an answer soon.
             </p>
             <Button
               type="button"

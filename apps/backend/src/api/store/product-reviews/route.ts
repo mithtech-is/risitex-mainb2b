@@ -26,7 +26,9 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 /**
  * POST /store/product-reviews
  *
- * Submit a new review. Stored unpublished until an admin moderates it.
+ * Submit a new review. Published immediately so it appears to all shoppers
+ * and builds trust; an admin can still hide it later from the inbox by
+ * setting is_public back to false.
  * Body: { product_id, customer_name, customer_email, rating, title?, body }
  */
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
@@ -70,7 +72,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     rating,
     title: title ?? null,
     body: reviewBody,
-    is_public: false,
+    is_public: true,
   })
 
   res.status(201).json({ review: created })
