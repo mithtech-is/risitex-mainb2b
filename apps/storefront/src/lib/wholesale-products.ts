@@ -241,6 +241,9 @@ function mapMedusaToProduct(p: LiveProduct): Product {
   // (stored on variant `metadata.images`); we union them per colour so the PDP
   // gallery + colour cards can switch without any hardcoded image lists.
   const imagesByColour: Record<string, string[]> = {};
+  // Per-colour MRP (admins set `metadata.mrp` per variant). First non-null per
+  // colour wins; the PDP shows the selected colour's MRP.
+  const mrpByColour: Record<string, number> = {};
   if (variants.length > 0) {
     for (const v of variants) {
       const size = getOptionValueByTitle(v, /^size$/i) ?? "Unit";
@@ -250,6 +253,10 @@ function mapMedusaToProduct(p: LiveProduct): Product {
         "natural";
       const vMeta = (v.metadata ?? {}) as Record<string, unknown>;
       const packSize = num(vMeta?.pack_size);
+      const vMrp = num(vMeta?.mrp);
+      if (vMrp != null && mrpByColour[colourVal] == null) {
+        mrpByColour[colourVal] = vMrp;
+      }
       const vImgs = Array.isArray(vMeta.images)
         ? (vMeta.images as unknown[]).filter(
             (u): u is string => typeof u === "string" && !!u,
@@ -302,6 +309,7 @@ function mapMedusaToProduct(p: LiveProduct): Product {
   // to the variant's list/original price when no explicit MRP is entered.
   const mrpMajor =
     num(meta.mrp) ??
+    Object.values(mrpByColour)[0] ??
     (originalAmounts.length ? Math.round(Math.max(...originalAmounts)) : undefined);
 
   const category = inferCategory(p);
@@ -385,6 +393,7 @@ function mapMedusaToProduct(p: LiveProduct): Product {
     image: p.thumbnail ?? images[0],
     images: images.length ? images : undefined,
     ...(Object.keys(imagesByColour).length ? { imagesByColour } : {}),
+    ...(Object.keys(mrpByColour).length ? { mrpByColour } : {}),
     description,
     specs,
     swatches,

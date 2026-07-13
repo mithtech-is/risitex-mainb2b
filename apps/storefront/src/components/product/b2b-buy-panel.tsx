@@ -302,15 +302,17 @@ export function B2bBuyPanel({
             / pc · excl. GST
           </span>
         </p>
-        {product.mrpMajor && product.mrpMajor > product.priceMajor ? (
-          <p className="mt-0.5 text-caption text-text-muted">
-            MRP {formatINR(product.mrpMajor)} · you save{" "}
-            {Math.round(
-              ((product.mrpMajor - product.priceMajor) / product.mrpMajor) * 100,
-            )}
-            %
-          </p>
-        ) : null}
+        {(() => {
+          const mrp =
+            (selectedColour ? product.mrpByColour?.[selectedColour] : undefined) ??
+            product.mrpMajor;
+          return mrp && mrp > product.priceMajor ? (
+            <p className="mt-0.5 text-caption text-text-muted">
+              MRP {formatINR(mrp)} · you save{" "}
+              {Math.round(((mrp - product.priceMajor) / mrp) * 100)}%
+            </p>
+          ) : null;
+        })()}
       </section>
 
       <section>

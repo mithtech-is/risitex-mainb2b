@@ -45,6 +45,9 @@ export function ProductHero({
   const title =
     hasColours && selectedName ? `${product.name} — ${selectedName}` : product.name;
 
+  // MRP for the selected colour (per-variant), falling back to the product MRP.
+  const mrp = product.mrpByColour?.[selectedColour] ?? product.mrpMajor;
+
   return (
     <div className="grid grid-cols-1 gap-10 py-10 lg:grid-cols-12 lg:gap-12">
       <section className="lg:col-span-6">
@@ -66,9 +69,9 @@ export function ProductHero({
             className="mt-1 h-10 w-10"
           />
         </div>
-        {product.mrpMajor ? (
+        {mrp ? (
           <p className="mt-3 text-heading-md text-text-primary">
-            {formatINR(product.mrpMajor)}{" "}
+            {formatINR(mrp)}{" "}
             <span className="text-body-sm font-normal text-text-muted">
               / pc · MRP (incl. GST)
             </span>

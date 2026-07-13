@@ -69,6 +69,10 @@ export type Product = {
    *  colour variant's `metadata.images` (admin uploads). When a colour has no
    *  images the PDP falls back to the shared product `images`. */
   imagesByColour?: Record<string, string[]>;
+  /** Per-colour MRP (retail price), keyed by swatch value. Sourced from each
+   *  colour variant's `metadata.mrp`. PDP shows the selected colour's MRP,
+   *  falling back to `mrpMajor`. */
+  mrpByColour?: Record<string, number>;
   /** Long description (PDP) */
   description: string;
   /** Bullet specs */
