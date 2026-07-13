@@ -19,7 +19,16 @@ import { addToCart, type CartLine } from "@/lib/cart";
 import { MEDUSA_BASE_URL } from "@/lib/medusa";
 import { packSizeOf, cellPieces, maxPacksForStock, meetsMoq as meetsMoqFn } from "@/lib/moq-pack";
 
-export function B2bBuyPanel({ product }: { product: Product }) {
+export function B2bBuyPanel({
+  product,
+  selectedColour,
+}: {
+  product: Product;
+  /** When set, the grid shows only this colour's sizes (single-colour view
+   *  driven by the PDP colour selector). Sizes not offered in this colour are
+   *  hidden so no colours are mixed. */
+  selectedColour?: string;
+}) {
   const [b2bStatus, setB2bStatus] = React.useState<string | null>(null);
   const [checkingStatus, setCheckingStatus] = React.useState(true);
 
@@ -75,24 +84,32 @@ export function B2bBuyPanel({ product }: { product: Product }) {
     };
   }, [skus]);
 
-  // Build matrix rows (sizes) and cols (colours).
-  const rows: MatrixDimensionValue[] = React.useMemo(
-    () =>
-      product.sizes
-        .filter((s) => s && s !== "—" && s !== "per-metre")
-        .map((s) => ({ id: s, label: s })),
-    [product.sizes],
-  );
+  // Build matrix rows (sizes) and cols (colours). When a colour is selected on
+  // the PDP, restrict the grid to that colour: cols → the one colour, and rows
+  // → only the sizes that colour actually offers (no mixing across colours).
+  const rows: MatrixDimensionValue[] = React.useMemo(() => {
+    const sizesForColour = selectedColour
+      ? product.sizes.filter((s) =>
+          product.variants.some(
+            (v) => v.size === s && v.colour === selectedColour,
+          ),
+        )
+      : product.sizes;
+    return sizesForColour
+      .filter((s) => s && s !== "—" && s !== "per-metre")
+      .map((s) => ({ id: s, label: s }));
+  }, [product.sizes, product.variants, selectedColour]);
 
-  const cols: MatrixDimensionValue[] = React.useMemo(
-    () =>
-      product.swatches.map((sw) => ({
-        id: sw.value,
-        label: sw.name,
-        hex: sw.hex,
-      })),
-    [product.swatches],
-  );
+  const cols: MatrixDimensionValue[] = React.useMemo(() => {
+    const swatches = selectedColour
+      ? product.swatches.filter((sw) => sw.value === selectedColour)
+      : product.swatches;
+    return swatches.map((sw) => ({
+      id: sw.value,
+      label: sw.name,
+      hex: sw.hex,
+    }));
+  }, [product.swatches, selectedColour]);
 
   // If no real size axis (single-size SKUs like stoles/fabric), collapse to a
   // single "Unit" row so the matrix still works.

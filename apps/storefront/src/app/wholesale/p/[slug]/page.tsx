@@ -1,21 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Button } from "@risitex/ui/components";
 import { formatINR } from "@/lib/format";
 import { Container } from "@/components/site/container";
 import { Breadcrumb } from "@/components/site/breadcrumb";
-import { B2bBuyPanel } from "@/components/product/b2b-buy-panel";
-import { ProductGallery } from "@/components/product/product-gallery";
+import { ProductHero } from "@/components/product/product-hero";
 import {
   getWholesaleProduct,
   getWholesaleProducts,
 } from "@/lib/wholesale-products";
 import { getCategoryTree, deepestPath } from "@/lib/categories";
-import { SignedIn, SignedOut } from "@/components/auth/signed-out";
-import { WishlistHeart } from "@/components/wishlist/wishlist-heart";
 import type { Product } from "@/data/products";
-import { SizeChartModal } from "@/components/product/size-chart-modal";
 import { ProductQuestions } from "@/components/product/product-questions";
 import { ProductReviews } from "@/components/product/product-reviews";
 
@@ -99,67 +94,11 @@ export default async function WholesalePdpPage({
       </Container>
 
       <Container>
-        <div className="grid grid-cols-1 gap-10 py-10 lg:grid-cols-12 lg:gap-12">
-          <section className="lg:col-span-6">
-            <ProductGallery
-              images={galleryImages}
-              productName={product.name}
-            />
-          </section>
-
-          <section className="lg:col-span-6">
-            <p className="text-micro text-text-muted">
-              Wholesale - {product.eyebrow}
-            </p>
-            <div className="mt-2 flex items-start justify-between gap-3">
-              <h1 className="font-display text-display-lg text-text-primary">
-                {product.name}
-              </h1>
-              <WishlistHeart
-                slug={product.slug}
-                productName={product.name}
-                className="mt-1 h-10 w-10"
-              />
-            </div>
-            {product.mrpMajor ? (
-              <p className="mt-3 text-heading-md text-text-primary">
-                {formatINR(product.mrpMajor)}{" "}
-                <span className="text-body-sm font-normal text-text-muted">
-                  / pc · MRP (incl. GST)
-                </span>
-              </p>
-            ) : null}
-
-            <div className="mt-8">
-              <SignedIn>
-                <B2bBuyPanel product={product} />
-              </SignedIn>
-              <SignedOut>
-                <div className="rounded-md border border-border-subtle bg-surface-sunken p-6 text-center">
-                  <p className="text-heading-sm text-text-primary">
-                    Sign in to view wholesale pricing
-                  </p>
-                  <p className="mt-2 text-body-sm text-text-muted">
-                    Tier pricing, MOQ ladder, volume discounts, bulk-order
-                    matrix, and Add-to-Cart unlock for approved B2B buyers
-                    only.
-                  </p>
-                  <div className="mt-5 inline-flex flex-wrap items-center justify-center gap-3">
-                    <Button asChild>
-                      <Link href="/auth/sign-in">Sign in</Link>
-                    </Button>
-                    <Button asChild variant="secondary">
-                      <Link href="/auth/sign-up">Register</Link>
-                    </Button>
-                  </div>
-                </div>
-              </SignedOut>
-            </div>
-            <div className="mt-4">
-              <SizeChartModal garment={sizeChartGarment} />
-            </div>
-          </section>
-        </div>
+        <ProductHero
+          product={product}
+          galleryImages={galleryImages}
+          sizeChartGarment={sizeChartGarment}
+        />
 
         <section className="grid grid-cols-1 gap-6 pb-16 lg:grid-cols-2">
           <ProductQuestions

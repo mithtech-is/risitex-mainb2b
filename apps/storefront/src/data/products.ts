@@ -65,6 +65,10 @@ export type Product = {
   image?: string;
   /** Additional gallery image URLs for the PDP. */
   images?: string[];
+  /** Per-colour image galleries, keyed by swatch value. Sourced from each
+   *  colour variant's `metadata.images` (admin uploads). When a colour has no
+   *  images the PDP falls back to the shared product `images`. */
+  imagesByColour?: Record<string, string[]>;
   /** Long description (PDP) */
   description: string;
   /** Bullet specs */

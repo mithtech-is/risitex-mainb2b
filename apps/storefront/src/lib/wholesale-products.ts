@@ -237,6 +237,10 @@ function mapMedusaToProduct(p: LiveProduct): Product {
   // Build variants matrix from real Medusa variants when both Size and Colour
   // exist; otherwise synthesize one row per real variant (size or unit-only).
   const matrix: Variant[] = [];
+  // Per-colour image galleries. Admins upload images against a colour variant
+  // (stored on variant `metadata.images`); we union them per colour so the PDP
+  // gallery + colour cards can switch without any hardcoded image lists.
+  const imagesByColour: Record<string, string[]> = {};
   if (variants.length > 0) {
     for (const v of variants) {
       const size = getOptionValueByTitle(v, /^size$/i) ?? "Unit";
@@ -244,7 +248,18 @@ function mapMedusaToProduct(p: LiveProduct): Product {
         getOptionValueByTitle(v, /^(colou?r|color)$/i)?.toLowerCase().replace(/\s+/g, "-") ??
         swatches[0]?.value ??
         "natural";
-      const packSize = num((v.metadata as Record<string, unknown> | null | undefined)?.pack_size);
+      const vMeta = (v.metadata ?? {}) as Record<string, unknown>;
+      const packSize = num(vMeta?.pack_size);
+      const vImgs = Array.isArray(vMeta.images)
+        ? (vMeta.images as unknown[]).filter(
+            (u): u is string => typeof u === "string" && !!u,
+          )
+        : [];
+      if (vImgs.length) {
+        imagesByColour[colourVal] = Array.from(
+          new Set([...(imagesByColour[colourVal] ?? []), ...vImgs]),
+        );
+      }
       matrix.push({
         id: v.id,
         sku: v.sku ?? `${p.handle}-${size}-${colourVal}`,
@@ -369,6 +384,7 @@ function mapMedusaToProduct(p: LiveProduct): Product {
     unit: "/ pc",
     image: p.thumbnail ?? images[0],
     images: images.length ? images : undefined,
+    ...(Object.keys(imagesByColour).length ? { imagesByColour } : {}),
     description,
     specs,
     swatches,
