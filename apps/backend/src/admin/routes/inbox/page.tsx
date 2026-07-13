@@ -901,6 +901,8 @@ const QUESTIONS_SCOPES: { value: QuestionsScope; label: string }[] = [
     { value: "all", label: "All" },
 ]
 
+type ProductInfo = { title: string; handle: string | null }
+
 function QuestionsInbox() {
     const [scope, setScope] = useState<QuestionsScope>("unanswered")
     const [rows, setRows] = useState<ProductQuestion[]>([])
@@ -909,6 +911,9 @@ function QuestionsInbox() {
     const [answer, setAnswer] = useState("")
     const [publish, setPublish] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [productById, setProductById] = useState<Map<string, ProductInfo>>(
+        new Map()
+    )
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -928,6 +933,41 @@ function QuestionsInbox() {
     useEffect(() => {
         void load()
     }, [load])
+
+    useEffect(() => {
+        const ids = Array.from(new Set(rows.map((r) => r.product_id))).filter(
+            Boolean
+        )
+        if (ids.length === 0) {
+            setProductById(new Map())
+            return
+        }
+        let cancelled = false
+        ;(async () => {
+            try {
+                const qs = new URLSearchParams()
+                for (const id of ids) qs.append("id[]", id)
+                qs.set("fields", "id,title,handle")
+                qs.set("limit", String(ids.length))
+                const res = await fetch(`/admin/products?${qs.toString()}`, {
+                    credentials: "include",
+                })
+                if (!res.ok) return
+                const body = await res.json()
+                if (cancelled) return
+                const map = new Map<string, ProductInfo>()
+                for (const p of body.products || []) {
+                    map.set(p.id, { title: p.title, handle: p.handle ?? null })
+                }
+                setProductById(map)
+            } catch {
+                // best-effort — table falls back to raw id on failure
+            }
+        })()
+        return () => {
+            cancelled = true
+        }
+    }, [rows])
 
     const selected = useMemo(
         () => rows.find((r) => r.id === selectedId) ?? null,
@@ -1043,9 +1083,19 @@ function QuestionsInbox() {
                                                 </Text>
                                             </Table.Cell>
                                             <Table.Cell>
-                                                <code className="text-xs text-ui-fg-muted">
-                                                    {r.product_id.slice(0, 12)}…
-                                                </code>
+                                                {productById.get(r.product_id)?.title ? (
+                                                    <a
+                                                        href={`/app/products/${r.product_id}`}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="text-ui-fg-interactive hover:underline"
+                                                    >
+                                                        {productById.get(r.product_id)!.title}
+                                                    </a>
+                                                ) : (
+                                                    <code className="text-xs text-ui-fg-muted">
+                                                        {r.product_id.slice(0, 12)}…
+                                                    </code>
+                                                )}
                                             </Table.Cell>
                                             <Table.Cell>
                                                 <StatusBadge color={hasAnswer ? "green" : "orange"}>
@@ -1099,7 +1149,14 @@ function QuestionsInbox() {
                                     </Text>
                                 </div>
                                 <Text size="xsmall" className="mt-1 text-ui-fg-muted">
-                                    Product: <code>{selected.product_id}</code>
+                                    Product:{" "}
+                                    <a
+                                        href={`/app/products/${selected.product_id}`}
+                                        className="text-ui-fg-interactive hover:underline"
+                                    >
+                                        {productById.get(selected.product_id)?.title ??
+                                            selected.product_id}
+                                    </a>
                                 </Text>
                             </div>
 
