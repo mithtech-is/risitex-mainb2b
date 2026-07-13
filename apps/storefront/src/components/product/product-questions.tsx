@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { MessageCircleQuestion } from "lucide-react";
 import { MEDUSA_BASE_URL } from "@/lib/medusa";
 import { QuestionSubmit } from "./question-submit";
 
@@ -52,15 +53,20 @@ export function ProductQuestions({
       }));
 
   return (
-    <section className="rounded-lg border border-border-subtle bg-surface-raised p-5 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-heading-md text-text-primary">Questions &amp; Answers</h2>
-          {displayQuestions.length > 0 && (
-            <span className="text-body-sm text-text-muted">
-              ({displayQuestions.length})
-            </span>
-          )}
+    <section className="rounded-xl border border-border-subtle bg-surface-raised p-6 sm:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border-subtle pb-5">
+        <div>
+          <p className="text-micro uppercase tracking-[0.14em] text-text-muted">
+            Ask the manufacturer
+          </p>
+          <h2 className="mt-1.5 flex items-baseline gap-2 font-display text-heading-lg text-text-primary">
+            Questions &amp; Answers
+            {displayQuestions.length > 0 && (
+              <span className="text-body-md font-normal text-text-muted numerics-tabular">
+                {displayQuestions.length}
+              </span>
+            )}
+          </h2>
         </div>
         <QuestionSubmit productId={productId} />
       </div>
@@ -110,9 +116,21 @@ export function ProductQuestions({
           ))}
         </ul>
       ) : (
-        <p className="mt-4 text-body-sm text-text-secondary">
-          No questions yet — submit one above.
-        </p>
+        <div className="mt-8 flex flex-col items-center justify-center px-6 py-10 text-center">
+          <span
+            aria-hidden
+            className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-surface-sunken ring-1 ring-border-subtle"
+          >
+            <MessageCircleQuestion className="h-6 w-6 text-text-muted" />
+          </span>
+          <p className="font-display text-heading-sm text-text-primary">
+            No questions yet
+          </p>
+          <p className="mt-2 max-w-sm text-body-sm leading-relaxed text-text-muted">
+            Have a question about sizing, fabric, MOQ or lead time? Ask our team
+            — we usually reply within a few hours.
+          </p>
+        </div>
       )}
     </section>
   );

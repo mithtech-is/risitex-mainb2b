@@ -53,7 +53,7 @@ export function Topnav() {
 function NavLinks() {
   const pathname = usePathname() ?? "";
   return (
-    <ul className="hidden items-center gap-7 lg:flex">
+    <ul className="hidden items-center gap-8 lg:flex">
       {NAV.map((item) => {
         const active =
           pathname === item.href ||

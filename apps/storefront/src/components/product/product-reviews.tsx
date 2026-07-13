@@ -69,9 +69,16 @@ export function ProductReviews({
   }, [displayReviews]);
 
   return (
-    <section className="rounded-lg border border-border-subtle bg-surface-raised p-5 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-heading-md text-text-primary">Ratings &amp; Reviews</h2>
+    <section className="rounded-xl border border-border-subtle bg-surface-raised p-6 sm:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border-subtle pb-5">
+        <div>
+          <p className="text-micro uppercase tracking-[0.14em] text-text-muted">
+            Verified feedback
+          </p>
+          <h2 className="mt-1.5 font-display text-heading-lg text-text-primary">
+            Ratings &amp; Reviews
+          </h2>
+        </div>
         <ReviewSubmit productId={productId} />
       </div>
 
@@ -103,9 +110,9 @@ export function ProductReviews({
                         {star}
                       </span>
                       <Star className="h-3 w-3 shrink-0 fill-current text-text-muted" />
-                      <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken">
+                      <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken">
                         <div
-                          className="absolute inset-y-0 left-0 rounded-full bg-ochre-500"
+                          className="absolute inset-y-0 left-0 rounded-full bg-text-primary transition-[width] duration-slow ease-standard"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -157,9 +164,21 @@ export function ProductReviews({
           </ul>
         </>
       ) : (
-        <p className="mt-4 text-body-sm text-text-secondary">
-          No reviews yet — be the first to review.
-        </p>
+        <div className="mt-8 flex flex-col items-center justify-center px-6 py-10 text-center">
+          <span
+            aria-hidden
+            className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-surface-sunken ring-1 ring-border-subtle"
+          >
+            <Star className="h-6 w-6 text-text-muted" />
+          </span>
+          <p className="font-display text-heading-sm text-text-primary">
+            No reviews yet
+          </p>
+          <p className="mt-2 max-w-sm text-body-sm leading-relaxed text-text-muted">
+            Be the first to share your experience — verified buyers help other
+            businesses order with confidence.
+          </p>
+        </div>
       )}
     </section>
   );
@@ -182,7 +201,7 @@ function Stars({
         <Star
           key={i}
           className={`${dim} ${
-            i <= rating ? "fill-current text-ochre-500" : "text-border-strong"
+            i <= rating ? "fill-current text-text-primary" : "text-border-strong"
           }`}
         />
       ))}
