@@ -463,7 +463,7 @@ export default function BusinessRegistrationPage() {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="gstin">GSTIN (optional)</Label>
+            <Label htmlFor="gstin">GSTIN</Label>
             <Input
               id="gstin"
               value={form.gstin}
@@ -650,7 +650,7 @@ export default function BusinessRegistrationPage() {
               size="lg"
               className="w-full md:w-auto"
             >
-              Submit Application
+              Submit
             </Button>
             <p className="mt-3 text-caption text-text-muted">
               After submission, verify your email and phone. PAN is required;

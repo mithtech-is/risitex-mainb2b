@@ -282,9 +282,12 @@ function mapMedusaToProduct(p: LiveProduct): Product {
   const originalAmounts = variants
     .map((v) => v.calculated_price?.original_amount)
     .filter((n): n is number => typeof n === "number" && Number.isFinite(n));
-  const mrpMajor = originalAmounts.length
-    ? Math.round(Math.max(...originalAmounts))
-    : undefined;
+  // MRP (retail price shown to everyone, incl. logged-out buyers). Admins set
+  // it per product via `metadata.mrp` (major rupees) in Medusa Admin; fall back
+  // to the variant's list/original price when no explicit MRP is entered.
+  const mrpMajor =
+    num(meta.mrp) ??
+    (originalAmounts.length ? Math.round(Math.max(...originalAmounts)) : undefined);
 
   const category = inferCategory(p);
 
@@ -371,7 +374,7 @@ function mapMedusaToProduct(p: LiveProduct): Product {
     swatches,
     sizes,
     variants: matrix,
-    moq: num(meta.moq) ?? 50,
+    moq: num(meta.moq),
     cartonSize: num(meta.case_pack) ?? num(meta.carton_size) ?? 12,
     leadTimeDays: num(meta.lead_time_days) ?? 14,
     b2bMedia: b2bMedia.length ? b2bMedia : undefined,
