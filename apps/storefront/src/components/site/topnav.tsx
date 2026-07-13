@@ -85,35 +85,17 @@ function NavLinks() {
 }
 
 /**
- * Compact "Search" affordance (Empire-style): a minimal icon + label that
- * expands into a search field on click. Submits to the wholesale catalogue's
- * full-text `q` filter so it searches every product from any page.
+ * Inline pill search — always visible in the navbar on md+ screens. Icon sits
+ * clear of the placeholder (generous left padding, so they never overlap).
+ * Submits to the wholesale catalogue's full-text `q` filter.
  */
-function NavSearchButton() {
+function NavSearch() {
   const router = useRouter();
-  const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState("");
-  const wrapRef = React.useRef<HTMLDivElement>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
-
-  React.useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
-
-  React.useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, []);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const term = q.trim();
-    setOpen(false);
     router.push(
       term
         ? `/wholesale/catalogue?q=${encodeURIComponent(term)}`
@@ -122,40 +104,20 @@ function NavSearchButton() {
   };
 
   return (
-    <div ref={wrapRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Search products"
-        aria-expanded={open}
-        className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-body-sm text-text-secondary transition-colors duration-fast hover:bg-surface-sunken hover:text-text-primary focus-visible:ring-focus"
-      >
-        <Search className="h-[18px] w-[18px]" />
-        <span className="hidden sm:inline">Search</span>
-      </button>
-
-      {open && (
-        <form
-          onSubmit={submit}
-          role="search"
-          onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
-          className="absolute right-0 top-full z-popover mt-2 w-[min(86vw,380px)] animate-fade-down"
-        >
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-text-muted" />
-            <input
-              ref={inputRef}
-              type="search"
-              value={q}
-              onChange={(e) => setQ(e.currentTarget.value)}
-              placeholder="Search"
-              aria-label="Search all products"
-              className="h-12 w-full rounded-full bg-surface-sunken pl-11 pr-4 text-body-md text-text-primary placeholder:text-text-muted shadow-sm outline-none transition-shadow duration-fast focus-visible:ring-2 focus-visible:ring-border-strong"
-            />
-          </div>
-        </form>
-      )}
-    </div>
+    <form onSubmit={submit} role="search" className="relative hidden md:block">
+      <Search
+        className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
+        aria-hidden
+      />
+      <input
+        type="text"
+        value={q}
+        onChange={(e) => setQ(e.currentTarget.value)}
+        placeholder="Search"
+        aria-label="Search all products"
+        className="h-10 w-44 rounded-full bg-surface-sunken pl-10 pr-4 text-body-sm text-text-primary placeholder:text-text-muted outline-none transition-[width,box-shadow] duration-base ease-standard focus:w-56 focus-visible:bg-surface-raised focus-visible:ring-2 focus-visible:ring-border-strong"
+      />
+    </form>
   );
 }
 
@@ -163,8 +125,8 @@ function TopnavActions() {
   const counts = useNavActionCounts();
 
   return (
-    <div className="flex items-center gap-1">
-      <NavSearchButton />
+    <div className="flex items-center gap-2">
+      <NavSearch />
       <ThemeSwitch />
       <NavIcon href="/b2b/wishlist" label="Wishlist" count={counts.wishlist}>
         <Heart className="h-5 w-5" />
