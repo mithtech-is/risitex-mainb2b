@@ -11,6 +11,11 @@ import {
 } from "../../../modules/purchase_order"
 import { logger } from "../../../utils/logger"
 import { isValidUpiTransactionId, amountsMatchPaise } from "../../../lib/payment"
+import {
+  verifyRazorpaySignature,
+  fetchRazorpayPayment,
+  razorpayLiveMode,
+} from "../../../lib/razorpay"
 
 /**
  * GET /store/purchase-orders
@@ -190,14 +195,24 @@ const PostBody = z.object({
   billing_address: AddressSchema.optional(),
   shipping_address: AddressSchema.optional(),
   payment: z
-    .object({
-      method: z.literal("manual_upi"),
-      upi_transaction_id: z.string().min(1).max(60),
-      payment_date: z.string(),
-      remarks: z.string().max(2000).optional(),
-      screenshot_url: z.string().url().or(z.string().startsWith("/")).optional(),
-      amount_paid_major: z.number().nonnegative().max(100_000_000),
-    })
+    .discriminatedUnion("method", [
+      z.object({
+        method: z.literal("manual_upi"),
+        upi_transaction_id: z.string().min(1).max(60),
+        payment_date: z.string(),
+        remarks: z.string().max(2000).optional(),
+        screenshot_url: z.string().url().or(z.string().startsWith("/")).optional(),
+        amount_paid_major: z.number().nonnegative().max(100_000_000),
+      }),
+      z.object({
+        method: z.literal("razorpay"),
+        razorpay_order_id: z.string().min(1).max(120),
+        razorpay_payment_id: z.string().min(1).max(120),
+        razorpay_signature: z.string().min(1).max(256),
+        amount_paid_major: z.number().nonnegative().max(100_000_000),
+        gateway_charge_major: z.number().nonnegative().max(100_000_000),
+      }),
+    ])
     .optional(),
 })
 
@@ -222,25 +237,78 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   let paymentMeta: Record<string, unknown> | null = null
   if (input.payment) {
     const p = input.payment
-    if (!isValidUpiTransactionId(p.upi_transaction_id)) {
-      return res.status(422).json({ message: "Invalid UPI transaction ID." })
-    }
-    const paidDate = new Date(p.payment_date)
-    if (Number.isNaN(paidDate.getTime()) || paidDate.getTime() > Date.now() + 86_400_000) {
-      return res.status(422).json({ message: "Invalid payment date." })
-    }
-    if (!amountsMatchPaise(Math.round(p.amount_paid_major * 100), input.value_major * 100)) {
-      return res.status(422).json({ message: "Paid amount does not match the order total." })
-    }
-    paymentMeta = {
-      payment_method: "manual_upi",
-      payment_status: "awaiting_verification",
-      upi_transaction_id: p.upi_transaction_id.trim(),
-      payment_date: paidDate.toISOString(),
-      remarks: p.remarks?.trim() || null,
-      screenshot_url: p.screenshot_url || null,
-      amount_paid_major: input.value_major,
-      payment_captured_at: new Date().toISOString(),
+    if (p.method === "manual_upi") {
+      if (!isValidUpiTransactionId(p.upi_transaction_id)) {
+        return res.status(422).json({ message: "Invalid UPI transaction ID." })
+      }
+      const paidDate = new Date(p.payment_date)
+      if (Number.isNaN(paidDate.getTime()) || paidDate.getTime() > Date.now() + 86_400_000) {
+        return res.status(422).json({ message: "Invalid payment date." })
+      }
+      if (!amountsMatchPaise(Math.round(p.amount_paid_major * 100), input.value_major * 100)) {
+        return res.status(422).json({ message: "Paid amount does not match the order total." })
+      }
+      paymentMeta = {
+        payment_method: "manual_upi",
+        payment_status: "awaiting_verification",
+        upi_transaction_id: p.upi_transaction_id.trim(),
+        payment_date: paidDate.toISOString(),
+        remarks: p.remarks?.trim() || null,
+        screenshot_url: p.screenshot_url || null,
+        amount_paid_major: input.value_major,
+        payment_captured_at: new Date().toISOString(),
+      }
+    } else {
+      // Razorpay: signature-verified online payment → auto-approved (no admin
+      // verification step). Never trust the client amount — in live mode we
+      // confirm the captured amount with Razorpay directly.
+      if (
+        !verifyRazorpaySignature({
+          order_id: p.razorpay_order_id,
+          payment_id: p.razorpay_payment_id,
+          signature: p.razorpay_signature,
+        })
+      ) {
+        return res
+          .status(422)
+          .json({ message: "Razorpay signature verification failed." })
+      }
+      let paidMajor = p.amount_paid_major
+      if (razorpayLiveMode()) {
+        try {
+          const pay = await fetchRazorpayPayment(p.razorpay_payment_id)
+          if (!pay || (pay.status !== "captured" && pay.status !== "authorized")) {
+            return res
+              .status(422)
+              .json({ message: "Razorpay payment not captured." })
+          }
+          if (pay.order_id !== p.razorpay_order_id) {
+            return res.status(422).json({ message: "Razorpay order mismatch." })
+          }
+          paidMajor = pay.amount_paise / 100 // server-confirmed, authoritative
+        } catch (rzpErr) {
+          logger.error(
+            `[purchase-orders] razorpay confirm failed: ${rzpErr instanceof Error ? rzpErr.message : rzpErr}`,
+          )
+          return res
+            .status(502)
+            .json({ message: "Couldn't confirm the Razorpay payment." })
+        }
+      }
+      const nowIso = new Date().toISOString()
+      paymentMeta = {
+        payment_method: "razorpay",
+        payment_status: "paid",
+        razorpay_order_id: p.razorpay_order_id,
+        razorpay_payment_id: p.razorpay_payment_id,
+        gateway_charge_major: p.gateway_charge_major,
+        amount_paid_major: paidMajor,
+        payment_captured_at: nowIso,
+        payment_verified_at: nowIso,
+        // Automatic + signature-verified → auto-approve, no admin step.
+        admin_approved_at: nowIso,
+        admin_approved_by_name: "Razorpay (auto)",
+      }
     }
   }
 
@@ -368,8 +436,19 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
                   ...(createdOrder.metadata || {}),
                   payment_method: paymentMeta.payment_method,
                   payment_status: paymentMeta.payment_status,
-                  upi_transaction_id: paymentMeta.upi_transaction_id,
                   amount_paid_major: paymentMeta.amount_paid_major,
+                  ...(paymentMeta.upi_transaction_id
+                    ? { upi_transaction_id: paymentMeta.upi_transaction_id }
+                    : {}),
+                  ...(paymentMeta.payment_method === "razorpay"
+                    ? {
+                        razorpay_payment_id: paymentMeta.razorpay_payment_id,
+                        razorpay_order_id: paymentMeta.razorpay_order_id,
+                        gateway_charge_major: paymentMeta.gateway_charge_major,
+                        // Razorpay auto-approves → unlock dispatch immediately.
+                        b2b_approved_at: paymentMeta.admin_approved_at,
+                      }
+                    : {}),
                 },
               },
             ])
