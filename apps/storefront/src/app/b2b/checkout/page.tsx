@@ -15,11 +15,17 @@ import { B2bTopbar } from "@/components/b2b/b2b-topbar";
 import { ShippingGstEstimate } from "@/components/checkout/shipping-gst-estimate";
 import { CouponInput, type AppliedCoupon } from "@/components/checkout/coupon-input";
 import { MEDUSA_BASE_URL } from "@/lib/medusa";
+import { createPurchaseOrder, uploadFile } from "@/lib/purchase-orders";
 import {
-  createPurchaseOrder,
-  confirmPurchaseOrderPayment,
-  type PaymentConfirmation,
-} from "@/lib/purchase-orders";
+  getPaymentSettings,
+  computeGatewayFeePaise,
+  type StorePaymentSettings,
+} from "@/lib/payment-settings";
+import {
+  ManualUpiPanel,
+  isValidUpiRef,
+  type ManualUpiValue,
+} from "@/components/checkout/manual-upi-panel";
 import { getCart, clearCart, subtotalMajor } from "@/lib/cart";
 import { fetchB2BLineValidation } from "@/lib/b2b-cart-validation";
 import { gstStateCode, gstBreakdown, GST_SELLER_STATE } from "@/lib/india-gst";
@@ -121,68 +127,20 @@ const COURIER_PROVIDERS: CourierOption[] = [
 
 const PAYMENT_METHODS = [
   {
-    id: "wallet",
-    label: "Wallet",
-    desc: "Pay from your RISITEX wallet balance.",
-    needsBalance: true,
-  },
-  {
-    id: "wallet_plus_razorpay",
-    label: "Wallet + Razorpay",
-    desc: "Partial wallet, balance via card/UPI/netbanking.",
-    needsBalance: false,
+    id: "manual_upi",
+    label: "Manual UPI Payment",
+    badge: "0% Charges",
+    desc: "Pay by UPI to our official ID and enter your transaction reference. Verified by our team.",
   },
   {
     id: "razorpay",
-    label: "Razorpay (Card / UPI / NetBanking)",
-    desc: "Pay full amount online.",
-    needsBalance: false,
+    label: "Razorpay Payment",
+    badge: "",
+    desc: "UPI · Cards · Net Banking · Wallets — automatic online payment.",
   },
 ] as const;
 
 type PaymentMethodId = (typeof PAYMENT_METHODS)[number]["id"];
-
-/**
- * Map the checkout-wizard's payment method (broader UX taxonomy) to the
- * backend confirm-payment enum (narrower, finance-facing taxonomy).
- */
-const PAYMENT_METHOD_TO_BACKEND: Record<PaymentMethodId, PaymentConfirmation["method"]> = {
-  wallet: "wallet",
-  wallet_plus_razorpay: "razorpay",
-  razorpay: "razorpay",
-};
-
-/**
- * Inline proof requirements per payment method.
- */
-const PAYMENT_PROOF_CONFIG: Record<
-  PaymentMethodId,
-  {
-    needsReference: boolean;
-    label: string;
-    placeholder: string;
-    hint: string;
-  }
-> = {
-  wallet: {
-    needsReference: false,
-    label: "",
-    placeholder: "",
-    hint: "Wallet balance will be debited at order placement — no reference needed.",
-  },
-  wallet_plus_razorpay: {
-    needsReference: true,
-    label: "Razorpay Transaction / Order ID",
-    placeholder: "pay_NkM2…",
-    hint: "Complete Razorpay capture for the remaining balance, then paste the transaction id here.",
-  },
-  razorpay: {
-    needsReference: true,
-    label: "Razorpay Transaction / Order ID",
-    placeholder: "pay_NkM2…",
-    hint: "Complete Razorpay capture, then paste the transaction id here so finance can reconcile.",
-  },
-};
 
 function authHeaders(): Record<string, string> {
   const h: Record<string, string> = { "x-publishable-api-key": PUB_KEY };
@@ -323,7 +281,15 @@ export default function CheckoutPage() {
     setBillingSeeded(true);
   }, [context, billingSeeded]);
   const [shippingMethodId, setShippingMethodId] = React.useState<string>("delhivery_b2b");
-  const [paymentMethodId, setPaymentMethodId] = React.useState<PaymentMethodId>("wallet");
+  const [paymentMethodId, setPaymentMethodId] = React.useState<PaymentMethodId>("manual_upi");
+  const [paySettings, setPaySettings] = React.useState<StorePaymentSettings | null>(null);
+  const [upiValue, setUpiValue] = React.useState<ManualUpiValue>({
+    upiTransactionId: "",
+    paymentDate: new Date().toISOString().slice(0, 10),
+    remarks: "",
+    screenshotUrl: null,
+  });
+  const [showUpiErrors, setShowUpiErrors] = React.useState(false);
   const [coupon, setCoupon] = React.useState<AppliedCoupon | null>(null);
   const [poNumber] = React.useState<string>(
     `ORD-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`,
@@ -333,18 +299,21 @@ export default function CheckoutPage() {
   const [logisticsId, setLogisticsId] = React.useState<string>("");
   const [transporterId, setTransporterId] = React.useState<string>("");
   const [logisticsPhone, setLogisticsPhone] = React.useState<string>("");
-  // Inline payment-proof capture (FR-4.x):
-  //   For methods where the buyer already knows the reference at order time
-  //   (UTR / Razorpay txn id / internal PO #), we capture it here instead of
-  //   forcing a second trip to /b2b/purchase-orders/[id]. The reference is
-  //   POSTed to /store/purchase-orders/:id/confirm-payment immediately after
-  //   the PO is created, so the buyer lands on the success page with status
-  //   "payment recorded — awaiting approval" instead of "awaiting payment".
-  const [paymentReference, setPaymentReference] = React.useState<string>("");
-  const [paymentPaidAt, setPaymentPaidAt] = React.useState<string>(
-    new Date().toISOString().slice(0, 10),
-  );
-  const [paymentProofNotes, setPaymentProofNotes] = React.useState<string>("");
+  // Load public payment settings (gateway %, UPI id, enable flags) with a safe
+  // fallback so checkout renders even if the endpoint is unreachable. When only
+  // one method is enabled, auto-select it.
+  React.useEffect(() => {
+    let alive = true;
+    void getPaymentSettings().then((s) => {
+      if (!alive) return;
+      setPaySettings(s);
+      if (s.manual_upi_enabled && !s.razorpay_enabled) setPaymentMethodId("manual_upi");
+      else if (!s.manual_upi_enabled && s.razorpay_enabled) setPaymentMethodId("razorpay");
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [notes, setNotes] = React.useState<string>(
     productName ? `Order originated from ${productName}.` : "",
   );
@@ -381,12 +350,21 @@ export default function CheckoutPage() {
   const grandTotalPaise =
     discountedSubtotalPaise + shippingPaise + gstTotalPaise;
 
+  // ── Gateway charges (Razorpay only; Manual UPI is always 0%) ─────────
+  // gatewayPct is admin-configured (payment_settings). Manual UPI adds
+  // nothing to the bill; Razorpay adds a % surcharge on the grand total.
+  const gatewayPct = paySettings?.gateway_charge_percent ?? 0;
+  const gatewayFeePaise =
+    paymentMethodId === "razorpay"
+      ? computeGatewayFeePaise(grandTotalPaise, gatewayPct)
+      : 0;
+  const finalPayablePaise = grandTotalPaise + gatewayFeePaise;
+
   // ── Wallet / credit math ───────────────────────────────────────────
   const walletPaise = wallet
     ? Number(wallet.balance_inr ?? 0) + Number(wallet.promo_balance_inr ?? 0)
     : 0;
   const walletCoversAll = walletPaise >= grandTotalPaise;
-  const walletPartialCovers = walletPaise > 0 && walletPaise < grandTotalPaise;
   const walletShortfallPaise = Math.max(0, grandTotalPaise - walletPaise);
   const creditAvailablePaise = credit
     ? Math.round(Number(credit.available_inr ?? 0) * 100)
@@ -431,13 +409,11 @@ export default function CheckoutPage() {
   const canPlace = canStep5 && confirmed;
 
   function paymentReady(): boolean {
-    if (paymentMethodId === "wallet") return walletCoversAll;
-    if (paymentMethodId === "wallet_plus_razorpay")
-      return walletPaise > 0 && paymentReference.trim().length >= 4;
-    if (paymentMethodId === "razorpay") {
-      return paymentReference.trim().length >= 4;
-    }
-    return true;
+    if (paymentMethodId === "manual_upi")
+      return isValidUpiRef(upiValue.upiTransactionId);
+    // Razorpay live capture is not wired in Phase 1 — block completion so
+    // nobody is half-charged. Phase 2 wires open + signature verify.
+    return false;
   }
 
   // Persist a completed billing address back to the company so invoices and
@@ -486,6 +462,23 @@ export default function CheckoutPage() {
   // ── Place order ────────────────────────────────────────────────────
   const placeOrder = async () => {
     if (!canPlace || submitting) return;
+    // Razorpay live capture is Phase 2 — never let it complete here.
+    if (paymentMethodId === "razorpay") {
+      setSubmitError(
+        "Razorpay is being enabled. Please use Manual UPI to place your order for now.",
+      );
+      return;
+    }
+    if (
+      paymentMethodId === "manual_upi" &&
+      !isValidUpiRef(upiValue.upiTransactionId)
+    ) {
+      setShowUpiErrors(true);
+      setSubmitError(
+        "Enter a valid UPI transaction ID (6–40 alphanumeric characters).",
+      );
+      return;
+    }
     setSubmitError(null);
     setSubmitting(true);
     try {
@@ -554,6 +547,17 @@ export default function CheckoutPage() {
           .filter(Boolean)
           .join("\n"),
         file_url: "/b2b/po-print-placeholder",
+        payment:
+          paymentMethodId === "manual_upi"
+            ? {
+                method: "manual_upi" as const,
+                upi_transaction_id: upiValue.upiTransactionId.trim(),
+                payment_date: new Date(upiValue.paymentDate).toISOString(),
+                remarks: upiValue.remarks.trim() || undefined,
+                screenshot_url: upiValue.screenshotUrl || undefined,
+                amount_paid_major: paiseToRupees(grandTotalPaise),
+              }
+            : undefined,
         items: cartLines.map((line) => ({
           variant_id: line.variantId,
           quantity: line.quantity,
@@ -580,38 +584,11 @@ export default function CheckoutPage() {
         },
       });
 
-      // Step 2: if the buyer supplied a payment reference inline, record
-      // it immediately so the PO lands as "payment recorded — awaiting
-      // approval" rather than "awaiting payment".
-      let paymentRecorded = false;
-      try {
-        const cfg = PAYMENT_PROOF_CONFIG[paymentMethodId];
-        const backendMethod = PAYMENT_METHOD_TO_BACKEND[paymentMethodId];
-        if (cfg.needsReference) {
-          await confirmPurchaseOrderPayment(created.id, {
-            method: backendMethod,
-            reference: paymentReference.trim(),
-            paid_at: paymentPaidAt
-              ? new Date(paymentPaidAt).toISOString()
-              : undefined,
-            notes: paymentProofNotes.trim() || undefined,
-          });
-          paymentRecorded = true;
-        } else if (paymentMethodId === "wallet") {
-          await confirmPurchaseOrderPayment(created.id, {
-            method: "wallet",
-            reference: `wallet-debit-${Date.now().toString(36)}`,
-            notes: "Wallet auto-debit at checkout",
-          });
-          paymentRecorded = true;
-        }
-      } catch (proofErr) {
-        const detail =
-          proofErr instanceof Error ? proofErr.message : "Could not record payment";
-        setSubmitError(
-          `Order placed (${created.po_number}) but recording the payment reference failed: ${detail}. Please contact support with your order number.`,
-        );
-      }
+      // Manual UPI payment was captured server-side during PO creation
+      // (payment_status = awaiting_verification), so there's no separate
+      // confirm step. Flag pr=1 so the success page shows the
+      // "payment recorded — awaiting verification" state.
+      const paymentRecorded = paymentMethodId === "manual_upi";
 
       try {
         clearCart();
@@ -1068,57 +1045,62 @@ export default function CheckoutPage() {
             <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
               <h2 className="text-heading-sm text-text-primary">Payment method</h2>
               <p className="mt-1 text-caption text-text-muted">
-                Choose online payment or select wallet debit to proceed.
+                Choose how you'd like to pay. Manual UPI has no gateway charge;
+                Razorpay adds the gateway fee shown below.
               </p>
               <fieldset className="mt-4">
                 <legend className="sr-only">Choose a payment method</legend>
                 <div className="space-y-2">
-                  {PAYMENT_METHODS.map((m) => {
-                    const disabled =
-                      (m.id === "wallet" && !walletCoversAll) ||
-                      (m.id === "wallet_plus_razorpay" && walletPaise <= 0);
+                  {PAYMENT_METHODS.filter((m) => {
+                    if (!paySettings) return true;
+                    return m.id === "manual_upi"
+                      ? paySettings.manual_upi_enabled
+                      : paySettings.razorpay_enabled;
+                  }).map((m) => {
+                    const selected = paymentMethodId === m.id;
+                    const badge =
+                      m.id === "razorpay"
+                        ? gatewayPct > 0
+                          ? `+${gatewayPct}% Gateway Charges`
+                          : "Automatic"
+                        : m.badge;
                     return (
                       <label
                         key={m.id}
                         className={[
-                          "flex items-start gap-3 rounded-md border p-4 transition-colors",
-                          disabled
-                            ? "cursor-not-allowed border-border-subtle bg-surface-sunken opacity-60"
-                            : paymentMethodId === m.id
-                              ? "cursor-pointer border-action-primary-bg bg-surface-sunken"
-                              : "cursor-pointer border-border-subtle bg-surface-background hover:bg-surface-sunken",
+                          "flex items-start gap-3 rounded-md border p-4 transition-colors cursor-pointer",
+                          selected
+                            ? "border-action-primary-bg bg-surface-sunken"
+                            : "border-border-subtle bg-surface-background hover:bg-surface-sunken",
                         ].join(" ")}
                       >
                         <input
                           type="radio"
                           name="payment_method"
                           value={m.id}
-                          disabled={disabled}
-                          checked={paymentMethodId === m.id}
+                          checked={selected}
                           onChange={() => setPaymentMethodId(m.id)}
                           className="mt-1"
                         />
                         <div className="flex-1">
-                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <div className="flex flex-wrap items-baseline gap-2">
                             <span className="text-body-md font-medium text-text-primary">
                               {m.label}
                             </span>
-                            {m.id === "wallet" && (
-                              <span className="font-mono text-caption text-text-muted">
-                                Balance {formatRupees(walletPaise)}
+                            {badge ? (
+                              <span
+                                className={[
+                                  "rounded-full px-2 py-0.5 text-caption",
+                                  m.id === "manual_upi"
+                                    ? "bg-feedback-success-bg text-feedback-success-text"
+                                    : "bg-surface-sunken text-text-secondary",
+                                ].join(" ")}
+                              >
+                                {badge}
                               </span>
-                            )}
+                            ) : null}
                           </div>
                           <p className="mt-1 text-caption text-text-muted">{m.desc}</p>
-                          {disabled && m.id === "wallet" && (
-                            <p className="mt-2 text-caption text-feedback-danger-text">
-                              Shortfall {formatRupees(walletShortfallPaise)}.{" "}
-                              <Link href="/b2b/wallet" className="underline-offset-2 hover:underline">
-                                Add funds
-                              </Link>{" "}
-                              or pick Wallet + Razorpay below.
-                            </p>
-                          )}
                         </div>
                       </label>
                     );
@@ -1126,77 +1108,48 @@ export default function CheckoutPage() {
                 </div>
               </fieldset>
 
-              {paymentMethodId === "wallet_plus_razorpay" && walletPartialCovers && (
-                <div className="mt-4 rounded-md border border-feedback-info-border bg-feedback-info-bg p-4 text-feedback-info-text">
-                  <p className="text-body-sm">
-                    Wallet covers {formatRupees(walletPaise)}; remaining{" "}
-                    {formatRupees(walletShortfallPaise)} will be captured via
-                    Razorpay on the next screen (handover happens after order
-                    creation).
-                  </p>
+              {paymentMethodId === "manual_upi" && paySettings && (
+                <div className="mt-6">
+                  <ManualUpiPanel
+                    upiId={paySettings.upi_id}
+                    qrImageUrl={paySettings.upi_qr_image_url}
+                    amountLabel={formatRupees(grandTotalPaise)}
+                    value={upiValue}
+                    onChange={setUpiValue}
+                    showErrors={showUpiErrors}
+                    onUploadScreenshot={uploadFile}
+                  />
                 </div>
               )}
 
-              {/* Inline payment-proof capture. Asks for UTR / txn id /
-                  internal PO # immediately after method selection so the
-                  buyer doesn't have to come back to /b2b/purchase-orders
-                  later just to enter a reference. */}
-              {(() => {
-                const cfg = PAYMENT_PROOF_CONFIG[paymentMethodId];
-                if (!cfg.needsReference) {
-                  return cfg.hint ? (
-                    <p
-                      role="status"
-                      aria-live="polite"
-                      className="mt-5 rounded-md border border-feedback-info-border bg-feedback-info-bg px-4 py-3 text-body-sm text-feedback-info-text"
-                    >
-                      {cfg.hint}
-                    </p>
-                  ) : null;
-                }
-                return (
-                  <div className="mt-6 rounded-md border border-border-subtle bg-surface-background p-4">
-                    <h3 className="text-body-md font-medium text-text-primary">
-                      Payment proof
-                    </h3>
-                    <p className="mt-1 text-caption text-text-muted">{cfg.hint}</p>
-                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <div className="flex flex-col gap-1.5 md:col-span-2">
-                        <Label htmlFor="pay-ref" required>
-                          {cfg.label}
-                        </Label>
-                        <Input
-                          id="pay-ref"
-                          value={paymentReference}
-                          onChange={(e) => setPaymentReference(e.currentTarget.value)}
-                          placeholder={cfg.placeholder}
-                          className="font-mono"
-                          required
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="pay-paid-at">Payment date</Label>
-                        <Input
-                          id="pay-paid-at"
-                          type="date"
-                          value={paymentPaidAt}
-                          onChange={(e) => setPaymentPaidAt(e.currentTarget.value)}
-                          max={new Date().toISOString().slice(0, 10)}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="pay-proof-notes">Notes (optional)</Label>
-                        <Input
-                          id="pay-proof-notes"
-                          value={paymentProofNotes}
-                          onChange={(e) => setPaymentProofNotes(e.currentTarget.value)}
-                          placeholder="Bank used, payer name on slip, etc."
-                        />
-                      </div>
+              {paymentMethodId === "razorpay" && paySettings && (
+                <div className="mt-6 rounded-md border border-border-subtle bg-surface-background p-4">
+                  <dl className="flex flex-col gap-2 text-body-sm">
+                    <Row
+                      label="Subtotal (incl. GST + shipping)"
+                      value={formatRupees(grandTotalPaise)}
+                    />
+                    <Row
+                      label={`Gateway fee (${gatewayPct}%)`}
+                      value={formatRupees(gatewayFeePaise)}
+                    />
+                    <div className="mt-1 flex items-center justify-between border-t border-border-subtle pt-2 font-medium text-text-primary">
+                      <span>Final payable</span>
+                      <span className="font-mono">
+                        {formatRupees(finalPayablePaise)}
+                      </span>
                     </div>
-                  </div>
-                );
-              })()}
+                  </dl>
+                  <p
+                    role="status"
+                    aria-live="polite"
+                    className="mt-3 rounded-md border border-feedback-info-border bg-feedback-info-bg px-4 py-3 text-body-sm text-feedback-info-text"
+                  >
+                    Razorpay automatic payment is being enabled. For now, please
+                    use Manual UPI to place your order.
+                  </p>
+                </div>
+              )}
             </section>
           )}
 
