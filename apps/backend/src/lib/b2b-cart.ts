@@ -6,15 +6,34 @@ import { resolveB2BContext } from "./b2b-tier"
 /**
  * B2B cart validation (FR-3.03 MOQ enforcement).
  *
+ * MOQ / max / step are counted in INDIVIDUAL PIECES, per PRODUCT. A variant may
+ * be a multi-piece pack (`pack_size` in variant metadata); a cart line of that
+ * variant contributes `quantity * pack_size` pieces. Because MOQ is one
+ * per-product value, all of a product's variant lines are aggregated into a
+ * single piece total before comparing to the rule — a size/colour run split
+ * across several lines still counts as one order. This mirrors the storefront
+ * (`apps/storefront/src/app/b2b/cart/page.tsx` aggregate-by-productSlug and the
+ * piece math in `apps/storefront/src/lib/moq-pack.ts`).
+ *
  * Two layers:
- *   - Per-product MOQ / max / carton-step, from the b2b_pricing engine
+ *   - Per-product MOQ / max / step (pieces), from the b2b_pricing engine
  *     (`resolveQuantityRule`, tier-aware). Applies to whoever a rule targets.
- *   - A wholesale cart-total floor (default 60 units, env `B2B_MIN_CART_UNITS`)
- *     applied ONLY to B2B buyers (a company/tier on the customer)
+ *   - A wholesale cart-total floor (default 60 pieces, env `B2B_MIN_CART_UNITS`)
+ *     applied ONLY to B2B buyers (a company/tier on the customer); guest
  *     carts are never floor-blocked.
  */
 
 const B2B_MIN_CART_UNITS = Number(process.env.B2B_MIN_CART_UNITS) || 60
+
+/**
+ * Normalise a raw `pack_size` (variant metadata) to a positive integer,
+ * defaulting to 1. Mirrors `packSizeOf` in the storefront's moq-pack.ts:
+ * absent / blank / <= 1 → single piece.
+ */
+function packSizeOf(raw: unknown): number {
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 1 ? Math.floor(n) : 1
+}
 
 export type CartViolation = {
   type:
@@ -50,6 +69,7 @@ export async function validateB2BCart(
       "items.quantity",
       "items.title",
       "items.product_id",
+      "items.variant_id",
       "promotions.code",
       "promotions.is_automatic",
       "promotions.metadata",
@@ -65,6 +85,7 @@ export async function validateB2BCart(
           quantity: number
           title: string | null
           product_id: string | null
+          variant_id: string | null
         }[]
         promotions?: {
           code: string | null
@@ -90,45 +111,88 @@ export async function validateB2BCart(
   const svc = scope.resolve(B2B_PRICING_MODULE) as any
   const violations: CartViolation[] = []
 
-  // Per-product MOQ / max / step.
+  // Pack size (pieces per pack) per variant, from native variant metadata.
+  // A line's pieces = quantity * pack_size; absent metadata → pack size 1.
+  const variantIds = Array.from(
+    new Set(items.map((it) => it.variant_id).filter((v): v is string => !!v)),
+  )
+  const packSizeByVariant = new Map<string, number>()
+  if (variantIds.length > 0) {
+    const { data: variants } = await query.graph({
+      entity: "variant",
+      fields: ["id", "metadata"],
+      filters: { id: variantIds },
+    })
+    for (const v of (variants ?? []) as {
+      id: string
+      metadata: Record<string, unknown> | null
+    }[]) {
+      packSizeByVariant.set(v.id, packSizeOf(v.metadata?.pack_size))
+    }
+  }
+
+  const linePieces = (it: (typeof items)[number]): number =>
+    Number(it.quantity || 0) *
+    (it.variant_id ? packSizeByVariant.get(it.variant_id) ?? 1 : 1)
+
+  // Aggregate pieces per PRODUCT (MOQ is a single per-product value in pieces,
+  // so every variant line of the product counts toward one order).
+  const byProduct = new Map<
+    string,
+    { productId: string; name: string; pieces: number }
+  >()
   for (const it of items) {
     if (!it.product_id) continue
-    const rule = await svc.resolveQuantityRule(it.product_id, ctx.tierIds)
-    if (!rule) continue
-    const q = Number(it.quantity)
-    const name = it.title ?? "Item"
-    if (rule.min_qty != null && q < rule.min_qty) {
-      violations.push({
-        type: "product_moq",
-        line_id: it.id,
-        product_id: it.product_id,
-        message: `${name}: minimum ${rule.min_qty} units (have ${q})`,
-      })
-    }
-    if (rule.max_qty != null && q > rule.max_qty) {
-      violations.push({
-        type: "product_max",
-        line_id: it.id,
-        product_id: it.product_id,
-        message: `${name}: maximum ${rule.max_qty} units (have ${q})`,
-      })
-    }
-    if (rule.step_qty != null && rule.step_qty > 1 && q % rule.step_qty !== 0) {
-      violations.push({
-        type: "product_step",
-        line_id: it.id,
-        product_id: it.product_id,
-        message: `${name}: order in multiples of ${rule.step_qty} (have ${q})`,
+    const prev = byProduct.get(it.product_id)
+    if (prev) {
+      prev.pieces += linePieces(it)
+    } else {
+      byProduct.set(it.product_id, {
+        productId: it.product_id,
+        name: it.title ?? "Item",
+        pieces: linePieces(it),
       })
     }
   }
 
-  // Wholesale cart-total floor — B2B buyers only.
-  const totalUnits = items.reduce((s, it) => s + Number(it.quantity || 0), 0)
+  // Per-product MOQ / max / step — all compared on the PIECE basis.
+  for (const p of byProduct.values()) {
+    const rule = await svc.resolveQuantityRule(p.productId, ctx.tierIds)
+    if (!rule) continue
+    const pieces = p.pieces
+    if (rule.min_qty != null && pieces < rule.min_qty) {
+      violations.push({
+        type: "product_moq",
+        product_id: p.productId,
+        message: `${p.name}: minimum ${rule.min_qty} pieces (have ${pieces})`,
+      })
+    }
+    if (rule.max_qty != null && pieces > rule.max_qty) {
+      violations.push({
+        type: "product_max",
+        product_id: p.productId,
+        message: `${p.name}: maximum ${rule.max_qty} pieces (have ${pieces})`,
+      })
+    }
+    if (
+      rule.step_qty != null &&
+      rule.step_qty > 1 &&
+      pieces % rule.step_qty !== 0
+    ) {
+      violations.push({
+        type: "product_step",
+        product_id: p.productId,
+        message: `${p.name}: order in multiples of ${rule.step_qty} pieces (have ${pieces})`,
+      })
+    }
+  }
+
+  // Wholesale cart-total floor — B2B buyers only. Counted in pieces.
+  const totalUnits = items.reduce((s, it) => s + linePieces(it), 0)
   if (isB2B && totalUnits < B2B_MIN_CART_UNITS) {
     violations.push({
       type: "min_cart_units",
-      message: `Wholesale orders require at least ${B2B_MIN_CART_UNITS} units (cart has ${totalUnits}).`,
+      message: `Wholesale orders require at least ${B2B_MIN_CART_UNITS} pieces (cart has ${totalUnits}).`,
     })
   }
 
