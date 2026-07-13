@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Button, formatINR } from "@risitex/ui/components";
+import { Button } from "@risitex/ui/components";
+import { formatINR } from "@/lib/format";
 import { Container } from "@/components/site/container";
 import { Breadcrumb } from "@/components/site/breadcrumb";
 import { B2bBuyPanel } from "@/components/product/b2b-buy-panel";

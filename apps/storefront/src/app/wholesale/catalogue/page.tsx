@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Button, formatINR } from "@risitex/ui/components";
+import { Button } from "@risitex/ui/components";
+import { formatINR } from "@/lib/format";
 import { Container } from "@/components/site/container";
 import { Breadcrumb } from "@/components/site/breadcrumb";
 import { type Product } from "@/data/products";
