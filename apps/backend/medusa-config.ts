@@ -232,6 +232,9 @@ export default defineConfig({
         purchase_order: {
             resolve: "./src/modules/purchase_order",
         },
+        payment_settings: {
+            resolve: "./src/modules/payment_settings",
+        },
         credit_terms: {
             resolve: "./src/modules/credit_terms",
         },
