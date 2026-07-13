@@ -27,7 +27,15 @@ export default function CheckoutSuccessPage() {
         const allPos = await listAllPurchaseOrders();
         const currentPo = allPos.find((p) => p.id === _poId);
         
-        if (currentPo && (currentPo.admin_approved_at || currentPo.order || currentPo.status === "in_progress" || currentPo.status === "fulfilled")) {
+        // "Approved" means the ADMIN approved the order in the backend — NOT
+        // that a native Medusa order was linked at PO creation (that happens
+        // immediately and would wrongly flip this to "approved" on placement).
+        if (
+          currentPo &&
+          (currentPo.admin_approved_at ||
+            currentPo.dispatched_at ||
+            currentPo.status === "fulfilled")
+        ) {
           setIsApproved(true);
           if (intervalId) clearInterval(intervalId);
         }
@@ -48,11 +56,11 @@ export default function CheckoutSuccessPage() {
   return (
     <div className="flex min-h-full flex-col gap-6">
       <B2bTopbar
-        title={isApproved ? "Order Approved" : "Order Received"}
+        title={isApproved ? "Order Approved" : "Order Placed — Awaiting Approval"}
         subtitle={
-          isApproved 
+          isApproved
             ? "Your order has been approved and will be dispatched soon."
-            : "Your order is in. Confirmation + dispatch updates follow on email and WhatsApp."
+            : "Your order has been placed. Our team will confirm it in 2–6 minutes."
         }
       />
 
@@ -61,7 +69,9 @@ export default function CheckoutSuccessPage() {
           <CheckCircle2 className="mt-1 h-8 w-8 text-feedback-success-text shrink-0" aria-hidden />
           <div className="space-y-3">
             <h2 className="font-display text-heading-lg text-feedback-success-text">
-              {isApproved ? "Order Approved" : "Thank you for placing your order."}
+              {isApproved
+                ? "Order Approved"
+                : "Order placed — awaiting approval"}
             </h2>
             <p className="text-body-md text-feedback-success-text leading-relaxed">
               {isApproved 
