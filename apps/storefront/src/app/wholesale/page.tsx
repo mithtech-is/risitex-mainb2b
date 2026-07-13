@@ -50,7 +50,7 @@ export default function WholesaleProgramPage() {
                   </Button>
                 </SignedIn>
                 <Button variant="secondary" size="lg" asChild>
-                  <Link href="/products">Browse Catalogue</Link>
+                  <Link href="/wholesale/catalogue">Browse Catalogue</Link>
                 </Button>
               </div>
               <SignedOut>
@@ -196,7 +196,7 @@ export default function WholesaleProgramPage() {
                 <Link href="/auth/sign-in">Sign In</Link>
               </Button>
               <Button variant="secondary" size="lg" asChild>
-                <Link href="/products">Browse Products</Link>
+                <Link href="/wholesale/catalogue">Browse Products</Link>
               </Button>
             </div>
             <p className="mt-4 text-body-sm text-text-muted">

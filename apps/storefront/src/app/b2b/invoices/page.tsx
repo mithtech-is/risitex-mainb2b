@@ -217,7 +217,7 @@ export default function InvoicesPage() {
           description="Completed wholesale orders and credit invoices will appear here."
           action={
             <Button asChild>
-              <Link href="/products">Open catalogue</Link>
+              <Link href="/wholesale/catalogue">Open catalogue</Link>
             </Button>
           }
         />
