@@ -69,8 +69,8 @@ export function ReviewSubmit({ productId }: { productId: string }) {
       </Button>
 
       {open && status !== "sent" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-lg bg-surface-background p-6 shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-border-subtle bg-surface-background p-6 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-heading-sm text-text-primary">Write a review</h3>
               <button
@@ -109,13 +109,15 @@ export function ReviewSubmit({ productId }: { productId: string }) {
               </label>
               <div>
                 <p className="text-body-sm text-text-muted mb-1">Rating *</p>
-                <div className="flex gap-1">
+                <div className="flex gap-1" role="radiogroup" aria-label="Rating">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       type="button"
                       onClick={() => setRating(star)}
-                      className="p-0.5"
+                      className="rounded-sm p-0.5 transition-transform hover:scale-110"
+                      aria-label={`${star} star${star === 1 ? "" : "s"}`}
+                      aria-pressed={star <= rating}
                     >
                       <Star
                         className={`h-6 w-6 ${
@@ -165,22 +167,24 @@ export function ReviewSubmit({ productId }: { productId: string }) {
       )}
 
       {open && status === "sent" && (
-        <div className="mt-3 rounded-md border border-feedback-success-border bg-feedback-success-bg p-3">
-          <p className="text-body-sm text-feedback-success-text">
-            Review submitted! It will appear here once moderated.
-          </p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="mt-2"
-            onClick={() => {
-              setOpen(false);
-              setStatus("idle");
-            }}
-          >
-            Close
-          </Button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-feedback-success-border bg-feedback-success-bg p-6 shadow-lg">
+            <p className="text-body-sm text-feedback-success-text">
+              Review submitted! It will appear here once moderated.
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-2"
+              onClick={() => {
+                setOpen(false);
+                setStatus("idle");
+              }}
+            >
+              Close
+            </Button>
+          </div>
         </div>
       )}
     </div>

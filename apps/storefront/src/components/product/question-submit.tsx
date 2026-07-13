@@ -60,8 +60,8 @@ export function QuestionSubmit({ productId }: { productId: string }) {
       </Button>
 
       {open && status !== "sent" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-lg bg-surface-background p-6 shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-border-subtle bg-surface-background p-6 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-heading-sm text-text-primary">Ask a question</h3>
               <button
@@ -127,22 +127,24 @@ export function QuestionSubmit({ productId }: { productId: string }) {
       )}
 
       {open && status === "sent" && (
-        <div className="mt-3 rounded-md border border-feedback-success-border bg-feedback-success-bg p-3">
-          <p className="text-body-sm text-feedback-success-text">
-            Question submitted! We&apos;ll post the answer here once it&apos;s ready.
-          </p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="mt-2"
-            onClick={() => {
-              setOpen(false);
-              setStatus("idle");
-            }}
-          >
-            Close
-          </Button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-feedback-success-border bg-feedback-success-bg p-6 shadow-lg">
+            <p className="text-body-sm text-feedback-success-text">
+              Question submitted! We&apos;ll post the answer here once it&apos;s ready.
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-2"
+              onClick={() => {
+                setOpen(false);
+                setStatus("idle");
+              }}
+            >
+              Close
+            </Button>
+          </div>
         </div>
       )}
     </div>
