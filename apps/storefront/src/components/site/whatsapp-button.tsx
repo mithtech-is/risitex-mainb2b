@@ -12,10 +12,17 @@ const NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/[^0-9]/g
  */
 export function WhatsAppButton() {
   const pathname = usePathname();
+  // Resolve the origin AFTER mount so the server-rendered href (origin "") and
+  // the first client render match — otherwise the absolute URL differs between
+  // server and client and React reports a hydration mismatch on the href.
+  const [origin, setOrigin] = React.useState("");
+  React.useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
   if (!NUMBER) return null;
 
   const isProduct = /^\/wholesale\/p\//.test(pathname ?? "");
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
   const productName = isProduct
     ? decodeURIComponent((pathname ?? "").split("/wholesale/p/")[1] ?? "").replace(/-/g, " ")
     : "";
