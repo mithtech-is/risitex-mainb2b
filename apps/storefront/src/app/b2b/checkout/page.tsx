@@ -22,6 +22,11 @@ import {
   type StorePaymentSettings,
 } from "@/lib/payment-settings";
 import {
+  startRazorpayOrder,
+  openRazorpayCheckout,
+  type RazorpaySuccess,
+} from "@/lib/razorpay";
+import {
   ManualUpiPanel,
   isValidUpiRef,
   type ManualUpiValue,
@@ -411,8 +416,9 @@ export default function CheckoutPage() {
   function paymentReady(): boolean {
     if (paymentMethodId === "manual_upi")
       return isValidUpiRef(upiValue.upiTransactionId);
-    // Razorpay live capture is not wired in Phase 1 — block completion so
-    // nobody is half-charged. Phase 2 wires open + signature verify.
+    // Razorpay: ready once settings loaded (amount known). The actual pay
+    // overlay + signature verify happen in placeOrder.
+    if (paymentMethodId === "razorpay") return !!paySettings;
     return false;
   }
 
@@ -462,13 +468,6 @@ export default function CheckoutPage() {
   // ── Place order ────────────────────────────────────────────────────
   const placeOrder = async () => {
     if (!canPlace || submitting) return;
-    // Razorpay live capture is Phase 2 — never let it complete here.
-    if (paymentMethodId === "razorpay") {
-      setSubmitError(
-        "Razorpay is being enabled. Please use Manual UPI to place your order for now.",
-      );
-      return;
-    }
     if (
       paymentMethodId === "manual_upi" &&
       !isValidUpiRef(upiValue.upiTransactionId)
@@ -523,6 +522,42 @@ export default function CheckoutPage() {
               .join(" · ")
           : "";
 
+      // Razorpay: create the Razorpay order, then open Checkout (or, in dev
+      // pass-through with no key, resolve immediately). The signed success
+      // triple is required BEFORE the PO is created — the backend verifies the
+      // signature and only then marks the order paid + auto-approved.
+      let razorpaySuccess: RazorpaySuccess | null = null;
+      if (paymentMethodId === "razorpay") {
+        try {
+          const rzp = await startRazorpayOrder(finalPayablePaise);
+          razorpaySuccess = await new Promise<RazorpaySuccess>(
+            (resolve, reject) => {
+              if (rzp.mode === "passthrough" || !rzp.key_id) {
+                resolve({
+                  razorpay_order_id: rzp.razorpay_order_id,
+                  razorpay_payment_id: `pay_dev_${Date.now().toString(36)}`,
+                  razorpay_signature: "dev",
+                });
+              } else {
+                void openRazorpayCheckout({
+                  keyId: rzp.key_id,
+                  orderId: rzp.razorpay_order_id,
+                  amount: rzp.amount_paise,
+                  onSuccess: (s) => resolve(s),
+                  onDismiss: () => reject(new Error("Payment cancelled.")),
+                }).catch(reject);
+              }
+            },
+          );
+        } catch (rzpErr) {
+          setSubmitError(
+            rzpErr instanceof Error ? rzpErr.message : "Razorpay payment failed.",
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const created = await createPurchaseOrder({
         po_number: poNumber,
         value_major: paiseToRupees(grandTotalPaise),
@@ -557,7 +592,16 @@ export default function CheckoutPage() {
                 screenshot_url: upiValue.screenshotUrl || undefined,
                 amount_paid_major: paiseToRupees(grandTotalPaise),
               }
-            : undefined,
+            : razorpaySuccess
+              ? {
+                  method: "razorpay" as const,
+                  razorpay_order_id: razorpaySuccess.razorpay_order_id,
+                  razorpay_payment_id: razorpaySuccess.razorpay_payment_id,
+                  razorpay_signature: razorpaySuccess.razorpay_signature,
+                  amount_paid_major: paiseToRupees(finalPayablePaise),
+                  gateway_charge_major: paiseToRupees(gatewayFeePaise),
+                }
+              : undefined,
         items: cartLines.map((line) => ({
           variant_id: line.variantId,
           quantity: line.quantity,
@@ -584,11 +628,10 @@ export default function CheckoutPage() {
         },
       });
 
-      // Manual UPI payment was captured server-side during PO creation
-      // (payment_status = awaiting_verification), so there's no separate
-      // confirm step. Flag pr=1 so the success page shows the
-      // "payment recorded — awaiting verification" state.
-      const paymentRecorded = paymentMethodId === "manual_upi";
+      // Both methods record payment during PO creation: Manual UPI lands
+      // awaiting_verification; Razorpay is signature-verified → paid +
+      // auto-approved. Flag pr=1 so the success page shows the recorded state.
+      const paymentRecorded = true;
 
       try {
         clearCart();
@@ -1145,8 +1188,9 @@ export default function CheckoutPage() {
                     aria-live="polite"
                     className="mt-3 rounded-md border border-feedback-info-border bg-feedback-info-bg px-4 py-3 text-body-sm text-feedback-info-text"
                   >
-                    Razorpay automatic payment is being enabled. For now, please
-                    use Manual UPI to place your order.
+                    You&apos;ll pay securely via Razorpay (UPI · Cards · Net
+                    Banking · Wallets) when you place the order — your order is
+                    confirmed automatically on successful payment.
                   </p>
                 </div>
               )}
@@ -1261,7 +1305,9 @@ export default function CheckoutPage() {
                 isLoading={submitting}
                 disabled={!canPlace}
               >
-                Place order ({formatRupees(grandTotalPaise)})
+                {paymentMethodId === "razorpay"
+                  ? `Pay with Razorpay (${formatRupees(finalPayablePaise)})`
+                  : `Place order (${formatRupees(grandTotalPaise)})`}
               </Button>
             )}
           </div>

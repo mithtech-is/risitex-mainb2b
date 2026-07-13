@@ -75,15 +75,25 @@ export type CreatePurchaseOrderInput = {
     postal_code: string;
     country_code: string;
   };
-  /** Manual-UPI capture — present only when the buyer chose Manual UPI. */
-  payment?: {
-    method: "manual_upi";
-    upi_transaction_id: string;
-    payment_date: string; // ISO
-    remarks?: string;
-    screenshot_url?: string;
-    amount_paid_major: number;
-  };
+  /** Payment capture — present only when the buyer completed payment
+   *  up front, either via Manual UPI or Razorpay. */
+  payment?:
+    | {
+        method: "manual_upi";
+        upi_transaction_id: string;
+        payment_date: string; // ISO
+        remarks?: string;
+        screenshot_url?: string;
+        amount_paid_major: number;
+      }
+    | {
+        method: "razorpay";
+        razorpay_order_id: string;
+        razorpay_payment_id: string;
+        razorpay_signature: string;
+        amount_paid_major: number;
+        gateway_charge_major: number;
+      };
 };
 
 export type CreatedPurchaseOrder = {
