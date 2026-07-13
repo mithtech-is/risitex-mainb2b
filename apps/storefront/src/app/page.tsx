@@ -6,25 +6,25 @@ import { SignedOut, SignedIn } from "@/components/auth/signed-out";
 
 const CATEGORIES = [
   {
-    href: "/products?cat=men-innerwear",
+    href: "/wholesale/catalogue?cat=men-innerwear",
     label: "Innerwear",
     desc: "Inner boxers, boxer shorts",
     image: "/demo/products/photo-02.jpg",
   },
   {
-    href: "/products?cat=men-bottom-wear",
+    href: "/wholesale/catalogue?cat=men-bottom-wear",
     label: "Bottom Wear",
     desc: "Pyjamas, jeans, trousers",
     image: "/demo/products/photo-15.jpg",
   },
   {
-    href: "/products?cat=men-jeans",
+    href: "/wholesale/catalogue?cat=men-jeans",
     label: "Jeans",
     desc: "Slim, straight, tapered & more",
     image: "/demo/products/photo-05.jpg",
   },
   {
-    href: "/products?cat=men-pyjamas",
+    href: "/wholesale/catalogue?cat=men-pyjamas",
     label: "Pyjamas",
     desc: "Comfort loungewear & nightwear",
     image: "/demo/products/photo-12.jpg",
@@ -41,10 +41,10 @@ const FEATURES = [
 ];
 
 const INDUSTRIES = [
-  { href: "/products", label: "Retail Chains", desc: "Multi-brand stores and retail networks" },
-  { href: "/products", label: "Hospitality", desc: "Hotels, resorts, and serviced apartments" },
-  { href: "/products", label: "Corporate", desc: "Uniform programmes and bulk corporate orders" },
-  { href: "/products", label: "E-commerce Sellers", desc: "Online retailers and marketplace sellers" },
+  { href: "/wholesale/catalogue", label: "Retail Chains", desc: "Multi-brand stores and retail networks" },
+  { href: "/wholesale/catalogue", label: "Hospitality", desc: "Hotels, resorts, and serviced apartments" },
+  { href: "/wholesale/catalogue", label: "Corporate", desc: "Uniform programmes and bulk corporate orders" },
+  { href: "/wholesale/catalogue", label: "E-commerce Sellers", desc: "Online retailers and marketplace sellers" },
 ];
 
 export default function HomePage() {
@@ -71,7 +71,7 @@ export default function HomePage() {
 
               <div className="mt-10 flex flex-wrap items-center gap-3">
                 <Button asChild size="lg">
-                  <Link href="/products">Browse Catalogue</Link>
+                  <Link href="/wholesale/catalogue">Browse Catalogue</Link>
                 </Button>
                 <SignedOut>
                   <Button variant="secondary" size="lg" asChild>
@@ -182,7 +182,7 @@ export default function HomePage() {
           </div>
           <div className="mt-10 text-center">
             <Button variant="secondary" asChild>
-              <Link href="/products">View Full Catalogue &rarr;</Link>
+              <Link href="/wholesale/catalogue">View Full Catalogue &rarr;</Link>
             </Button>
           </div>
         </Container>
