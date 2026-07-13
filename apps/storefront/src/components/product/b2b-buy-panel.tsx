@@ -172,18 +172,13 @@ export function B2bBuyPanel({
     [quantities, packSizeByKey],
   );
 
-  // Sellable units (packs). `product.priceMajor` is the per-VARIANT (per-pack)
-  // price from Medusa, and a Medusa order line's quantity is the sellable-unit
-  // count — so money and the cart/PO line quantity are counted in packs, while
-  // MOQ (a per-product piece floor) is counted in pieces via `totalPieces`.
-  const totalPacks = React.useMemo(
-    () => Object.values(quantities).reduce((s, n) => s + n, 0),
-    [quantities],
-  );
-
+  // PER-PIECE pricing. `product.priceMajor` is the price of ONE piece, the same
+  // across every variant; a pack simply bundles `packSize` pieces. So money,
+  // MOQ, and the cart line quantity are all counted in PIECES — selecting a
+  // pack-of-3 adds 3 pieces and costs 3 × the per-piece price.
   const moq = product.moq ?? 0;
   const meetsMoq = meetsMoqFn(totalPieces, moq);
-  const lineTotalMajor = product.priceMajor * totalPacks;
+  const lineTotalMajor = product.priceMajor * totalPieces;
 
   const maxPacksByKey = React.useMemo(() => {
     const m: Record<string, number> = {};
@@ -240,11 +235,10 @@ export function B2bBuyPanel({
         productName: product.name,
         variantTitle,
         unitPriceMajor,
-        // Line quantity is the sellable-unit (pack) count — matches Medusa
-        // order-line semantics and the backend MOQ validator (which derives
-        // pieces = quantity × pack_size). `packSize` is carried so cart/MOQ
-        // can recompute pieces without a product re-fetch.
-        quantity: packs,
+        // Line quantity is in PIECES (packs × packSize) and the unit price is
+        // per piece, so the cart/PO subtotal = pieces × per-piece price. A
+        // pack-of-3 adds 3 pieces here. `packSize` is kept for display.
+        quantity: pieces,
         packSize: ps,
         thumbnail: product.images?.[0],
         moq: product.moq,

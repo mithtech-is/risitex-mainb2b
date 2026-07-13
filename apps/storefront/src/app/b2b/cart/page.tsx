@@ -93,7 +93,8 @@ export default function B2bCartPage() {
       { name: string; variantId: string; total: number; moq: number; max: number }
     >();
     for (const l of lines) {
-      const pieces = l.quantity * (l.packSize ?? 1);
+      // Line quantity is already in pieces (packs × packSize applied at add).
+      const pieces = l.quantity;
       const prev = byProduct.get(l.productSlug);
       if (prev) {
         prev.total += pieces;

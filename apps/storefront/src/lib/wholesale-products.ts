@@ -254,8 +254,13 @@ function mapMedusaToProduct(p: LiveProduct): Product {
       const vMeta = (v.metadata ?? {}) as Record<string, unknown>;
       const packSize = num(vMeta?.pack_size);
       const vMrp = num(vMeta?.mrp);
-      if (vMrp != null && mrpByColour[colourVal] == null) {
-        mrpByColour[colourVal] = vMrp;
+      if (vMrp != null) {
+        // Per-PIECE MRP — take the minimum across the colour's variants so a
+        // pack row that (mistakenly) holds a multiplied value can't inflate it.
+        mrpByColour[colourVal] =
+          mrpByColour[colourVal] == null
+            ? vMrp
+            : Math.min(mrpByColour[colourVal], vMrp);
       }
       const vImgs = Array.isArray(vMeta.images)
         ? (vMeta.images as unknown[]).filter(
