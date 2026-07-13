@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { ThemeSwitch } from "@risitex/ui/components";
 import { Container } from "./container";
 import { Wordmark } from "./wordmark";
@@ -43,23 +43,47 @@ export function Topnav() {
 
           <NavSearch />
 
-          <ul className="hidden items-center gap-6 lg:flex">
-            {NAV.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="text-body-md text-text-secondary transition-colors duration-fast hover:text-text-primary"
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <NavLinks />
 
           <TopnavActions />
         </nav>
       </Container>
     </header>
+  );
+}
+
+/** Primary nav links with an active-page indicator + smooth hover underline. */
+function NavLinks() {
+  const pathname = usePathname() ?? "";
+  return (
+    <ul className="hidden items-center gap-7 lg:flex">
+      {NAV.map((item) => {
+        const active =
+          pathname === item.href ||
+          (item.href !== "/" && pathname.startsWith(item.href));
+        return (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              className={`group relative text-body-md transition-colors duration-fast ${
+                active
+                  ? "text-text-primary"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              {item.label}
+              <span
+                className={`pointer-events-none absolute -bottom-1.5 left-0 h-px bg-text-primary transition-all duration-base ease-standard ${
+                  active ? "w-full" : "w-0 group-hover:w-full"
+                }`}
+                aria-hidden
+              />
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
