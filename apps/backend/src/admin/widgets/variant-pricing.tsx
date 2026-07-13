@@ -238,7 +238,7 @@ const VariantPricingWidget = ({ data: product }: { data: Product }) => {
 }
 
 export const config = defineWidgetConfig({
-  zone: "product.details.after",
+  zone: "product.details.before",
 })
 
 export default VariantPricingWidget
