@@ -1,6 +1,5 @@
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { B2B_PRICING_MODULE } from "../modules/b2b_pricing"
-import { DISCOUNT_CODE_MODULE } from "../modules/discount_code"
 import { resolveB2BContext } from "./b2b-tier"
 
 /**
@@ -41,7 +40,6 @@ export type CartViolation = {
     | "product_moq"
     | "product_max"
     | "product_step"
-    | "promo_tier_conflict"
   message: string
   line_id?: string
   product_id?: string
@@ -70,9 +68,6 @@ export async function validateB2BCart(
       "items.title",
       "items.product_id",
       "items.variant_id",
-      "promotions.code",
-      "promotions.is_automatic",
-      "promotions.metadata",
     ],
     filters: { id: cartId },
   })
@@ -86,11 +81,6 @@ export async function validateB2BCart(
           title: string | null
           product_id: string | null
           variant_id: string | null
-        }[]
-        promotions?: {
-          code: string | null
-          is_automatic: boolean | null
-          metadata: Record<string, unknown> | null
         }[]
       }
     | undefined
@@ -196,54 +186,9 @@ export async function validateB2BCart(
     })
   }
 
-  // FR-6.04 exclusivity / stacking matrix: a coded promo (clearance / intro
-  // code) can't stack on a B2B buyer's already-discounted tier pricing unless
-  // the code authorises it — either `combinable_with_tier` (any tier) or the
-  // buyer's tier appears in `combinable_tier_ids` (e.g. allow T1/T2 but not T3).
-  // Automatic volume promotions (FR-6.03) are exempt — they're meant to apply.
-  if (isB2B) {
-    const codes = (cart.promotions ?? [])
-      .filter((p) => !p?.is_automatic)
-      .map((p) => p?.code ?? "")
-      // AUTO_VOL_* are system-applied volume discounts (FR-6.03) — exempt.
-      .filter((c) => c && !c.startsWith("AUTO_VOL_"))
-    if (codes.length > 0) {
-      const discSvc = scope.resolve(DISCOUNT_CODE_MODULE) as {
-        resolveActiveByCodes: (
-          c: string[],
-        ) => Promise<
-          Array<{
-            code: string
-            combinable_with_tier: boolean
-            combinable_tier_ids: { ids?: string[] } | null
-          }>
-        >
-      }
-      const records = await discSvc.resolveActiveByCodes(codes)
-      const buyerTierIds = new Set(ctx.tierIds ?? [])
-      const stackable = (code: string): boolean => {
-        const rec = records.find(
-          (r) => r.code.trim().toUpperCase() === code.trim().toUpperCase(),
-        )
-        if (!rec) return false
-        if (rec.combinable_with_tier) return true
-        const allowed = Array.isArray(rec.combinable_tier_ids?.ids)
-          ? rec.combinable_tier_ids!.ids!
-          : []
-        return allowed.some((id) => buyerTierIds.has(id))
-      }
-      for (const p of cart.promotions ?? []) {
-        if (p?.is_automatic) continue
-        if ((p?.code ?? "").startsWith("AUTO_VOL_")) continue
-        if (!stackable(p?.code ?? "")) {
-          violations.push({
-            type: "promo_tier_conflict",
-            message: `Promo code "${p?.code ?? ""}" can't be combined with your wholesale tier pricing.`,
-          })
-        }
-      }
-    }
-  }
+  // Promo codes now apply on top of tier pricing via Medusa's native
+  // promotions (the custom discount_code tier-stacking exclusivity rule was
+  // removed) — no cross-check needed here.
 
   return {
     ok: violations.length === 0,

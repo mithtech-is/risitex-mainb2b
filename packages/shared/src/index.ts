@@ -13,13 +13,10 @@ export const RISITEX_SHARED_VERSION = "0.1.0";
 // DTOs (Phase 6+)
 export * from "./dtos/company";
 export * from "./dtos/customer-tier";
-export * from "./dtos/sales-rep";
 export * from "./dtos/wallet";
-export * from "./dtos/commission";
 export * from "./dtos/matrix-ordering";
 export * from "./dtos/moq";
 export * from "./dtos/master-carton";
 export * from "./dtos/erp-sync";
 export * from "./dtos/warehouse";
 export * from "./dtos/logistics";
-export * from "./dtos/rbac";

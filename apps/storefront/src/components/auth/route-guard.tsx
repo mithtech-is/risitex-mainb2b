@@ -41,15 +41,13 @@ export type GuardRequirement =
   | "auth"
   | "verified"
   | "wholesale"
-  | "application"
-  | "rep";
+  | "application";
 
 const RESOLVERS: Record<GuardRequirement, () => Promise<string | null>> = {
   auth: requireAuth,
   verified: requireVerified,
   wholesale: requireWholesale,
   application: requireApplication,
-  rep: requireAuth,
 };
 
 export function Guard({

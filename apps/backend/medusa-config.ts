@@ -212,10 +212,6 @@ export default defineConfig({
         b2b_pricing: {
             resolve: "./src/modules/b2b_pricing",
         },
-        // ── Phase 7: sales-rep attribution + commission ──────────
-        sales_performance: {
-            resolve: "./src/modules/sales_performance",
-        },
         // ── Phase 9-10: logistics, backorders, wholesale flows ──
         logistics: {
             resolve: "./src/modules/logistics",
@@ -244,21 +240,14 @@ export default defineConfig({
         marketing: {
             resolve: "./src/modules/campaign",
         },
-        discount_code: {
-            resolve: "./src/modules/discount_code",
-        },
         // ── Ported from the legacy textile backend (monorepo
         // consolidation, 2026-06-19). v2 had no equivalents:
         //   product_questions → storefront /store/product-questions Q&A
-        //   rbac              → custom roles / permissions / grants
         product_questions: {
             resolve: "./src/modules/product-questions",
         },
         product_reviews: {
             resolve: "./src/modules/product_reviews",
-        },
-        rbac: {
-            resolve: "./src/modules/rbac",
         },
         // Renamed from `polemarch_email` to broaden scope: this module
         // now also handles MSG91 SMS, Polygin WhatsApp, and the phone

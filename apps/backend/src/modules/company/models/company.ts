@@ -72,13 +72,6 @@ export const Company = model
      */
     credit_terms_id: model.text().nullable(),
 
-    /**
-     * Soft-FK → sales_rep.id (Phase 7 module). Drives FR-8.02
-     * perpetual attribution — every order placed by any customer
-     * attached to this company gets attributed to this rep.
-     */
-    sales_rep_id: model.text().nullable(),
-
     /** Free-form notes from ops review / approval / suspension. */
     review_notes: model.text().nullable(),
 
@@ -95,10 +88,5 @@ export const Company = model
       on: ["customer_tier_id"],
       unique: false,
       where: "customer_tier_id IS NOT NULL AND deleted_at IS NULL",
-    },
-    {
-      on: ["sales_rep_id"],
-      unique: false,
-      where: "sales_rep_id IS NOT NULL AND deleted_at IS NULL",
     },
   ])

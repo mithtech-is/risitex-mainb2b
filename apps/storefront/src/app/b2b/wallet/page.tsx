@@ -213,7 +213,7 @@ export default function B2bWalletPage() {
           <EmptyState
             icon={<Wallet className="h-5 w-5" />}
             title="No transactions yet"
-            description="Top up via NEFT/IMPS or wait for your first commission/refund."
+            description="Top up via NEFT/IMPS or wait for your first refund."
           />
         )}
         <ul className="divide-y divide-border-subtle numerics-tabular">

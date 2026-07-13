@@ -25,17 +25,6 @@ import {
 } from "../utils/account-lockout"
 import { PASSWORD_HISTORY_MODULE } from "../modules/password_history"
 import type PasswordHistoryService from "../modules/password_history/service"
-// ── Validation DTOs for modules ported from the legacy textile backend
-//    during monorepo consolidation (2026-06-19). ──
-import {
-    CreateRoleDto,
-    UpdateRoleDto,
-    ListRolesQueryDto,
-    SetRolePermissionsDto,
-    GrantRoleDto,
-    ListUserRolesQueryDto,
-    CheckPermissionDto,
-} from "./validators/rbac"
 
 // Hard-coded to avoid pulling cashfree_wallet's barrel into the
 // middleware module — that barrel re-exports the service type and
@@ -616,58 +605,6 @@ const customerDeleteReconcile = async (req: any, res: any, next: any) => {
 
 export default defineMiddlewares({
     routes: [
-        // ── Ported from the legacy textile backend (monorepo
-        //    consolidation, 2026-06-19): request validation for the
-        //    RBAC admin routes. ──
-        {
-            matcher: "/admin/roles",
-            method: ["POST"],
-            middlewares: [validateAndTransformBody(CreateRoleDto)],
-        },
-        {
-            matcher: "/admin/roles",
-            method: ["GET"],
-            middlewares: [
-                validateAndTransformQuery(ListRolesQueryDto, {
-                    defaults: [
-                        "id", "code", "display_name", "description",
-                        "scope", "is_system", "active", "created_at",
-                    ],
-                }),
-            ],
-        },
-        {
-            matcher: "/admin/roles/:id",
-            method: ["POST"],
-            middlewares: [validateAndTransformBody(UpdateRoleDto)],
-        },
-        {
-            matcher: "/admin/roles/:id/permissions",
-            method: ["POST"],
-            middlewares: [validateAndTransformBody(SetRolePermissionsDto)],
-        },
-        {
-            matcher: "/admin/user-roles",
-            method: ["POST"],
-            middlewares: [validateAndTransformBody(GrantRoleDto)],
-        },
-        {
-            matcher: "/admin/user-roles",
-            method: ["GET"],
-            middlewares: [
-                validateAndTransformQuery(ListUserRolesQueryDto, {
-                    defaults: [
-                        "id", "actor_type", "actor_id", "role_id",
-                        "company_id", "granted_by_user_id", "granted_at", "expires_at",
-                    ],
-                }),
-            ],
-        },
-        {
-            matcher: "/admin/permission-check",
-            method: ["POST"],
-            middlewares: [validateAndTransformBody(CheckPermissionDto)],
-        },
         {
             // Make admin customer-delete robust to a missing auth identity
             // (see customerDeleteReconcile). Must run before Medusa's core
@@ -957,10 +894,6 @@ export default defineMiddlewares({
             ],
         },
         {
-            matcher: "/admin/discount-codes*",
-            middlewares: [authenticate("user", ["session", "bearer"])],
-        },
-        {
             // Supervision endpoint for scheduled jobs. Admin auth so
             // external uptime monitors can't scrape it anonymously,
             // but kept separate from the bulk admin routes so it can
@@ -1047,13 +980,6 @@ export default defineMiddlewares({
         {
             // B2B Sales domain — pricing / MOQ / visibility rule management.
             matcher: "/admin/b2b-sales*",
-            middlewares: [
-                authenticate("user", ["session", "bearer"]),
-            ],
-        },
-        {
-            // Sales-rep admin (incl. FR-1.04 draft-cart-on-behalf).
-            matcher: "/admin/sales-reps*",
             middlewares: [
                 authenticate("user", ["session", "bearer"]),
             ],
@@ -1541,15 +1467,7 @@ export default defineMiddlewares({
             ],
         },
         {
-            matcher: "/store/carts/:id/discount-code",
-            middlewares: [authenticate("customer", ["session", "bearer"])],
-        },
-        {
             matcher: "/store/carts/:id/volume-discount",
-            middlewares: [authenticate("customer", ["session", "bearer"])],
-        },
-        {
-            matcher: "/store/rep/me",
             middlewares: [authenticate("customer", ["session", "bearer"])],
         },
         {

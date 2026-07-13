@@ -33,7 +33,6 @@ type CompanyContext = {
       status?: string | null;
       billing_address?: Address | null;
       customer_tier_id?: string | null;
-      sales_rep_id?: string | null;
     };
     customer_tier?: { code?: string; name?: string } | null;
     payment_terms?: string | null;
@@ -69,26 +68,6 @@ export function B2bCompanyContextPage({
     error: string | null;
     data: CompanyContext | null;
   }>({ loading: true, error: null, data: null });
-
-  // Sales-rep info is only surfaced to users who are themselves an assigned
-  // sales representative — ordinary customers never see it.
-  const [isRep, setIsRep] = React.useState(false);
-
-  React.useEffect(() => {
-    const token = window.localStorage.getItem("medusa_auth_token");
-    if (!token) return;
-    fetch(`${MEDUSA_BASE_URL}/store/rep/me`, {
-      headers: {
-        "x-publishable-api-key":
-          process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "",
-        Authorization: `Bearer ${token}`,
-      },
-      credentials: "include",
-    })
-      .then((res) => (res.ok ? res.json() : { is_rep: false }))
-      .then((data: { is_rep?: boolean }) => setIsRep(Boolean(data?.is_rep)))
-      .catch(() => setIsRep(false));
-  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -198,7 +177,6 @@ export function B2bCompanyContextPage({
     metaStr(meta, "tier") ??
     "Bronze (default)";
   const paymentTerms = b2b?.payment_terms ?? "Advance payment";
-  const salesRep = company?.sales_rep_id ?? "To be assigned post-approval";
   const phone = customer?.phone ?? metaStr(meta, "phone") ?? application?.applicant_phone ?? null;
 
   const address =
@@ -239,9 +217,6 @@ export function B2bCompanyContextPage({
             ["Status", status],
             ["Tier", tier],
             ["Payment Terms", paymentTerms],
-            ...(isRep && company?.sales_rep_id
-              ? [["Sales Rep", salesRep] as [string, string]]
-              : []),
           ]}
         />
       )}

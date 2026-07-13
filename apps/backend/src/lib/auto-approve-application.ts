@@ -140,7 +140,6 @@ export async function autoApproveIfPending(
       application_id: app.id,
       reviewer_id: "system:dual-otp",
       customer_tier_id: defaultTier.id,
-      sales_rep_id: null,
       review_notes: "Auto-approved on email + phone OTP verification",
     })
 

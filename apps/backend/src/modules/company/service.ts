@@ -103,7 +103,6 @@ class CompanyModuleService extends MedusaService({
     application_id: string
     reviewer_id: string
     customer_tier_id?: string | null
-    sales_rep_id?: string | null
     review_notes?: string | null
   }) {
     const app = await this.retrieveCompanyApplication(input.application_id)
@@ -128,7 +127,6 @@ class CompanyModuleService extends MedusaService({
           id: existing[0].id,
           status: "approved",
           customer_tier_id: input.customer_tier_id ?? null,
-          sales_rep_id: input.sales_rep_id ?? null,
           review_notes: input.review_notes ?? null,
         },
       ])
@@ -142,7 +140,6 @@ class CompanyModuleService extends MedusaService({
           billing_address: payload.billing_address as unknown as Record<string, unknown>,
           status: "approved",
           customer_tier_id: input.customer_tier_id ?? null,
-          sales_rep_id: input.sales_rep_id ?? null,
           review_notes: input.review_notes ?? null,
           metadata: {
             applicant_email: app.applicant_email,

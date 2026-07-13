@@ -24,7 +24,6 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 
 const PatchSchema = z.object({
   customer_tier_id: z.string().nullable().optional(),
-  sales_rep_id: z.string().nullable().optional(),
   credit_terms_id: z.string().nullable().optional(),
   review_notes: z.string().max(2000).nullable().optional(),
   trade_name: z.string().trim().min(2).max(200).optional(),

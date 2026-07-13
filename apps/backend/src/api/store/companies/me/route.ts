@@ -50,7 +50,6 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
       "metadata",
       "company_id",
       "customer_tier_id",
-      "sales_rep_id",
       "payment_terms",
     ],
     filters: { id: customerId },
@@ -65,7 +64,6 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
         metadata: Record<string, unknown> | null
         company_id: string | null
         customer_tier_id: string | null
-        sales_rep_id: string | null
         payment_terms: string | null
       }
     | undefined
@@ -227,7 +225,6 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
         status: company.status,
         billing_address: company.billing_address,
         customer_tier_id: tierId,
-        sales_rep_id: company.sales_rep_id,
       },
       customer_tier: tier,
       payment_terms: resolvedPaymentTerms ?? null,

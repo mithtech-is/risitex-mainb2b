@@ -43,7 +43,6 @@ type CompanyContext = {
       status?: string | null;
       billing_address?: Address | null;
       customer_tier_id?: string | null;
-      sales_rep_id?: string | null;
     };
     customer_tier?: { code?: string; name?: string } | null;
     payment_terms?: string | null;
@@ -78,11 +77,6 @@ export default function ProfilePage() {
 
   // Raw fetched context data
   const [contextData, setContextData] = React.useState<CompanyContext | null>(null);
-
-  // Whether the signed-in user is themselves an assigned sales representative.
-  // The "Dedicated Sales Representative" field is only meaningful to reps, so
-  // it stays hidden for ordinary customers.
-  const [isRep, setIsRep] = React.useState(false);
 
   // Form states
   const [form, setForm] = React.useState({
@@ -159,21 +153,6 @@ export default function ProfilePage() {
     loadData();
   }, [loadData]);
 
-  React.useEffect(() => {
-    const token = window.localStorage.getItem("medusa_auth_token");
-    if (!token) return;
-    fetch(`${MEDUSA_BASE_URL}/store/rep/me`, {
-      headers: {
-        "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY ?? "",
-        Authorization: `Bearer ${token}`,
-      },
-      credentials: "include",
-    })
-      .then((res) => (res.ok ? res.json() : { is_rep: false }))
-      .then((data: { is_rep?: boolean }) => setIsRep(Boolean(data?.is_rep)))
-      .catch(() => setIsRep(false));
-  }, []);
-
   const setVal = (key: keyof typeof form, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
   };
@@ -243,7 +222,6 @@ export default function ProfilePage() {
 
   const tier = b2b?.customer_tier?.name ?? "Bronze (default)";
   const paymentTerms = b2b?.payment_terms ?? "Advance Payment";
-  const salesRep = company?.sales_rep_id ? `Assigned (ID: ${company.sales_rep_id})` : "To be assigned post-approval";
 
   return (
     <div className="flex min-h-full flex-col gap-8 pb-12">
@@ -471,12 +449,6 @@ export default function ProfilePage() {
                 <p className="text-micro text-text-muted uppercase tracking-wider">Default Payment Terms</p>
                 <p className="mt-1 text-body-md text-text-primary">{paymentTerms}</p>
               </div>
-              {isRep && company?.sales_rep_id && (
-                <div className="border-t border-border-subtle pt-3">
-                  <p className="text-micro text-text-muted uppercase tracking-wider">Dedicated Sales Representative</p>
-                  <p className="mt-1 text-body-md text-text-primary">{salesRep}</p>
-                </div>
-              )}
             </div>
           </section>
         </aside>

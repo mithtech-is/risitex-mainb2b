@@ -37,7 +37,6 @@ import { syncCustomerTierMembership } from "../../../../../../lib/tier-group"
  */
 const BodySchema = z.object({
   customer_tier_id: z.string().min(1),
-  sales_rep_id: z.string().min(1).optional(),
   review_notes: z.string().max(2000).optional(),
   payment_terms: z.enum(["advance_100", "net_30", "net_60"]).optional(),
 })
@@ -89,7 +88,6 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     application_id: applicationId,
     reviewer_id: reviewerId,
     customer_tier_id: parsed.data.customer_tier_id,
-    sales_rep_id: parsed.data.sales_rep_id ?? null,
     review_notes: parsed.data.review_notes ?? null,
   })
 
@@ -132,14 +130,12 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     `UPDATE customer
        SET company_id = ?,
            customer_tier_id = ?,
-           sales_rep_id = ?,
            payment_terms = COALESCE(?, payment_terms),
            updated_at = now()
      WHERE id = ?`,
     [
       company.id,
       parsed.data.customer_tier_id,
-      parsed.data.sales_rep_id ?? null,
       paymentTerms,
       customer.id,
     ],

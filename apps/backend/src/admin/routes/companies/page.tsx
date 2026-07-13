@@ -38,7 +38,6 @@ type Company = {
   trade_name: string
   status: CompanyStatus
   customer_tier_id: string | null
-  sales_rep_id: string | null
   review_notes: string | null
   created_at: string
   deleted_at?: string | null

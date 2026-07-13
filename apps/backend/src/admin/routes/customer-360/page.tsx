@@ -41,7 +41,6 @@ type Customer = {
   created_at: string
   company_id?: string | null
   customer_tier_id?: string | null
-  sales_rep_id?: string | null
   payment_terms?: string | null
   metadata?: Record<string, unknown>
 }
@@ -52,7 +51,6 @@ type Company = {
   trade_name: string
   status: string
   customer_tier_id: string | null
-  sales_rep_id: string | null
 }
 
 type Wallet = {
@@ -317,7 +315,6 @@ function CompanyTab({ c }: { c: Customer }) {
       <Row label="Trade name" value={co.trade_name} />
       <Row label="Status" value={<Badge>{co.status}</Badge>} />
       <Row label="Tier id" value={co.customer_tier_id ?? "—"} />
-      <Row label="Sales rep id" value={co.sales_rep_id ?? "—"} />
       <Button
         size="small"
         variant="secondary"
