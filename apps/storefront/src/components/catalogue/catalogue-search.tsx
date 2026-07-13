@@ -17,15 +17,18 @@ export function CatalogueSearch() {
   };
 
   return (
-    <form onSubmit={submit} className="relative w-full max-w-md">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+    <form onSubmit={submit} role="search" className="relative w-full max-w-md">
+      <Search
+        className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-text-muted"
+        aria-hidden
+      />
       <input
-        type="search"
+        type="text"
         value={value}
         onChange={(e) => setValue(e.currentTarget.value)}
         placeholder="Search all products"
         aria-label="Search all products"
-        className="h-10 w-full rounded-md border border-border-subtle bg-surface-raised pl-9 pr-3 text-body-md text-text-primary"
+        className="h-11 w-full rounded-full bg-surface-sunken pl-11 pr-4 text-body-md text-text-primary placeholder:text-text-muted outline-none transition-shadow duration-fast focus-visible:bg-surface-raised focus-visible:ring-2 focus-visible:ring-border-strong"
       />
     </form>
   );
