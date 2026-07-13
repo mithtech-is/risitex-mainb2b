@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:region": "medusa exec ./src/scripts/seed-region.ts",
+    "seed:inventory": "medusa exec ./src/scripts/seed-inventory.ts",
     "seed:tiers": "medusa exec ./src/scripts/seed-tiers.ts",
     "seed:checkout": "medusa exec ./src/scripts/seed-checkout.ts",
     "seed:b2b-media": "medusa exec ./src/scripts/seed-b2b-demo-media.ts",
