@@ -117,8 +117,10 @@ export default function PurchaseOrderDetailPage() {
     );
   }
 
-  const linkedToOrder = !!po.order;
-  const adminApproved = !!po.admin_approved_at || linkedToOrder;
+  // "Confirmed" means the admin has approved the order in the backend — NOT
+  // merely that a native order row was linked at PO creation. Invoice download
+  // and the "confirmed" banner both gate on this.
+  const adminApproved = !!po.admin_approved_at;
   const dispatched = !!po.dispatched_at || po.status === "fulfilled";
   const snapshotNotes =
     (po.metadata?.notes as string | undefined) ??
@@ -143,7 +145,7 @@ export default function PurchaseOrderDetailPage() {
                 ? "Order dispatched — in transit"
                 : adminApproved
                   ? "Order confirmed and will be dispatched soon"
-                  : "Order placed — confirmation in progress"}
+                  : "Order placed — awaiting approval"}
             </p>
             <p className="mt-1 text-body-sm text-feedback-success-text/80">
               {dispatched
@@ -154,7 +156,7 @@ export default function PurchaseOrderDetailPage() {
             </p>
           </div>
           <Badge tone="success">
-            {dispatched ? "dispatched" : adminApproved ? "confirmed" : "placed"}
+            {dispatched ? "dispatched" : adminApproved ? "confirmed" : "awaiting approval"}
           </Badge>
         </div>
       </section>
@@ -238,7 +240,7 @@ export default function PurchaseOrderDetailPage() {
           )}
 
           <div className="mt-5 flex flex-wrap gap-3">
-            {(linkedToOrder || adminApproved) && (
+            {adminApproved && (
               <Button
                 variant="secondary"
                 size="sm"
@@ -340,7 +342,6 @@ function OrderStatusCard({
 function WorkflowCard({ po }: { po: DraftPurchaseOrder }) {
   const paymentConfirmed = !!po.payment_confirmed_at;
   const adminApproved = !!po.admin_approved_at;
-  const linkedToOrder = !!po.order;
   const dispatched = !!po.dispatched_at || po.status === "fulfilled";
   return (
     <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
@@ -367,7 +368,7 @@ function WorkflowCard({ po }: { po: DraftPurchaseOrder }) {
         <Step
           icon={<Package className="h-4 w-4" />}
           label="Order confirmed"
-          done={linkedToOrder || adminApproved}
+          done={adminApproved}
         />
         <Step
           icon={<Truck className="h-4 w-4" />}
