@@ -233,12 +233,12 @@ export default async function WholesaleCataloguePage({
           <div>
             <p className="text-micro text-text-muted">Wholesale</p>
             <h1 className="mt-2 text-display-lg text-text-primary">
-              The full catalogue, priced for volume.
+              Premium Menswear for Wholesale Excellence
             </h1>
             <p className="mt-3 max-w-prose text-body-md text-text-muted">
-              {filtered.length} of {all.length} SKUs shown.{" "}
+              Showing {all.length} products{""}
               <SignedOut>Sign in to unlock your tier pricing.</SignedOut>
-              <SignedIn>Tier pricing applied to your account.</SignedIn>
+              <SignedIn>• Wholesale pricing tailored to your business account.</SignedIn>
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
