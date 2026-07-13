@@ -10,6 +10,7 @@ import {
   PurchaseOrderModuleService,
 } from "../../../modules/purchase_order"
 import { logger } from "../../../utils/logger"
+import { isValidUpiTransactionId, amountsMatchPaise } from "../../../lib/payment"
 
 /**
  * GET /store/purchase-orders
@@ -188,6 +189,16 @@ const PostBody = z.object({
   })).optional(),
   billing_address: AddressSchema.optional(),
   shipping_address: AddressSchema.optional(),
+  payment: z
+    .object({
+      method: z.literal("manual_upi"),
+      upi_transaction_id: z.string().min(1).max(60),
+      payment_date: z.string(),
+      remarks: z.string().max(2000).optional(),
+      screenshot_url: z.string().url().or(z.string().startsWith("/")).optional(),
+      amount_paid_major: z.number().nonnegative().max(100_000_000),
+    })
+    .optional(),
 })
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
@@ -203,6 +214,35 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       .json({ message: "Invalid input", errors: parsed.error.flatten() })
   }
   const input = parsed.data
+
+  // Manual-UPI capture: re-validate server-side. The client amount is
+  // advisory — the authoritative order total is value_major below; we
+  // reject a mismatch beyond ₹1 tolerance so a tampered client can't
+  // under-report. Never trust the browser for money.
+  let paymentMeta: Record<string, unknown> | null = null
+  if (input.payment) {
+    const p = input.payment
+    if (!isValidUpiTransactionId(p.upi_transaction_id)) {
+      return res.status(422).json({ message: "Invalid UPI transaction ID." })
+    }
+    const paidDate = new Date(p.payment_date)
+    if (Number.isNaN(paidDate.getTime()) || paidDate.getTime() > Date.now() + 86_400_000) {
+      return res.status(422).json({ message: "Invalid payment date." })
+    }
+    if (!amountsMatchPaise(Math.round(p.amount_paid_major * 100), input.value_major * 100)) {
+      return res.status(422).json({ message: "Paid amount does not match the order total." })
+    }
+    paymentMeta = {
+      payment_method: "manual_upi",
+      payment_status: "awaiting_verification",
+      upi_transaction_id: p.upi_transaction_id.trim(),
+      payment_date: paidDate.toISOString(),
+      remarks: p.remarks?.trim() || null,
+      screenshot_url: p.screenshot_url || null,
+      amount_paid_major: input.value_major,
+      payment_captured_at: new Date().toISOString(),
+    }
+  }
 
   try {
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
@@ -319,6 +359,24 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
           ],
         })
         orderId = createdOrder.id
+        if (paymentMeta) {
+          try {
+            await orderModule.updateOrders([
+              {
+                id: createdOrder.id,
+                metadata: {
+                  ...(createdOrder.metadata || {}),
+                  payment_method: paymentMeta.payment_method,
+                  payment_status: paymentMeta.payment_status,
+                  upi_transaction_id: paymentMeta.upi_transaction_id,
+                  amount_paid_major: paymentMeta.amount_paid_major,
+                },
+              },
+            ])
+          } catch (mErr) {
+            logger.warn(`[purchase-orders] payment metadata mirror failed: ${mErr instanceof Error ? mErr.message : mErr}`)
+          }
+        }
       } catch (orderErr) {
         logger.warn(
           `[purchase-orders] failed to create standard Medusa Order: ${orderErr instanceof Error ? orderErr.message : orderErr}`
@@ -346,7 +404,10 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       expected_payment_date: input.expected_payment_date
         ? new Date(input.expected_payment_date)
         : null,
-      metadata: input.notes ? { notes: input.notes } : null,
+      metadata: {
+        ...(input.notes ? { notes: input.notes } : {}),
+        ...(paymentMeta ?? {}),
+      },
     })
     const row = Array.isArray(created) ? created[0] : created
 
