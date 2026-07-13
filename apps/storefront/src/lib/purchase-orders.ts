@@ -75,6 +75,15 @@ export type CreatePurchaseOrderInput = {
     postal_code: string;
     country_code: string;
   };
+  /** Manual-UPI capture — present only when the buyer chose Manual UPI. */
+  payment?: {
+    method: "manual_upi";
+    upi_transaction_id: string;
+    payment_date: string; // ISO
+    remarks?: string;
+    screenshot_url?: string;
+    amount_paid_major: number;
+  };
 };
 
 export type CreatedPurchaseOrder = {
