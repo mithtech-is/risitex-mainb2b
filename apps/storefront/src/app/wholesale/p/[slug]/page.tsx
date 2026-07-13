@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Button } from "@risitex/ui/components";
+import { Button, formatINR } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
 import { Breadcrumb } from "@/components/site/breadcrumb";
 import { B2bBuyPanel } from "@/components/product/b2b-buy-panel";
@@ -12,8 +12,8 @@ import {
 } from "@/lib/wholesale-products";
 import { getCategoryTree, deepestPath } from "@/lib/categories";
 import { SignedIn, SignedOut } from "@/components/auth/signed-out";
-import { B2bPriceGate } from "@/components/b2b/b2b-price-gate";
 import { WishlistHeart } from "@/components/wishlist/wishlist-heart";
+import type { Product } from "@/data/products";
 import { SizeChartModal } from "@/components/product/size-chart-modal";
 import { ProductQuestions } from "@/components/product/product-questions";
 import { ProductReviews } from "@/components/product/product-reviews";
@@ -77,16 +77,6 @@ export default async function WholesalePdpPage({
         ? [product.image]
         : []
   ).filter((u): u is string => !!u);
-  const totalStock = product.variants.reduce(
-    (sum, variant) =>
-      sum +
-      (variant.inventoryState === "out_of_stock"
-        ? 0
-        : Number(variant.stockCount ?? product.cartonSize ?? 24)),
-    0,
-  );
-  const hsn = "6205";
-  const gst = product.priceMajor > 1000 ? "12%" : "5%";
 
   return (
     <>
@@ -130,6 +120,14 @@ export default async function WholesalePdpPage({
                 className="mt-1 h-10 w-10"
               />
             </div>
+            {product.mrpMajor ? (
+              <p className="mt-3 text-heading-md text-text-primary">
+                {formatINR(product.mrpMajor)}{" "}
+                <span className="text-body-sm font-normal text-text-muted">
+                  / pc · MRP (incl. GST)
+                </span>
+              </p>
+            ) : null}
 
             <div className="mt-8">
               <SignedIn>
@@ -161,78 +159,6 @@ export default async function WholesalePdpPage({
             </div>
           </section>
         </div>
-
-        <div className="grid grid-cols-1 gap-6 pb-16 lg:grid-cols-3">
-          <InfoPanel
-            title="Wholesale Controls"
-            items={[
-              ["MOQ", `${product.moq ?? 0} pcs`],
-              ["Minimum Order", `${product.moq ?? 0} pcs`],
-            ]}
-          />
-          <InfoPanel
-            title="Availability"
-            items={[
-              ["Available Stock", `${totalStock} pcs`],
-              ["Warehouse", "RISITEX Bangalore DC"],
-              ["Lead Time", `${product.leadTimeDays ?? 0} days`],
-              [
-                "Production Time",
-                `${Math.max((product.leadTimeDays ?? 14) - 4, 7)} days`,
-              ],
-              [
-                "Availability",
-                totalStock > 0 ? "Ready for wholesale" : "Made to order",
-              ],
-            ]}
-          />
-          <InfoPanel
-            title="Technical Specifications"
-            items={[
-              ["HSN", hsn],
-              ["GST", gst],
-              [
-                "Fabric",
-                product.specs.find((s) => /fabric/i.test(s.label))?.value ??
-                  product.eyebrow,
-              ],
-              [
-                "Composition",
-                product.specs.find((s) => /composition/i.test(s.label))?.value ??
-                  "B2B textile grade",
-              ],
-              [
-                "Weight",
-                product.specs.find((s) => /gsm|weight/i.test(s.label))?.value ??
-                  "As per spec sheet",
-              ],
-              ["Country of Origin", "India"],
-            ]}
-          />
-        </div>
-
-        <section className="grid grid-cols-1 gap-6 pb-16 lg:grid-cols-3">
-          <TextPanel
-            title="Distributor Notes"
-            body={
-              product.testimonials?.find((t) => /distributor|distribut/i.test(t.name))
-                ?.quote ??
-              "Priority dispatch is available for carton-aligned orders and territory-backed replenishment plans."
-            }
-          />
-          <TextPanel
-            title="Dealer Notes"
-            body={
-              product.testimonials?.find((t) => /chain|outlet|dealer|metro/i.test(t.name))
-                ?.quote ??
-              "Samples can be requested before bulk confirmation. Dealer packs are optimized for size-curve planning."
-            }
-          />
-          <TextPanel
-            title="Business FAQs"
-            body="Purchase orders, wallet payments, credit terms, GST invoices, and sample requests are supported from the B2B dashboard."
-          />
-        </section>
 
         <section className="grid grid-cols-1 gap-6 pb-16 lg:grid-cols-2">
           <ProductQuestions
@@ -305,66 +231,55 @@ function garmentFromProduct(p: {
   return undefined;
 }
 
-function InfoPanel({
-  title,
-  items,
-}: {
-  title: string;
-  items: [string, string][];
-}) {
-  return (
-    <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
-      <h2 className="text-heading-sm text-text-primary">{title}</h2>
-      <dl className="mt-4 space-y-3">
-        {items.map(([label, value]) => (
-          <div key={label} className="flex justify-between gap-4">
-            <dt className="text-body-sm text-text-muted">{label}</dt>
-            <dd className="text-right text-body-sm text-text-primary">{value}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
-  );
-}
-
-function TextPanel({ title, body }: { title: string; body: string }) {
-  return (
-    <section className="rounded-md border border-border-subtle bg-surface-raised p-5">
-      <h2 className="text-heading-sm text-text-primary">{title}</h2>
-      <p className="mt-3 text-body-sm text-text-secondary">{body}</p>
-    </section>
-  );
-}
-
 function ProductCardRow({
   items,
 }: {
-  items: { slug: string; name: string; eyebrow: string; moq?: number; priceMajor: number }[];
+  items: Pick<
+    Product,
+    "slug" | "name" | "eyebrow" | "mrpMajor" | "images" | "image"
+  >[];
 }) {
   return (
     <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-      {items.map((item) => (
-        <Link
-          key={item.slug}
-          href={`/wholesale/p/${item.slug}`}
-          className="rounded-md border border-border-subtle bg-surface-raised p-4 transition-colors duration-fast hover:bg-surface-sunken"
-        >
-          <p className="text-micro text-text-muted">{item.eyebrow}</p>
-          <h3 className="mt-2 text-heading-sm text-text-primary">{item.name}</h3>
-          <div className="mt-3 flex items-center justify-between">
-            <p className="text-body-sm text-text-muted">MOQ {item.moq ?? 0} pcs</p>
-            <B2bPriceGate
-              approved={
-                item.priceMajor > 0 ? (
-                  <p className="font-mono text-body-sm text-text-primary">
-                    ₹{item.priceMajor}
-                  </p>
-                ) : null
-              }
-            />
-          </div>
-        </Link>
-      ))}
+      {items.map((item) => {
+        const imageUrl = item.images?.[0] ?? item.image;
+        return (
+          <Link
+            key={item.slug}
+            href={`/wholesale/p/${item.slug}`}
+            className="group overflow-hidden rounded-lg border border-border-subtle bg-surface-raised transition duration-fast hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <div className="aspect-[4/5] w-full overflow-hidden bg-surface-sunken">
+              {imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={imageUrl}
+                  alt={item.name}
+                  className="h-full w-full object-cover transition duration-fast group-hover:scale-[1.03]"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-micro text-text-muted">
+                  No image
+                </div>
+              )}
+            </div>
+            <div className="p-4">
+              <p className="text-micro text-text-muted">{item.eyebrow}</p>
+              <h3 className="mt-2 text-heading-sm text-text-primary">
+                {item.name}
+              </h3>
+              {item.mrpMajor ? (
+                <p className="mt-3 text-body-sm text-text-primary">
+                  {formatINR(item.mrpMajor)}{" "}
+                  <span className="text-micro font-normal text-text-muted">
+                    MRP
+                  </span>
+                </p>
+              ) : null}
+            </div>
+          </Link>
+        );
+      })}
     </div>
   );
 }
