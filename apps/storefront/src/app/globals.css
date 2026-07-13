@@ -20,12 +20,15 @@
  * utilities pick up the loaded fonts.
  */
 :root {
-  --font-sans: var(--font-inter), "Söhne", Geist, system-ui, -apple-system,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Inter Tight is the primary UI + display face for a clean, modern-luxury
+     monochrome look; Inter is the fallback, JetBrains Mono stays for numerics. */
+  --font-sans: var(--font-inter-tight), var(--font-inter), "Söhne", Geist,
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
   --font-mono: var(--font-jetbrains-mono), "Söhne Mono", "IBM Plex Mono",
     ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --font-display: var(--font-source-serif), "GT Sectra", "Tiempos Headline",
-    "Iowan Old Style", Charter, Georgia, serif;
+  --font-display: var(--font-inter-tight), var(--font-inter), "Söhne", Geist,
+    system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 /*

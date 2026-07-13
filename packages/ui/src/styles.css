@@ -21,35 +21,35 @@
  * Token palette — light mode (default)
  * ------------------------------------------------------------------------- */
 :root {
-  /* surfaces */
-  --surface-background: #FCFCF9;
+  /* surfaces — clean neutral greys, light pages */
+  --surface-background: #F4F4F2;
   --surface-raised: #FFFFFF;
-  --surface-sunken: #F7F7F2;
-  --surface-overlay: rgba(15, 15, 13, 0.40);
-  --surface-inverse: #0F0F0D;
+  --surface-sunken: #EDEDED;
+  --surface-overlay: rgba(34, 34, 34, 0.45);
+  --surface-inverse: #222222;
 
   /* text */
-  --text-primary: #0F0F0D;
-  --text-secondary: #3F3F38;
-  --text-muted: #5E5E55;
-  --text-disabled: #B9B9AF;
+  --text-primary: #222222;
+  --text-secondary: #4A4A4A;
+  --text-muted: #A7A7A7;
+  --text-disabled: #C4C4C4;
   --text-on-accent: #FFFFFF;
-  --text-on-inverse: #FCFCF9;
+  --text-on-inverse: #FFFFFF;
 
   /* borders */
-  --border-subtle: #E4E4DB;
-  --border-strong: #D2D2C7;
-  --border-focus: #2A3F7A;
-  --border-inverse: #2A2A25;
+  --border-subtle: #E3E3E1;
+  --border-strong: #CFCFCD;
+  --border-focus: #222222;
+  --border-inverse: #3A3A3A;
 
-  /* action */
-  --action-primary-bg: #2A3F7A;
-  --action-primary-bg-hover: #1F3060;
-  --action-primary-bg-active: #172547;
+  /* action — monochrome black primary */
+  --action-primary-bg: #222222;
+  --action-primary-bg-hover: #383838;
+  --action-primary-bg-active: #111111;
   --action-primary-text: #FFFFFF;
   --action-secondary-bg: #FFFFFF;
-  --action-secondary-bg-hover: #F7F7F2;
-  --action-secondary-text: #0F0F0D;
+  --action-secondary-bg-hover: #EDEDED;
+  --action-secondary-text: #222222;
   --action-danger-bg: #A14826;
   --action-danger-bg-hover: #7E351A;
   --action-danger-text: #FFFFFF;
@@ -68,10 +68,10 @@
   --feedback-info-text: #2F3D4A;
   --feedback-info-border: #C5CDD4;
 
-  /* brand */
-  --brand-accent: #2A3F7A;
-  --brand-accent-muted: #5F76AE;
-  --brand-accent-surface: #F1F3F9;
+  /* brand — monochrome */
+  --brand-accent: #222222;
+  --brand-accent-muted: #6E6E6E;
+  --brand-accent-surface: #EDEDED;
 
   /* image plate (never changes between modes) */
   --image-plate: #FFFFFF;
@@ -97,7 +97,7 @@
   --shadow-inset-well: inset 0 1px 2px rgba(15, 15, 13, 0.04);
 
   /* focus ring halo (used with --border-focus for 2-layer rings) */
-  --focus-ring-halo: 0 0 0 4px rgba(42, 63, 122, 0.12);
+  --focus-ring-halo: 0 0 0 4px rgba(34, 34, 34, 0.14);
 
   /* motion */
   --motion-duration-instant: 80ms;
@@ -108,12 +108,14 @@
   --motion-ease-enter: cubic-bezier(0, 0, 0, 1);
   --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
-  /* font families */
+  /* font families — unified on Inter Tight for a clean, modern-luxury feel */
   --font-display:
-    "GT Sectra", "Tiempos Headline", "Iowan Old Style", Charter, Georgia, serif;
+    var(--font-inter-tight), var(--font-inter), "Inter Tight", Inter, "Söhne",
+    system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-sans:
-    Inter, "Söhne", Geist, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+    var(--font-inter-tight), var(--font-inter), "Inter Tight", Inter, "Söhne",
+    Geist, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
   --font-mono:
     "JetBrains Mono", "Söhne Mono", "IBM Plex Mono", ui-monospace,
     SFMono-Regular, Menlo, Consolas, monospace;
@@ -128,34 +130,34 @@
  * ------------------------------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --surface-background: #0B0C0E;
-    --surface-raised: #15161A;
-    --surface-sunken: #0E0F12;
-    --surface-overlay: rgba(0, 0, 0, 0.60);
-    --surface-inverse: #FCFCF9;
+    --surface-background: #1A1A1A;
+    --surface-raised: #232323;
+    --surface-sunken: #151515;
+    --surface-overlay: rgba(0, 0, 0, 0.62);
+    --surface-inverse: #F4F4F2;
 
-    --text-primary: #F2F2EF;
-    --text-secondary: #B6B7B0;
-    --text-muted: #7B7C75;
-    --text-disabled: #4A4B45;
-    --text-on-accent: #0B0C0E;
-    --text-on-inverse: #0F0F0D;
+    --text-primary: #F2F2F2;
+    --text-secondary: #B8B8B8;
+    --text-muted: #8A8A8A;
+    --text-disabled: #565656;
+    --text-on-accent: #222222;
+    --text-on-inverse: #222222;
 
-    --border-subtle: #24262C;
-    --border-strong: #34373F;
-    --border-focus: #7A93D6;
-    --border-inverse: #EFEFE8;
+    --border-subtle: #303030;
+    --border-strong: #454545;
+    --border-focus: #EDEDED;
+    --border-inverse: #E3E3E1;
 
-    --action-primary-bg: #7A93D6;
-    --action-primary-bg-hover: #8FA5DE;
-    --action-primary-bg-active: #6680C5;
-    --action-primary-text: #0B0C0E;
-    --action-secondary-bg: #1B1D22;
-    --action-secondary-bg-hover: #22252B;
-    --action-secondary-text: #F2F2EF;
+    --action-primary-bg: #EDEDED;
+    --action-primary-bg-hover: #FFFFFF;
+    --action-primary-bg-active: #D6D6D6;
+    --action-primary-text: #222222;
+    --action-secondary-bg: #232323;
+    --action-secondary-bg-hover: #2C2C2C;
+    --action-secondary-text: #F2F2F2;
     --action-danger-bg: #C46A4A;
     --action-danger-bg-hover: #D78064;
-    --action-danger-text: #0B0C0E;
+    --action-danger-text: #1A1A1A;
 
     --feedback-success-bg: #1A2A18;
     --feedback-success-text: #9CC094;
@@ -170,9 +172,9 @@
     --feedback-info-text: #9DAAB6;
     --feedback-info-border: #2A333D;
 
-    --brand-accent: #7A93D6;
-    --brand-accent-muted: #5F76AE;
-    --brand-accent-surface: #171F33;
+    --brand-accent: #EDEDED;
+    --brand-accent-muted: #9A9A9A;
+    --brand-accent-surface: #2A2A2A;
 
     /* image plate stays white — photographs are sacred */
     --image-plate: #FFFFFF;
@@ -193,7 +195,7 @@
       0 0 0 1px rgba(255, 255, 255, 0.12);
     --shadow-inset-well: inset 0 1px 2px rgba(0, 0, 0, 0.40);
 
-    --focus-ring-halo: 0 0 0 4px rgba(122, 147, 214, 0.18);
+    --focus-ring-halo: 0 0 0 4px rgba(237, 237, 237, 0.16);
 
     color-scheme: dark;
   }
@@ -201,34 +203,34 @@
 
 /* Explicit override (manual toggle) — wins over prefers-color-scheme */
 :root[data-theme="dark"] {
-  --surface-background: #0B0C0E;
-  --surface-raised: #15161A;
-  --surface-sunken: #0E0F12;
-  --surface-overlay: rgba(0, 0, 0, 0.60);
-  --surface-inverse: #FCFCF9;
+  --surface-background: #1A1A1A;
+  --surface-raised: #232323;
+  --surface-sunken: #151515;
+  --surface-overlay: rgba(0, 0, 0, 0.62);
+  --surface-inverse: #F4F4F2;
 
-  --text-primary: #F2F2EF;
-  --text-secondary: #B6B7B0;
-  --text-muted: #7B7C75;
-  --text-disabled: #4A4B45;
-  --text-on-accent: #0B0C0E;
-  --text-on-inverse: #0F0F0D;
+  --text-primary: #F2F2F2;
+  --text-secondary: #B8B8B8;
+  --text-muted: #8A8A8A;
+  --text-disabled: #565656;
+  --text-on-accent: #222222;
+  --text-on-inverse: #222222;
 
-  --border-subtle: #24262C;
-  --border-strong: #34373F;
-  --border-focus: #7A93D6;
-  --border-inverse: #EFEFE8;
+  --border-subtle: #303030;
+  --border-strong: #454545;
+  --border-focus: #EDEDED;
+  --border-inverse: #E3E3E1;
 
-  --action-primary-bg: #7A93D6;
-  --action-primary-bg-hover: #8FA5DE;
-  --action-primary-bg-active: #6680C5;
-  --action-primary-text: #0B0C0E;
-  --action-secondary-bg: #1B1D22;
-  --action-secondary-bg-hover: #22252B;
-  --action-secondary-text: #F2F2EF;
+  --action-primary-bg: #EDEDED;
+  --action-primary-bg-hover: #FFFFFF;
+  --action-primary-bg-active: #D6D6D6;
+  --action-primary-text: #222222;
+  --action-secondary-bg: #232323;
+  --action-secondary-bg-hover: #2C2C2C;
+  --action-secondary-text: #F2F2F2;
   --action-danger-bg: #C46A4A;
   --action-danger-bg-hover: #D78064;
-  --action-danger-text: #0B0C0E;
+  --action-danger-text: #1A1A1A;
 
   --feedback-success-bg: #1A2A18;
   --feedback-success-text: #9CC094;
@@ -243,9 +245,9 @@
   --feedback-info-text: #9DAAB6;
   --feedback-info-border: #2A333D;
 
-  --brand-accent: #7A93D6;
-  --brand-accent-muted: #5F76AE;
-  --brand-accent-surface: #171F33;
+  --brand-accent: #EDEDED;
+  --brand-accent-muted: #9A9A9A;
+  --brand-accent-surface: #2A2A2A;
 
   --image-plate: #FFFFFF;
 
@@ -265,7 +267,7 @@
     0 0 0 1px rgba(255, 255, 255, 0.12);
   --shadow-inset-well: inset 0 1px 2px rgba(0, 0, 0, 0.40);
 
-  --focus-ring-halo: 0 0 0 4px rgba(122, 147, 214, 0.18);
+  --focus-ring-halo: 0 0 0 4px rgba(237, 237, 237, 0.16);
 
   color-scheme: dark;
 }
