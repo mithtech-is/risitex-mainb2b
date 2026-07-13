@@ -18,7 +18,8 @@
     "seed:pix-catalog": "medusa exec ./src/scripts/seed-pix-catalog.ts",
     "preflight:purge": "medusa exec ./src/scripts/preflight-purge-check.ts",
     "seed:courier": "medusa exec ./src/scripts/seed-courier-rates.ts",
-    "seed:categories": "medusa exec ./src/scripts/seed-categories.ts"
+    "seed:categories": "medusa exec ./src/scripts/seed-categories.ts",
+    "seed:shipping": "medusa exec ./src/scripts/seed-transporter-shipping.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1057.0",
