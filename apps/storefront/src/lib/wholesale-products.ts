@@ -40,6 +40,7 @@ const LIVE_PRODUCT_FIELDS = [
   "*variants.options",
   "*variants.calculated_price",
   "*variants.metadata",
+  "*variants.images",
   "categories.id",
   "categories.name",
   "categories.handle",
@@ -122,6 +123,10 @@ type LiveVariant = {
   title?: string | null;
   metadata?: Record<string, unknown> | null;
   options?: LiveOptionValue[] | null;
+  // Native variant media — images linked to this variant via the admin
+  // "Media" section (product_variant_product_image link), returned by the
+  // store API under `variants.images`.
+  images?: LiveImage[] | null;
   calculated_price?: {
     calculated_amount?: number | null;
     original_amount?: number | null;
@@ -213,7 +218,7 @@ function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() !== "" ? v : undefined;
 }
 
-function mapMedusaToProduct(p: LiveProduct): Product {
+export function mapMedusaToProduct(p: LiveProduct): Product {
   const meta = (p.metadata ?? {}) as Record<string, unknown>;
   const variants = p.variants ?? [];
   const sizeOption = findOption(p.options, /^size$/i);
@@ -262,11 +267,20 @@ function mapMedusaToProduct(p: LiveProduct): Product {
             ? vMrp
             : Math.min(mrpByColour[colourVal], vMrp);
       }
-      const vImgs = Array.isArray(vMeta.images)
+      // Per-colour gallery images. Primary source: native variant media —
+      // images the admin attaches to the colour variant via the "Media"
+      // section (product_variant_product_image link, returned as
+      // variant.images). Legacy fallback: variant.metadata.images (URL
+      // strings) for colours seeded that way. Union both, native first.
+      const nativeVImgs = (v.images ?? [])
+        .map((im) => im.url)
+        .filter((u): u is string => typeof u === "string" && !!u);
+      const metaVImgs = Array.isArray(vMeta.images)
         ? (vMeta.images as unknown[]).filter(
             (u): u is string => typeof u === "string" && !!u,
           )
         : [];
+      const vImgs = [...nativeVImgs, ...metaVImgs];
       if (vImgs.length) {
         imagesByColour[colourVal] = Array.from(
           new Set([...(imagesByColour[colourVal] ?? []), ...vImgs]),
