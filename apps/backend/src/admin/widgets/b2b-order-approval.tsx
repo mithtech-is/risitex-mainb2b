@@ -17,6 +17,10 @@ type OrderMeta = {
   b2b_dispatched_at?: string | null
   b2b_transporter?: string | null
   b2b_tracking?: string | null
+  payment_method?: string | null
+  payment_status?: string | null
+  upi_transaction_id?: string | null
+  amount_paid_major?: number | null
 }
 
 const B2BOrderApprovalWidget = ({ data: order }: { data: any }) => {
@@ -111,6 +115,32 @@ const B2BOrderApprovalWidget = ({ data: order }: { data: any }) => {
           <Badge color="orange">Awaiting approval</Badge>
         )}
       </div>
+
+      {meta.payment_method ? (
+        <div className="mb-4 rounded-lg border border-ui-border-base p-3 flex flex-col gap-1">
+          <Text size="small" className="font-medium">
+            Payment
+          </Text>
+          <Text size="small" className="text-ui-fg-subtle">
+            Method:{" "}
+            {meta.payment_method === "manual_upi"
+              ? "Manual UPI"
+              : meta.payment_method}
+            {" · Status: "}
+            <span className="font-medium">{meta.payment_status ?? "—"}</span>
+          </Text>
+          {meta.upi_transaction_id ? (
+            <Text size="small" className="text-ui-fg-subtle">
+              Txn ID: <span className="font-mono">{meta.upi_transaction_id}</span>
+            </Text>
+          ) : null}
+          {typeof meta.amount_paid_major === "number" ? (
+            <Text size="small" className="text-ui-fg-subtle">
+              Amount: ₹{meta.amount_paid_major.toLocaleString("en-IN")}
+            </Text>
+          ) : null}
+        </div>
+      ) : null}
 
       {!isApproved && (
         <div className="flex flex-col gap-y-3">
