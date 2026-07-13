@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Button } from "@risitex/ui/components";
+import { Button, formatINR } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
 import { Breadcrumb } from "@/components/site/breadcrumb";
 import { type Product } from "@/data/products";
@@ -489,11 +489,19 @@ export default async function WholesaleCataloguePage({
                       </h3>
                       <WishlistHeart slug={p.slug} productName={p.name} />
                     </div>
-                    {p.moq && (
-                      <span className="mt-1 text-caption font-medium text-text-secondary">
+                    {p.mrpMajor ? (
+                      <span className="mt-1 text-body-md font-semibold text-text-primary">
+                        {formatINR(p.mrpMajor)}{" "}
+                        <span className="text-caption font-normal text-text-muted">
+                          / pc · MRP
+                        </span>
+                      </span>
+                    ) : null}
+                    {p.moq ? (
+                      <span className="text-caption font-medium text-text-secondary">
                         MOQ {p.moq.toLocaleString()} pcs
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 </Link>
               ))}
