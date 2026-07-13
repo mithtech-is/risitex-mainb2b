@@ -30,7 +30,7 @@ export function Topnav() {
           className="flex h-14 items-center justify-between gap-3"
           aria-label="Primary"
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-6">
             <MobileMenu />
             <Link
               href="/"
@@ -39,11 +39,8 @@ export function Topnav() {
             >
               <Wordmark showMonogram />
             </Link>
+            <NavLinks />
           </div>
-
-          <NavSearch />
-
-          <NavLinks />
 
           <TopnavActions />
         </nav>
@@ -88,16 +85,35 @@ function NavLinks() {
 }
 
 /**
- * Global product search in the navbar. Submits to the wholesale catalogue's
+ * Compact "Search" affordance (Empire-style): a minimal icon + label that
+ * expands into a search field on click. Submits to the wholesale catalogue's
  * full-text `q` filter so it searches every product from any page.
  */
-function NavSearch() {
+function NavSearchButton() {
   const router = useRouter();
+  const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState("");
+  const wrapRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  React.useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const term = q.trim();
+    setOpen(false);
     router.push(
       term
         ? `/wholesale/catalogue?q=${encodeURIComponent(term)}`
@@ -106,21 +122,40 @@ function NavSearch() {
   };
 
   return (
-    <form
-      onSubmit={submit}
-      role="search"
-      className="relative hidden flex-1 md:block md:max-w-sm md:mx-4"
-    >
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-      <input
-        type="search"
-        value={q}
-        onChange={(e) => setQ(e.currentTarget.value)}
-        placeholder="Search all products"
-        aria-label="Search all products"
-        className="h-9 w-full rounded-md border border-border-subtle bg-surface-raised pl-9 pr-3 text-body-sm text-text-primary placeholder:text-text-muted focus-visible:border-border-focus focus-visible:outline-none"
-      />
-    </form>
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Search products"
+        aria-expanded={open}
+        className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-body-sm text-text-secondary transition-colors duration-fast hover:bg-surface-sunken hover:text-text-primary focus-visible:ring-focus"
+      >
+        <Search className="h-[18px] w-[18px]" />
+        <span className="hidden sm:inline">Search</span>
+      </button>
+
+      {open && (
+        <form
+          onSubmit={submit}
+          role="search"
+          onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
+          className="absolute right-0 top-full z-popover mt-2 w-[min(80vw,340px)] animate-fade-down rounded-md border border-border-subtle bg-surface-raised p-2 shadow-popover"
+        >
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+            <input
+              ref={inputRef}
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.currentTarget.value)}
+              placeholder="Search all products"
+              aria-label="Search all products"
+              className="h-10 w-full rounded-md border border-border-subtle bg-surface-background pl-9 pr-3 text-body-sm text-text-primary placeholder:text-text-muted focus-visible:border-border-focus focus-visible:outline-none"
+            />
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
 
@@ -129,6 +164,7 @@ function TopnavActions() {
 
   return (
     <div className="flex items-center gap-1">
+      <NavSearchButton />
       <ThemeSwitch />
       <NavIcon href="/b2b/wishlist" label="Wishlist" count={counts.wishlist}>
         <Heart className="h-5 w-5" />
