@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ThemeSwitch } from "@risitex/ui/components";
 import { Container } from "./container";
 import { Wordmark } from "./wordmark";
@@ -8,7 +9,7 @@ import * as React from "react";
 import { MobileMenu } from "./mobile-menu";
 import { WalletIconButton } from "@/components/wallet/wallet-icon-button";
 import { AuthModal } from "@/components/auth/auth-modal";
-import { Heart, ShoppingCart, UserRound } from "lucide-react";
+import { Heart, Search, ShoppingCart, UserRound } from "lucide-react";
 import { getCart } from "@/lib/cart";
 import { scopedKey } from "@/lib/user-scope";
 
@@ -40,6 +41,8 @@ export function Topnav() {
             </Link>
           </div>
 
+          <NavSearch />
+
           <ul className="hidden items-center gap-6 lg:flex">
             {NAV.map((item) => (
               <li key={item.href}>
@@ -57,6 +60,43 @@ export function Topnav() {
         </nav>
       </Container>
     </header>
+  );
+}
+
+/**
+ * Global product search in the navbar. Submits to the wholesale catalogue's
+ * full-text `q` filter so it searches every product from any page.
+ */
+function NavSearch() {
+  const router = useRouter();
+  const [q, setQ] = React.useState("");
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const term = q.trim();
+    router.push(
+      term
+        ? `/wholesale/catalogue?q=${encodeURIComponent(term)}`
+        : "/wholesale/catalogue",
+    );
+  };
+
+  return (
+    <form
+      onSubmit={submit}
+      role="search"
+      className="relative hidden flex-1 md:block md:max-w-sm md:mx-4"
+    >
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+      <input
+        type="search"
+        value={q}
+        onChange={(e) => setQ(e.currentTarget.value)}
+        placeholder="Search all products"
+        aria-label="Search all products"
+        className="h-9 w-full rounded-md border border-border-subtle bg-surface-raised pl-9 pr-3 text-body-sm text-text-primary placeholder:text-text-muted focus-visible:border-border-focus focus-visible:outline-none"
+      />
+    </form>
   );
 }
 

@@ -290,6 +290,29 @@ export function B2bBuyPanel({
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Wholesale price — only rendered inside <SignedIn>, so it's visible to
+          approved buyers after login (the MRP shows to everyone in the hero). */}
+      <section className="rounded-lg border border-border-subtle bg-surface-raised p-4">
+        <p className="text-micro uppercase tracking-wider text-text-muted">
+          Your wholesale price
+        </p>
+        <p className="mt-1 text-heading-lg text-text-primary">
+          {formatINR(product.priceMajor)}{" "}
+          <span className="text-body-sm font-normal text-text-muted">
+            / pc · excl. GST
+          </span>
+        </p>
+        {product.mrpMajor && product.mrpMajor > product.priceMajor ? (
+          <p className="mt-0.5 text-caption text-text-muted">
+            MRP {formatINR(product.mrpMajor)} · you save{" "}
+            {Math.round(
+              ((product.mrpMajor - product.priceMajor) / product.mrpMajor) * 100,
+            )}
+            %
+          </p>
+        ) : null}
+      </section>
+
       <section>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
