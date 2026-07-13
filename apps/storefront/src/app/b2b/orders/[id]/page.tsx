@@ -7,23 +7,11 @@ import {
   Badge,
   Button,
   EmptyState,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Textarea,
   formatINR,
 } from "@risitex/ui/components";
 import { B2bTopbar } from "@/components/b2b/b2b-topbar";
 import { MEDUSA_BASE_URL } from "@/lib/medusa";
-import {
-  confirmPurchaseOrderPayment,
-  type DraftPurchaseOrder,
-  type PaymentConfirmation,
-} from "@/lib/purchase-orders";
+import { type DraftPurchaseOrder } from "@/lib/purchase-orders";
 import { downloadOrderInvoice } from "@/lib/invoice";
 import {
   CheckCircle2,
@@ -44,18 +32,6 @@ function authHeaders(): Record<string, string> {
   }
   return h;
 }
-
-const PAYMENT_METHOD_OPTIONS: Array<{ value: PaymentConfirmation["method"]; label: string }> = [
-  { value: "bank_transfer", label: "Bank Transfer (NEFT / RTGS)" },
-  { value: "upi", label: "UPI" },
-  { value: "razorpay", label: "Razorpay (Card / UPI / NetBanking)" },
-  { value: "cheque", label: "Cheque" },
-  { value: "wallet", label: "Wallet" },
-  { value: "credit_terms", label: "Credit Terms" },
-  { value: "po_upload", label: "Internal PO" },
-  { value: "proforma", label: "Proforma Invoice" },
-  { value: "other", label: "Other" },
-];
 
 export default function PurchaseOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -141,9 +117,8 @@ export default function PurchaseOrderDetailPage() {
     );
   }
 
-  const paymentConfirmed = !!po.payment_confirmed_at;
   const linkedToOrder = !!po.order;
-  const adminApproved = !!po.admin_approved_at;
+  const adminApproved = !!po.admin_approved_at || linkedToOrder;
   const dispatched = !!po.dispatched_at || po.status === "fulfilled";
   const snapshotNotes =
     (po.metadata?.notes as string | undefined) ??
@@ -157,72 +132,29 @@ export default function PurchaseOrderDetailPage() {
         subtitle={`Purchase order · ${new Date(po.created_at).toLocaleString("en-IN")}`}
       />
 
-      {/* Top-level status banner */}
-      <section
-        className={
-          (dispatched
-            ? "border-feedback-success-border bg-feedback-success-bg"
-            : adminApproved
-              ? "border-feedback-success-border bg-feedback-success-bg"
-              : paymentConfirmed
-                ? "border-feedback-info-border bg-feedback-info-bg"
-                : "border-feedback-warning-border bg-feedback-warning-bg") +
-          " rounded-md border p-5"
-        }
-      >
+      {/* Top-level status banner — always green. The buyer never handles
+          payment; the flow is placed → (admin approves) → confirmed →
+          dispatched. */}
+      <section className="rounded-md border border-feedback-success-border bg-feedback-success-bg p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p
-              className={
-                (dispatched
-                  ? "text-feedback-success-text"
-                  : adminApproved
-                    ? "text-feedback-success-text"
-                    : paymentConfirmed
-                      ? "text-feedback-info-text"
-                      : "text-feedback-warning-text") + " text-heading-sm"
-              }
-            >
+            <p className="text-heading-sm text-feedback-success-text">
               {dispatched
                 ? "Order dispatched — in transit"
                 : adminApproved
-                  ? "Order approved and will be dispatched soon"
-                  : paymentConfirmed
-                    ? "Payment recorded — reconciling with finance"
-                    : "Awaiting payment"}
+                  ? "Order confirmed and will be dispatched soon"
+                  : "Order placed — confirmation in progress"}
             </p>
-            <p
-              className={
-                (dispatched
-                  ? "text-feedback-success-text/80"
-                  : adminApproved
-                    ? "text-feedback-success-text/80"
-                    : paymentConfirmed
-                      ? "text-feedback-info-text/80"
-                      : "text-feedback-warning-text/80") + " mt-1 text-body-sm"
-              }
-            >
+            <p className="mt-1 text-body-sm text-feedback-success-text/80">
               {dispatched
                 ? `Your order has been dispatched${po.dispatch_carrier ? ` via ${po.dispatch_carrier}` : ""}${po.dispatch_tracking_number ? ` (tracking: ${po.dispatch_tracking_number})` : ""}.`
                 : adminApproved
-                  ? "Your order is confirmed and will be dispatched soon."
-                  : paymentConfirmed
-                    ? `Your payment proof is logged. Finance verifies it against ${
-                        po.payment_confirmed_method ?? "the bank statement"
-                      } and promotes this PO to a confirmed order — usually within 1 business day.`
-                    : "Record your payment proof below to move this PO forward."}
+                  ? "Your order is confirmed and will be dispatched soon. You can download the GST invoice below."
+                  : "Thanks! Your order has been placed. Our team will confirm it in 2–6 minutes — we'll get back to you shortly. No action needed from your side."}
             </p>
           </div>
-          <Badge
-            tone={dispatched ? "success" : adminApproved ? "success" : paymentConfirmed ? "info" : "warning"}
-          >
-            {dispatched
-              ? "dispatched"
-              : adminApproved
-                ? "confirmed"
-                : paymentConfirmed
-                  ? "payment confirmed"
-                  : "awaiting payment"}
+          <Badge tone="success">
+            {dispatched ? "dispatched" : adminApproved ? "confirmed" : "placed"}
           </Badge>
         </div>
       </section>
@@ -334,20 +266,10 @@ export default function PurchaseOrderDetailPage() {
           </div>
         </section>
 
-        {/* Right column: payment confirmation OR confirmed-state summary */}
-        <aside aria-label="Payment status" className="space-y-4">
-          {paymentConfirmed ? (
-            <PaymentConfirmedCard po={po} />
-          ) : (
-            <PaymentForm
-              poId={po.id}
-              poValue={po.value_major}
-              onConfirmed={async () => {
-                await load();
-              }}
-            />
-          )}
-
+        {/* Right column: read-only status — the buyer never confirms payment;
+            the admin approves the order from the backend. */}
+        <aside aria-label="Order status" className="space-y-4">
+          <OrderStatusCard adminApproved={adminApproved} dispatched={dispatched} />
           <WorkflowCard po={po} />
         </aside>
       </div>
@@ -383,133 +305,14 @@ function Field({
   );
 }
 
-function PaymentForm({
-  poId,
-  poValue,
-  onConfirmed,
+function OrderStatusCard({
+  adminApproved,
+  dispatched,
 }: {
-  poId: string;
-  poValue: number;
-  onConfirmed: () => Promise<void>;
+  adminApproved: boolean;
+  dispatched: boolean;
 }) {
-  const [method, setMethod] =
-    React.useState<PaymentConfirmation["method"]>("bank_transfer");
-  const [reference, setReference] = React.useState("");
-  const [paidAt, setPaidAt] = React.useState<string>(
-    new Date().toISOString().slice(0, 10),
-  );
-  const [notes, setNotes] = React.useState("");
-  const [busy, setBusy] = React.useState(false);
-  const [err, setErr] = React.useState<string | null>(null);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErr(null);
-    if (reference.trim().length < 2) {
-      setErr("Enter the transaction / UTR / cheque reference (min 2 chars).");
-      return;
-    }
-    setBusy(true);
-    try {
-      await confirmPurchaseOrderPayment(poId, {
-        method,
-        reference: reference.trim(),
-        paid_at: paidAt ? new Date(paidAt).toISOString() : undefined,
-        notes: notes.trim() || undefined,
-      });
-      await onConfirmed();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not record payment");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form
-      onSubmit={submit}
-      className="rounded-md border border-border-subtle bg-surface-raised p-5"
-    >
-      <h3 className="text-heading-sm text-text-primary">Confirm payment</h3>
-      <p className="mt-1 text-caption text-text-muted">
-        Recording payment proof against this {formatINR(poValue)} PO moves it
-        out of &quot;awaiting payment&quot; so ops can begin reconciliation. Finance
-        verifies against the bank statement / gateway before dispatch.
-      </p>
-
-      <div className="mt-4 grid grid-cols-1 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pay-method" required>
-            Method
-          </Label>
-          <Select
-            value={method}
-            onValueChange={(v) => setMethod(v as PaymentConfirmation["method"])}
-          >
-            <SelectTrigger id="pay-method">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAYMENT_METHOD_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pay-ref" required>
-            Reference (UTR / Txn ID / Cheque #)
-          </Label>
-          <Input
-            id="pay-ref"
-            value={reference}
-            onChange={(e) => setReference(e.currentTarget.value)}
-            placeholder="UTR20260629ΓÇª"
-            className="font-mono"
-            required
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pay-date">Payment date</Label>
-          <Input
-            id="pay-date"
-            type="date"
-            value={paidAt}
-            onChange={(e) => setPaidAt(e.currentTarget.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pay-notes">Notes (optional)</Label>
-          <Textarea
-            id="pay-notes"
-            value={notes}
-            onChange={(e) => setNotes(e.currentTarget.value)}
-            rows={2}
-            placeholder="Bank used, payer name on the slip, etc."
-          />
-        </div>
-        {err && (
-          <p
-            role="alert"
-            className="rounded-md bg-feedback-danger-bg px-3 py-2 text-body-sm text-feedback-danger-text ring-1 ring-feedback-danger-border"
-          >
-            {err}
-          </p>
-        )}
-        <Button type="submit" isLoading={busy} disabled={busy}>
-          Record payment
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-function PaymentConfirmedCard({ po }: { po: DraftPurchaseOrder }) {
-  const at = po.payment_confirmed_at
-    ? new Date(po.payment_confirmed_at).toLocaleString("en-IN")
-    : "ΓÇö";
+  const confirmed = adminApproved || dispatched;
   return (
     <section className="rounded-md border border-feedback-success-border bg-feedback-success-bg p-5">
       <div className="flex items-start gap-3">
@@ -519,26 +322,15 @@ function PaymentConfirmedCard({ po }: { po: DraftPurchaseOrder }) {
         />
         <div>
           <p className="text-body-md font-medium text-feedback-success-text">
-            Payment recorded
+            {confirmed ? "Order confirmed" : "Order placed"}
           </p>
-          <dl className="mt-2 grid grid-cols-1 gap-2 text-caption text-feedback-success-text/80">
-            <div>
-              <dt className="opacity-70">Method</dt>
-              <dd className="text-body-sm text-feedback-success-text">
-                {po.payment_confirmed_method ?? "ΓÇö"}
-              </dd>
-            </div>
-            <div>
-              <dt className="opacity-70">Reference</dt>
-              <dd className="font-mono text-body-sm text-feedback-success-text">
-                {po.payment_confirmed_reference ?? "ΓÇö"}
-              </dd>
-            </div>
-            <div>
-              <dt className="opacity-70">Confirmed at</dt>
-              <dd className="text-body-sm text-feedback-success-text">{at}</dd>
-            </div>
-          </dl>
+          <p className="mt-1 text-caption text-feedback-success-text/80">
+            {dispatched
+              ? "Your order is on its way."
+              : confirmed
+                ? "Your order has been confirmed by our team and will be dispatched soon."
+                : "We've received your order. Our team confirms it in 2–6 minutes — no payment action is needed from you; we'll take it from here."}
+          </p>
         </div>
       </div>
     </section>

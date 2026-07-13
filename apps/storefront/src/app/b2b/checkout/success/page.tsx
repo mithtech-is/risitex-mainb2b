@@ -66,7 +66,7 @@ export default function CheckoutSuccessPage() {
             <p className="text-body-md text-feedback-success-text leading-relaxed">
               {isApproved 
                 ? "Your order has been approved by the RISITEX sales team and will be dispatched soon. You can track its progress in your shipments dashboard."
-                : "Your order has been received successfully. It is currently waiting for approval by the RISITEX sales team. Approval usually takes 5–6 minutes during business hours. You will receive a notification once your order is approved."
+                : "Your order has been placed successfully. Our team will confirm it shortly — usually within 2–6 minutes during business hours. No payment action is needed from you; we'll get back to you as soon as it's confirmed."
               }
             </p>
           </div>

@@ -55,9 +55,9 @@ const STATUS_META: Record<
     dot: "bg-feedback-info-text",
   },
   awaiting_payment: {
-    label: "Awaiting payment",
-    text: "text-feedback-warning-text",
-    dot: "bg-feedback-warning-text",
+    label: "Order placed",
+    text: "text-feedback-success-text",
+    dot: "bg-feedback-success-text",
   },
   due_soon: {
     label: "Due soon",
@@ -257,8 +257,8 @@ export default function InvoicesPage() {
                     approved
                       ? `Approved ${shortDate(po?.admin_approved_at) ?? "—"}${po?.payment_confirmed_method ? ` · paid via ${po.payment_confirmed_method}` : ""}`
                       : paidNow
-                        ? "Payment recorded · awaiting admin approval"
-                        : `Placed ${shortDate(o.created_at) ?? "—"} · awaiting payment`
+                        ? "Awaiting admin approval — we'll confirm shortly"
+                        : `Placed ${shortDate(o.created_at) ?? "—"} · confirmation in progress (2–6 min)`
                   }
                   paymentMethod={po?.payment_confirmed_method}
                   showGstin
@@ -287,16 +287,15 @@ export default function InvoicesPage() {
                         id={o.id}
                         reference={String(o.display_id)}
                       />
-                    ) : po && !paidNow ? (
+                    ) : po ? (
                       <Button
                         asChild
+                        variant="secondary"
                         size="sm"
                         rightIcon={<ArrowRight className="h-4 w-4" />}
                       >
-                        <Link
-                          href={`/b2b/purchase-orders/${encodeURIComponent(po.id)}`}
-                        >
-                          Confirm payment
+                        <Link href={`/b2b/orders/${encodeURIComponent(po.id)}`}>
+                          View order
                         </Link>
                       </Button>
                     ) : undefined
@@ -315,8 +314,8 @@ export default function InvoicesPage() {
                   amountMajor={Number(p.value_major ?? 0)}
                   subtitle={
                     paidPO
-                      ? `Payment recorded · via ${p.payment_confirmed_method ?? "—"}`
-                      : `Placed ${shortDate(p.created_at) ?? "—"} · record your payment reference`
+                      ? `Awaiting admin approval — we'll confirm shortly`
+                      : `Placed ${shortDate(p.created_at) ?? "—"} · confirmation in progress (2–6 min)`
                   }
                   steps={[
                     { label: "Placed", date: shortDate(p.created_at), done: true },
@@ -329,19 +328,16 @@ export default function InvoicesPage() {
                     { label: "Invoiced", date: null, done: false },
                   ]}
                   actions={
-                    paidPO ? undefined : (
-                      <Button
-                        asChild
-                        size="sm"
-                        rightIcon={<ArrowRight className="h-4 w-4" />}
-                      >
-                        <Link
-                          href={`/b2b/purchase-orders/${encodeURIComponent(p.id)}`}
-                        >
-                          Confirm payment
-                        </Link>
-                      </Button>
-                    )
+                    <Button
+                      asChild
+                      variant="secondary"
+                      size="sm"
+                      rightIcon={<ArrowRight className="h-4 w-4" />}
+                    >
+                      <Link href={`/b2b/orders/${encodeURIComponent(p.id)}`}>
+                        View order
+                      </Link>
+                    </Button>
                   }
                 />
               );
