@@ -40,6 +40,7 @@ const POLYGIN_BASE = "https://polyg.in"
 type Args = {
     dryRun: boolean
     force: boolean
+    emitJson: boolean
     only: string[] | null
     envFile: string
 }
@@ -48,6 +49,7 @@ function parseArgs(argv: string[]): Args {
     const args: Args = {
         dryRun: false,
         force: false,
+        emitJson: false,
         only: null,
         envFile: ".env.polygin.local",
     }
@@ -55,6 +57,7 @@ function parseArgs(argv: string[]): Args {
         const a = argv[i]
         if (a === "--dry-run") args.dryRun = true
         else if (a === "--force") args.force = true
+        else if (a === "--emit-json") args.emitJson = true
         else if (a === "--only")
             args.only = (argv[++i] || "")
                 .split(",")
@@ -63,6 +66,20 @@ function parseArgs(argv: string[]): Args {
         else if (a === "--env") args.envFile = argv[++i] || args.envFile
     }
     return args
+}
+
+/** The add_meta_templet body minus the auth `token` (added at push
+ *  time). Shared by the pusher and the --emit-json mode used to drive an
+ *  in-browser push when the dashboard JWT can't leave the browser. */
+function buildPayload(tpl: any, map: Record<string, string>) {
+    return {
+        templateType: "STANDARD",
+        name: tpl.name,
+        language: tpl.language || "en",
+        category: tpl.category,
+        parameter_format: "POSITIONAL",
+        components: substituteBrandInComponents(tpl.components, map),
+    }
 }
 
 /** Minimal dotenv loader — KEY=VALUE lines, `#` comments, optional quotes.
@@ -165,15 +182,7 @@ async function pushOne(
     restToken: string,
     dashJwt: string,
 ): Promise<{ ok: boolean; reason?: string; body?: any }> {
-    const payload = {
-        templateType: "STANDARD",
-        name: tpl.name,
-        language: tpl.language || "en",
-        category: tpl.category,
-        parameter_format: "POSITIONAL",
-        components: substituteBrandInComponents(tpl.components, map),
-        token: restToken,
-    }
+    const payload = { ...buildPayload(tpl, map), token: restToken }
     const res = await fetch(`${POLYGIN_BASE}/api/user/add_meta_templet`, {
         method: "POST",
         headers: {
@@ -220,14 +229,23 @@ async function main(): Promise<void> {
     const dashJwt = process.env.POLYGIN_DASHBOARD_JWT || ""
     const map = brandReplacementMap()
 
-    console.log("Brand substitution values:")
-    for (const [k, v] of Object.entries(map)) console.log(`  {{${k}}} -> ${v || "(empty)"}`)
-
     let templates = DEFAULT_WHATSAPP_TEMPLATES as any[]
     if (args.only) {
         const want = new Set(args.only)
         templates = templates.filter((t) => want.has(t.slug))
     }
+
+    // Emit clean JSON of every payload (brand baked) and exit — used to
+    // drive an in-browser push when the dashboard JWT can't leave the
+    // browser. Keep stdout pure so it can be piped to a file.
+    if (args.emitJson) {
+        const payloads = templates.map((t) => ({ slug: t.slug, ...buildPayload(t, map) }))
+        process.stdout.write(JSON.stringify(payloads))
+        return
+    }
+
+    console.log("Brand substitution values:")
+    for (const [k, v] of Object.entries(map)) console.log(`  {{${k}}} -> ${v || "(empty)"}`)
 
     if (!args.dryRun) {
         if (!dashJwt) {

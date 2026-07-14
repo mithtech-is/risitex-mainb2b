@@ -212,7 +212,9 @@ export const DEFAULT_WHATSAPP_TEMPLATES: DefaultWhatsappTemplate[] = [
     // not an OTP. Per the May-2026 spec: password changes go via WA + SMS.
     {
         slug: "auth.password_changed",
-        name: "risitex_password_changed_v1",
+        // v2: v1 was Meta-REJECTED (contact detail in a variable); polyg.in
+        // won't overwrite a used name, so the resubmit bumps the version.
+        name: "risitex_password_changed_v2",
         label: "Password changed",
         description:
             "Sent after a customer changes their password from the account page. Acts as a tamper-evident security notice — if the user didn't initiate, the message tells them to contact support.",
@@ -221,13 +223,15 @@ export const DEFAULT_WHATSAPP_TEMPLATES: DefaultWhatsappTemplate[] = [
         components: [
             {
                 type: "BODY",
-                text: "Hi {{1}}, your {{brand}} password was just changed. If this wasn't you, contact support immediately at {{2}}.",
-                example: { body_text: [["Mira", "support@risitex.in"]] },
+                // Support contact is baked STATIC ({{support_email}} resolves at
+                // push time) rather than a runtime variable — Meta rejects
+                // UTILITY templates that place contact details in a variable.
+                text: "Hi {{1}}, your {{brand}} password was just changed. If this wasn't you, contact us immediately at {{support_email}} to secure your account.",
+                example: { body_text: [["Mira"]] },
             },
         ],
         variables: [
             { key: "first_name", sample: "Mira", required: true },
-            { key: "support_email", sample: "support@risitex.in", required: true },
         ],
     },
 
@@ -344,7 +348,10 @@ export const DEFAULT_WHATSAPP_TEMPLATES: DefaultWhatsappTemplate[] = [
             {
                 type: "BUTTONS",
                 buttons: [
-                    { type: "URL", text: "Track shipment", url: "{{tracking_url}}" },
+                    // Meta rejects a fully-variable button URL ("{{tracking_url}}"
+                    // is not a valid URI), so we point at the order page — which
+                    // shows the live shipment + carrier tracking — instead.
+                    { type: "URL", text: "Track shipment", url: `${STOREFRONT}/b2b/orders` },
                 ],
             },
         ],
@@ -353,11 +360,6 @@ export const DEFAULT_WHATSAPP_TEMPLATES: DefaultWhatsappTemplate[] = [
             { key: "order_id", sample: "10234", required: true },
             { key: "carrier", sample: "Bluedart", required: true },
             { key: "tracking_number", sample: "N12345", required: true },
-            {
-                key: "tracking_url",
-                sample: "https://www.bluedart.com/tracking?awb=N12345",
-                required: true,
-            },
         ],
     },
     {
