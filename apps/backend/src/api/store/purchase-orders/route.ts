@@ -16,6 +16,7 @@ import {
   fetchRazorpayPayment,
   razorpayLiveMode,
 } from "../../../lib/razorpay"
+import { sendEventNotification } from "../../../modules/polemarch_communication/helpers/send-event-email"
 
 /**
  * GET /store/purchase-orders
@@ -325,16 +326,24 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     // customer later moves between teams.
     let companyId: string | null = null
     let customerEmail: string | null = null
+    let customerName: string | null = null
     try {
       const { data: customers } = await query.graph({
         entity: "customer",
-        fields: ["id", "company_id", "email"],
+        fields: ["id", "company_id", "email", "first_name", "last_name"],
         filters: { id: customerId },
       })
-      companyId = (customers?.[0]?.company_id as string | null) ?? null
-      customerEmail = (customers?.[0]?.email as string | null) ?? null
+      const cust = customers?.[0]
+      companyId = (cust?.company_id as string | null) ?? null
+      customerEmail = (cust?.email as string | null) ?? null
+      const nm = `${(cust?.first_name as string) || ""} ${(cust?.last_name as string) || ""}`.trim()
+      customerName = nm
+        ? customerEmail
+          ? `${nm} (${customerEmail})`
+          : nm
+        : customerEmail || null
     } catch {
-      // ignore — company_id and email are best-effort
+      // ignore — company_id, email and name are best-effort
     }
 
     // Resolve Region and Sales Channel
@@ -535,6 +544,27 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       } catch {
         // ignore
       }
+    }
+
+    // Manual-UPI: the order is parked in `awaiting_verification`. Nudge
+    // the customer (proof received) and alert ops (needs verification).
+    // Best-effort — sendEventNotification never throws.
+    if (paymentMeta && paymentMeta.payment_method === "manual_upi") {
+      const orderRef = String(linkedOrder?.display_id ?? input.po_number.trim())
+      const amountInr = Math.round(Number(input.value_major)).toLocaleString("en-IN")
+      const upiRef = String(paymentMeta.upi_transaction_id ?? "")
+      await sendEventNotification(req.scope, "payment.upi_submitted", {
+        customer_id: customerId,
+        amount_inr: amountInr,
+        order_id: orderRef,
+        upi_ref: upiRef,
+      })
+      await sendEventNotification(req.scope, "admin.payment_pending", {
+        order_id: orderRef,
+        amount_inr: amountInr,
+        upi_ref: upiRef,
+        customer_name: customerName || customerEmail || "a customer",
+      })
     }
 
     return res.status(201).json({

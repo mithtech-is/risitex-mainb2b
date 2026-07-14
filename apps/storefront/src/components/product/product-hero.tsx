@@ -9,6 +9,7 @@ import { ProductGallery } from "@/components/product/product-gallery";
 import { B2bBuyPanel } from "@/components/product/b2b-buy-panel";
 import { ColourSelector } from "@/components/product/colour-selector";
 import { SizeChartModal } from "@/components/product/size-chart-modal";
+import { AskOnWhatsApp } from "@/components/product/ask-on-whatsapp";
 import { WishlistHeart } from "@/components/wishlist/wishlist-heart";
 import { SignedIn, SignedOut } from "@/components/auth/signed-out";
 
@@ -77,6 +78,10 @@ export function ProductHero({
             </span>
           </p>
         ) : null}
+
+        <div className="mt-4">
+          <AskOnWhatsApp productName={product.name} mrp={mrp} />
+        </div>
 
         {hasColours && (
           <div className="mt-6">

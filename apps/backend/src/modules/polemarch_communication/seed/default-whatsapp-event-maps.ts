@@ -91,4 +91,38 @@ export const DEFAULT_WHATSAPP_EVENT_MAPS: DefaultWhatsappEventMap[] = [
         template_slug: "company.rejected",
         to_resolver: "customer_phone",
     },
+
+    // Manual-UPI payment verification. Fired directly (not via the
+    // Medusa event bus) by sendEventNotification calls in the
+    // store/purchase-orders + admin/payment-verifications routes — the
+    // rows here just provide the template lookup, recipient resolver,
+    // and an admin toggle.
+    {
+        event_name: "payment.upi_submitted",
+        template_slug: "payment.upi_submitted",
+        to_resolver: "customer_phone",
+    },
+    {
+        event_name: "payment.verified",
+        template_slug: "payment.verified",
+        to_resolver: "customer_phone",
+    },
+    {
+        event_name: "payment.rejected",
+        template_slug: "payment.rejected",
+        to_resolver: "customer_phone",
+    },
+    {
+        event_name: "payment.clarification",
+        template_slug: "payment.clarification",
+        to_resolver: "customer_phone",
+    },
+    // Static ops recipient. Swap static_to for a dedicated ops number if
+    // +918660381681 turns out to be the Polygin WhatsApp sender itself.
+    {
+        event_name: "admin.payment_pending",
+        template_slug: "admin.payment_pending",
+        to_resolver: "static",
+        static_to: "+918660381681",
+    },
 ]

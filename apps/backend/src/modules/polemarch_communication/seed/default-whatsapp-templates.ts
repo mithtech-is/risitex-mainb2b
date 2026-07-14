@@ -494,4 +494,141 @@ export const DEFAULT_WHATSAPP_TEMPLATES: DefaultWhatsappTemplate[] = [
             },
         ],
     },
+
+    // ───────── Manual-UPI payment verification ──────────────────────
+    // The B2B checkout's manual-UPI path parks an order in
+    // `awaiting_verification` (customer submits a UPI transaction id +
+    // screenshot) until an admin approves / rejects / requests
+    // clarification in the Payment Verification screen. None of that
+    // used to notify anyone — these templates + the direct
+    // sendEventNotification calls in the store/purchase-orders and
+    // admin/payment-verifications routes close that gap. All UTILITY
+    // (transactional), positional vars, brand baked at push.
+    {
+        slug: "payment.upi_submitted",
+        name: "risitex_payment_upi_submitted_v1",
+        label: "Payment — UPI proof received",
+        description:
+            "Sent when a customer submits a manual-UPI payment (transaction id + optional screenshot) at checkout and the order enters 'awaiting_verification'. Reassures them the proof is being verified.",
+        category: "UTILITY",
+        language: "en",
+        components: [
+            {
+                type: "BODY",
+                text: "Hi {{1}}, we've received your UPI payment of ₹{{2}} for {{brand}} order #{{3}} (ref {{4}}). Our team is verifying it — you'll get a confirmation shortly. No action needed.",
+                example: { body_text: [["Mira", "1,250", "10234", "T2312345678"]] },
+            },
+            {
+                type: "BUTTONS",
+                buttons: [
+                    { type: "URL", text: "View order", url: `${STOREFRONT}/b2b/orders` },
+                ],
+            },
+        ],
+        variables: [
+            { key: "first_name", sample: "Mira", required: true },
+            { key: "amount_inr", sample: "1,250", required: true, description: "Amount paid, grouped INR (no ₹ sign)" },
+            { key: "order_id", sample: "10234", required: true },
+            { key: "upi_ref", sample: "T2312345678", required: true, description: "UPI transaction reference" },
+        ],
+    },
+    {
+        slug: "payment.verified",
+        name: "risitex_payment_verified_v1",
+        label: "Payment — verified",
+        description:
+            "Sent when an admin approves a manual-UPI payment (order moves to 'paid'). Confirms the payment and that the order is now moving to fulfilment.",
+        category: "UTILITY",
+        language: "en",
+        components: [
+            {
+                type: "BODY",
+                text: "Hi {{1}}, your payment of ₹{{2}} for {{brand}} order #{{3}} is verified ✅. Your order is confirmed and now moving to fulfilment.",
+                example: { body_text: [["Mira", "1,250", "10234"]] },
+            },
+            {
+                type: "BUTTONS",
+                buttons: [
+                    { type: "URL", text: "View order", url: `${STOREFRONT}/b2b/orders` },
+                ],
+            },
+        ],
+        variables: [
+            { key: "first_name", sample: "Mira", required: true },
+            { key: "amount_inr", sample: "1,250", required: true },
+            { key: "order_id", sample: "10234", required: true },
+        ],
+    },
+    {
+        slug: "payment.rejected",
+        name: "risitex_payment_rejected_v1",
+        label: "Payment — could not verify",
+        description:
+            "Sent when an admin rejects a manual-UPI payment. The reason sets expectations; the customer is asked to re-share a valid reference / screenshot.",
+        category: "UTILITY",
+        language: "en",
+        components: [
+            {
+                type: "BODY",
+                text: "Hi {{1}}, we couldn't verify your payment for {{brand}} order #{{2}}. Reason: {{3}}. Please re-share a valid UPI reference / screenshot, or contact us at {{support_phone}}.",
+                example: { body_text: [["Mira", "10234", "UPI reference not found"]] },
+            },
+        ],
+        variables: [
+            { key: "first_name", sample: "Mira", required: true },
+            { key: "order_id", sample: "10234", required: true },
+            { key: "reason", sample: "UPI reference not found", required: true },
+        ],
+    },
+    {
+        slug: "payment.clarification",
+        name: "risitex_payment_clarification_v1",
+        label: "Payment — clarification needed",
+        description:
+            "Sent when an admin requests clarification on a manual-UPI payment. The note explains what's needed.",
+        category: "UTILITY",
+        language: "en",
+        components: [
+            {
+                type: "BODY",
+                text: "Hi {{1}}, we need a bit more to verify your payment for {{brand}} order #{{2}}: {{3}}. Reply here or update your payment details.",
+                example: {
+                    body_text: [["Mira", "10234", "Please share a clearer screenshot"]],
+                },
+            },
+        ],
+        variables: [
+            { key: "first_name", sample: "Mira", required: true },
+            { key: "order_id", sample: "10234", required: true },
+            { key: "note", sample: "Please share a clearer screenshot", required: true },
+        ],
+    },
+    // Internal ops alert — goes to a STATIC RISITEX number (not a
+    // customer). If the configured number is the Polygin WhatsApp SENDER
+    // itself, the self-send won't deliver — point this at a separate ops
+    // number. Kept as a template so it's available regardless.
+    {
+        slug: "admin.payment_pending",
+        name: "risitex_admin_payment_pending_v1",
+        label: "Admin — UPI payment awaiting verification",
+        description:
+            "Alert to the RISITEX ops number when a customer submits a manual-UPI payment that needs verification.",
+        category: "UTILITY",
+        language: "en",
+        components: [
+            {
+                type: "BODY",
+                text: "🔔 New UPI payment awaiting verification — {{brand}} order #{{1}}, ₹{{2}}, UPI ref {{3}} from {{4}}. Review it in the admin Payment Verification screen.",
+                example: {
+                    body_text: [["10234", "1,250", "T2312345678", "Mira (mira@example.com)"]],
+                },
+            },
+        ],
+        variables: [
+            { key: "order_id", sample: "10234", required: true },
+            { key: "amount_inr", sample: "1,250", required: true },
+            { key: "upi_ref", sample: "T2312345678", required: true },
+            { key: "customer_name", sample: "Mira (mira@example.com)", required: true },
+        ],
+    },
 ]

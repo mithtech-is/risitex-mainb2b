@@ -6,6 +6,21 @@ import { usePathname } from "next/navigation";
 const NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/[^0-9]/g, "");
 
 /**
+ * Best-effort "slug → readable name" for the floating button, which only
+ * has the URL to work from (the inline PDP button uses the real
+ * product.name instead). Takes the first path segment, turns dashes into
+ * spaces, drops a trailing SKU-ish number block, and title-cases it.
+ */
+function humanizeProductSlug(slugTail: string): string {
+  const seg = decodeURIComponent((slugTail || "").split(/[/?#]/)[0] || "");
+  return seg
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+\d{3,}$/, "")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
  * Premium floating "Ask any questions" help button, fixed to the bottom-right
  * of every page. Hover reveals a label; click opens WhatsApp (pre-filled with
  * the product on product pages). Hidden until NEXT_PUBLIC_WHATSAPP_NUMBER is set.
@@ -24,7 +39,7 @@ export function WhatsAppButton() {
 
   const isProduct = /^\/wholesale\/p\//.test(pathname ?? "");
   const productName = isProduct
-    ? decodeURIComponent((pathname ?? "").split("/wholesale/p/")[1] ?? "").replace(/-/g, " ")
+    ? humanizeProductSlug((pathname ?? "").split("/wholesale/p/")[1] ?? "")
     : "";
   const text = isProduct
     ? `Hi RISITEX, I have a question about "${productName}" — ${origin}${pathname}`

@@ -7,6 +7,7 @@ import {
   PurchaseOrderModuleService,
 } from "../../../../../modules/purchase_order"
 import { logger } from "../../../../../utils/logger"
+import { sendEventNotification } from "../../../../../modules/polemarch_communication/helpers/send-event-email"
 
 const Body = z.object({
   decision: z.enum(["approve", "reject", "clarify"]),
@@ -74,10 +75,12 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     // Mirror onto the linked order metadata so the order-page widget stays
     // in sync, and (on approve) unblock the existing dispatch flow via
     // b2b_approved_at — the same flag /admin/orders/:id/b2b-approve sets.
+    let orderDisplayId: string | number | undefined
     if (po.order_id) {
       try {
         const orderModule = req.scope.resolve(Modules.ORDER)
         const order = await orderModule.retrieveOrder(po.order_id)
+        orderDisplayId = order?.display_id ?? undefined
         await orderModule.updateOrders([
           {
             id: po.order_id,
@@ -90,6 +93,24 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
         ])
       } catch (mErr) {
         logger.warn(`[payment-verifications] order mirror failed: ${mErr instanceof Error ? mErr.message : mErr}`)
+      }
+    }
+
+    // Notify the customer of the verification outcome over WhatsApp/SMS.
+    // Best-effort: sendEventNotification never throws and resolves the
+    // customer's phone + first name from customer_id. Only the manual-UPI
+    // flow reaches this screen (Razorpay auto-approves at checkout).
+    if ((meta as any).payment_method === "manual_upi") {
+      const orderRef = String(orderDisplayId ?? po.po_number ?? po.id)
+      const amountMajor = Number((meta as any).amount_paid_major ?? 0)
+      const amountInr = amountMajor ? Math.round(amountMajor).toLocaleString("en-IN") : ""
+      const base = { customer_id: po.customer_id, order_id: orderRef }
+      if (decision === "approve") {
+        await sendEventNotification(req.scope, "payment.verified", { ...base, amount_inr: amountInr })
+      } else if (decision === "reject") {
+        await sendEventNotification(req.scope, "payment.rejected", { ...base, reason: note || "not specified" })
+      } else {
+        await sendEventNotification(req.scope, "payment.clarification", { ...base, note: note || "further details needed" })
       }
     }
 
