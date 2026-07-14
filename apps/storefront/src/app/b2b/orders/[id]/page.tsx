@@ -92,6 +92,8 @@ async function loadOrderAsPo(id: string): Promise<DraftPurchaseOrder | null> {
 // came in as a PO or as a promoted order.
 type Lifecycle = {
   paid: boolean;
+  paidAt: string | null;
+  payMethod: string | null;
   approved: boolean;
   dispatched: boolean;
   delivered: boolean;
@@ -106,15 +108,31 @@ const SHIPPED_STATES = new Set([
   "delivered",
 ]);
 
+function metaStr(po: DraftPurchaseOrder, key: string): string | null {
+  const v = (po.metadata ?? {})[key];
+  return typeof v === "string" && v ? v : null;
+}
+
 function deriveLifecycle(po: DraftPurchaseOrder): Lifecycle {
   const ps = (po.order?.payment_status ?? "").toLowerCase();
   const ff = (po.order?.fulfillment_status ?? "").toLowerCase();
-  const paid = !!po.payment_confirmed_at || PAID_STATES.has(ps);
+  // A payment made at checkout (manual-UPI / Razorpay) is stamped on metadata
+  // as payment_captured_at (buyer paid) → payment_verified_at (admin verified);
+  // the separate confirm-payment flow sets payment_confirmed_at. Treat any of
+  // them — or a captured native order — as "paid", so the buyer sees the Paid
+  // tick the moment they pay, not only once the order is approved.
+  const paidAt =
+    po.payment_confirmed_at ||
+    metaStr(po, "payment_verified_at") ||
+    metaStr(po, "payment_captured_at") ||
+    null;
+  const paid = !!paidAt || PAID_STATES.has(ps);
+  const payMethod = po.payment_confirmed_method || metaStr(po, "payment_method");
   const approved = !!po.admin_approved_at;
   const dispatched =
     !!po.dispatched_at || po.status === "fulfilled" || SHIPPED_STATES.has(ff);
   const delivered = ff === "delivered";
-  return { paid, approved, dispatched, delivered };
+  return { paid, paidAt, payMethod, approved, dispatched, delivered };
 }
 
 export default function OrderDetailPage() {
@@ -224,7 +242,8 @@ export default function OrderDetailPage() {
     );
   }
 
-  const { paid, approved, dispatched, delivered } = deriveLifecycle(po);
+  const { paid, paidAt, payMethod, approved, dispatched, delivered } =
+    deriveLifecycle(po);
 
   const shortDate = (x?: string | null) =>
     x
@@ -244,7 +263,7 @@ export default function OrderDetailPage() {
       label: "Paid",
       icon: <CreditCard className="h-5 w-5" aria-hidden />,
       done: paid,
-      date: shortDate(po.payment_confirmed_at),
+      date: shortDate(paidAt),
     },
     {
       key: "approved",
@@ -375,10 +394,10 @@ export default function OrderDetailPage() {
                   : "—"
               }
             />
-            {po.payment_confirmed_method && (
+            {payMethod && (
               <Field
                 label="Payment method"
-                value={po.payment_confirmed_method}
+                value={payMethod.replace(/_/g, " ")}
                 capitalize
               />
             )}

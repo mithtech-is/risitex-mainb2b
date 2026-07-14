@@ -151,13 +151,28 @@ export default function InvoicesPage() {
     (p) => !(p as unknown as { order?: { id?: string } | null }).order?.id,
   );
 
+  // A checkout payment is stamped on PO metadata as payment_captured_at (buyer
+  // paid) → payment_verified_at (admin verified); the confirm-payment flow sets
+  // payment_confirmed_at. Any of them means the buyer has paid.
+  const poPaidAt = (po?: DraftPurchaseOrder): string | null => {
+    if (!po) return null;
+    const meta = (po.metadata ?? {}) as Record<string, unknown>;
+    const pick = (k: string) =>
+      typeof meta[k] === "string" ? (meta[k] as string) : null;
+    return (
+      po.payment_confirmed_at ||
+      pick("payment_verified_at") ||
+      pick("payment_captured_at") ||
+      null
+    );
+  };
   const orderPaid = (o: Order, po?: DraftPurchaseOrder) => {
     const ps = (o.payment_status ?? "").toLowerCase();
     return (
       ps === "captured" ||
       ps === "paid" ||
       ps === "partially_refunded" ||
-      !!po?.payment_confirmed_at
+      !!poPaidAt(po)
     );
   };
   const orderApproved = (po?: DraftPurchaseOrder) => !!po?.admin_approved_at;
@@ -267,7 +282,7 @@ export default function InvoicesPage() {
                     { label: "Placed", date: shortDate(o.created_at), done: true },
                     {
                       label: "Paid",
-                      date: shortDate(po?.payment_confirmed_at),
+                      date: shortDate(poPaidAt(po)),
                       done: paidNow,
                     },
                     {
@@ -305,7 +320,8 @@ export default function InvoicesPage() {
             })}
 
             {orphanPOs.map((p) => {
-              const paidPO = !!p.payment_confirmed_at;
+              const paidAtPO = poPaidAt(p);
+              const paidPO = !!paidAtPO;
               return (
                 <InvoiceCard
                   key={p.id}
@@ -321,7 +337,7 @@ export default function InvoicesPage() {
                     { label: "Placed", date: shortDate(p.created_at), done: true },
                     {
                       label: "Paid",
-                      date: shortDate(p.payment_confirmed_at),
+                      date: shortDate(paidAtPO),
                       done: paidPO,
                     },
                     { label: "Approved", date: null, done: false },
