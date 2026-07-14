@@ -30,17 +30,15 @@ const byRank = (a: Cat, b: Cat) =>
   a.rank - b.rank || a.name.localeCompare(b.name);
 
 /**
- * Lazily loads the live Medusa category tree (roots + one level of children),
- * the same source of truth as the catalogue filters. Fetch fires on first
- * hover so it never costs a request on pages the menu is never opened on.
+ * Loads the live Medusa category tree (roots + one level of children) on mount
+ * — the same source as the catalogue filters. Loading eagerly lets the trigger
+ * decide immediately whether to be a dropdown (categories exist) or a plain
+ * link (none yet), so there's never an empty/broken panel.
  */
-function useCategoryTree(shouldLoad: boolean) {
+function useCategoryTree() {
   const [roots, setRoots] = React.useState<Cat[]>([]);
-  const started = React.useRef(false);
 
   React.useEffect(() => {
-    if (!shouldLoad || started.current) return;
-    started.current = true;
     let alive = true;
     fetch(
       `${MEDUSA_BASE_URL}/store/product-categories?limit=200&fields=id,name,handle,rank,parent_category_id`,
@@ -69,23 +67,35 @@ function useCategoryTree(shouldLoad: boolean) {
         setRoots(rootList);
       })
       .catch(() => {
-        /* offline / aborted — the trigger still links to the full catalogue */
+        /* offline / aborted — trigger stays a plain link */
       });
     return () => {
       alive = false;
     };
-  }, [shouldLoad]);
+  }, []);
 
   return roots;
 }
 
-function catHref(handle?: string) {
-  return handle
+const catHref = (handle?: string) =>
+  handle
     ? `/wholesale/catalogue?cat=${encodeURIComponent(handle)}`
     : "/wholesale/catalogue";
+
+/** Shared active/hover underline — offset with an explicit px so it never
+ *  overlaps the label (the scale has no 1.5 key, which caused the strikethrough). */
+function Underline({ show }: { show: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute -bottom-[7px] left-0 h-[2px] rounded-full bg-text-primary transition-all duration-base ease-standard ${
+        show ? "w-full" : "w-0 group-hover:w-full"
+      }`}
+    />
+  );
 }
 
-/** One subcategory row — Jockey-style colour shift + slide-in chevron on hover. */
+/** One subcategory row — colour shift + slide-in chevron on hover. */
 function SubLink({
   name,
   href,
@@ -111,31 +121,31 @@ function SubLink({
 }
 
 /**
- * Premium full-width Catalogue mega-menu. Hovering (or focusing) "Catalogue"
- * drops a bar spanning the whole header: category columns (each root category
- * with its subcategories) on the left, a featured CTA panel on the right — all
- * aligned to the site container. Data-driven from Medusa so new admin
- * categories appear with zero code change. Desktop only; the mobile sheet keeps
- * its simple list.
+ * Premium Catalogue nav item.
+ *  - No categories yet → a clean plain link (no dropdown).
+ *  - Categories exist → hovering/focusing drops a full-width premium mega-panel:
+ *    one column per root category with its subcategories + a featured CTA,
+ *    aligned to the site container. Data-driven from Medusa.
  *
- * NOTE on spacing: the @risitex/ui Tailwind spacing scale is a REPLACEMENT
- * (only 0,px,0.5,1,2,3,4,5,6,8,10,12,16,20,24,32). Classes like top-14 / w-64 /
- * py-2.5 generate no CSS, so all sizing here uses scale values or explicit
- * [px] arbitrary values — including top-[41px] to pin the panel exactly to the
- * 40px nav + 1px border.
+ * Spacing note: @risitex/ui REPLACES Tailwind's spacing scale (only
+ * 0,px,0.5,1,2,3,4,5,6,8,10,12,16,20,24,32) — off-scale keys (14, 56, 64, 1.5,
+ * 2.5…) emit no CSS. All sizing here is on-scale or explicit [px]. The panel is
+ * `absolute top-[100%]` on the sticky header (its backdrop-blur is the
+ * containing block) so it sits flush + full width regardless of nav height.
  */
 export function CatalogueMega() {
   const pathname = usePathname() ?? "";
   const active =
     pathname.startsWith("/wholesale/catalogue") ||
     pathname.startsWith("/products");
+  const roots = useCategoryTree();
+  const hasMenu = roots.length > 0;
   const [open, setOpen] = React.useState(false);
-  const roots = useCategoryTree(open);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const openNow = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
-    setOpen(true);
+    if (hasMenu) setOpen(true);
   };
   const closeSoon = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
@@ -146,11 +156,32 @@ export function CatalogueMega() {
     setOpen(false);
   };
 
-  React.useEffect(() => {
-    return () => {
+  React.useEffect(
+    () => () => {
       if (closeTimer.current) clearTimeout(closeTimer.current);
-    };
-  }, []);
+    },
+    [],
+  );
+
+  // No categories yet → plain link, identical to the other nav items.
+  if (!hasMenu) {
+    return (
+      <li>
+        <Link
+          href="/wholesale/catalogue"
+          aria-current={active ? "page" : undefined}
+          className={`group relative text-body-md transition-colors duration-fast ${
+            active
+              ? "text-text-primary"
+              : "text-text-secondary hover:text-text-primary"
+          }`}
+        >
+          Catalogue
+          <Underline show={active} />
+        </Link>
+      </li>
+    );
+  }
 
   return (
     <li onMouseEnter={openNow} onMouseLeave={closeSoon}>
@@ -172,95 +203,77 @@ export function CatalogueMega() {
           }`}
           aria-hidden
         />
-        <span
-          className={`pointer-events-none absolute -bottom-1.5 left-0 h-px bg-text-primary transition-all duration-base ease-standard ${
-            active || open ? "w-full" : "w-0 group-hover:w-full"
-          }`}
-          aria-hidden
-        />
+        <Underline show={active || open} />
       </Link>
 
-      {/* Full-width panel anchored to the header's bottom. `absolute top-[100%]`
-          measures from the sticky header (nearest positioned ancestor + the
-          backdrop-blur containing block), so it always sits flush at the header
-          bottom regardless of its exact height — and spans the header's full
-          width edge-to-edge. */}
+      {/* Full-width panel anchored to the header bottom (see class note above). */}
       <div
         className={`absolute inset-x-0 top-[100%] z-popover transition-all duration-base ease-standard ${
           open
             ? "pointer-events-auto translate-y-0 opacity-100"
-            : "pointer-events-none -translate-y-2 opacity-0"
+            : "pointer-events-none -translate-y-1 opacity-0"
         }`}
         onMouseEnter={openNow}
         onMouseLeave={closeSoon}
         role="region"
         aria-label="Catalogue categories"
       >
-        <div className="border-b border-border-subtle bg-surface-raised shadow-[0_26px_40px_-16px_rgba(20,20,18,0.16)]">
+        <div className="border-t border-border-subtle bg-surface-raised shadow-[0_24px_48px_-20px_rgba(20,20,18,0.22)]">
           <Container>
-            <div className="flex items-stretch gap-8 py-8 lg:gap-10">
+            <div className="flex items-stretch gap-8 py-8 lg:gap-12">
               {/* Category sections */}
-              <div className="flex flex-1 flex-wrap gap-6 lg:gap-8">
-                {roots.length === 0 ? (
-                  <div className="flex w-[200px] flex-col gap-2">
-                    <div className="h-3 w-24 animate-pulse rounded bg-surface-sunken" />
-                    <div className="h-8 w-full animate-pulse rounded bg-surface-sunken" />
-                    <div className="h-8 w-full animate-pulse rounded bg-surface-sunken" />
-                    <div className="h-8 w-3/4 animate-pulse rounded bg-surface-sunken" />
+              <div className="flex flex-1 flex-wrap gap-8 lg:gap-12">
+                {roots.map((root) => (
+                  <div key={root.id} className="min-w-[196px] flex-1">
+                    <Link
+                      href={catHref(root.handle)}
+                      onClick={closeNow}
+                      className="group/head mb-3 flex items-center gap-1 px-3 text-caption font-semibold uppercase tracking-[0.16em] text-text-muted transition-colors duration-fast hover:text-text-primary"
+                    >
+                      {root.name}
+                      <ArrowRight className="h-3 w-3 -translate-x-1 opacity-0 transition-all duration-fast group-hover/head:translate-x-0 group-hover/head:opacity-100" aria-hidden />
+                    </Link>
+                    <ul className="flex flex-col gap-0.5 border-t border-border-subtle pt-2">
+                      {(root.children.length > 0 ? root.children : [root]).map(
+                        (child) => (
+                          <li key={child.id}>
+                            <SubLink
+                              name={child.name}
+                              href={catHref(child.handle)}
+                              onNavigate={closeNow}
+                            />
+                          </li>
+                        ),
+                      )}
+                    </ul>
                   </div>
-                ) : (
-                  roots.map((root) => (
-                    <div key={root.id} className="min-w-[190px] flex-1">
-                      <Link
-                        href={catHref(root.handle)}
-                        onClick={closeNow}
-                        className="mb-2 block px-3 text-caption font-semibold uppercase tracking-[0.16em] text-text-muted transition-colors duration-fast hover:text-text-primary"
-                      >
-                        {root.name}
-                      </Link>
-                      <div className="mx-3 h-px bg-border-subtle" />
-                      <ul className="mt-2 flex flex-col gap-0.5">
-                        {(root.children.length > 0 ? root.children : [root]).map(
-                          (child) => (
-                            <li key={child.id}>
-                              <SubLink
-                                name={child.name}
-                                href={catHref(child.handle)}
-                                onNavigate={closeNow}
-                              />
-                            </li>
-                          ),
-                        )}
-                      </ul>
-                    </div>
-                  ))
-                )}
+                ))}
               </div>
 
               {/* Featured CTA */}
               <Link
                 href="/wholesale/catalogue"
                 onClick={closeNow}
-                className="group/cta relative flex w-[264px] shrink-0 flex-col justify-end overflow-hidden rounded-2xl bg-action-primary-bg p-6 text-action-primary-text transition-colors duration-base hover:bg-action-primary-bg-hover"
+                className="group/cta relative flex w-[280px] shrink-0 flex-col justify-end overflow-hidden rounded-2xl bg-action-primary-bg p-6 text-action-primary-text transition-colors duration-base hover:bg-action-primary-bg-hover"
               >
                 <span
                   aria-hidden
-                  className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-action-primary-text/10 transition-transform duration-base group-hover/cta:scale-125"
+                  className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-action-primary-text/[0.08] transition-transform duration-base group-hover/cta:scale-125"
                 />
                 <ArrowRight
-                  className="absolute right-5 top-5 h-5 w-5 text-action-primary-text/50 transition-transform duration-base group-hover/cta:translate-x-1"
+                  className="absolute right-6 top-6 h-5 w-5 text-action-primary-text/50 transition-transform duration-base group-hover/cta:translate-x-1"
                   aria-hidden
                 />
                 <span className="text-caption font-semibold uppercase tracking-[0.16em] text-action-primary-text/60">
                   Wholesale
                 </span>
-                <span className="mt-1 text-heading-sm font-semibold leading-tight">
+                <span className="mt-2 text-heading-md font-semibold leading-tight">
                   Browse the full range
                 </span>
                 <span className="mt-2 text-body-sm text-action-primary-text/70">
-                  500+ products · factory-direct pricing
+                  Factory-direct pricing · GST invoiced
                 </span>
-                <span className="mt-4 inline-flex items-center gap-1 text-body-sm font-medium">
+                <span className="mt-5 inline-flex items-center gap-1 text-body-sm font-medium">
                   Shop all products
                   <ArrowRight className="h-4 w-4 transition-transform duration-base group-hover/cta:translate-x-1" />
                 </span>
