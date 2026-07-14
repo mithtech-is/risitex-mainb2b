@@ -9,7 +9,6 @@ import * as React from "react";
 import { MobileMenu } from "./mobile-menu";
 import { CatalogueMega } from "./catalogue-mega";
 import { WalletIconButton } from "@/components/wallet/wallet-icon-button";
-import { AuthModal } from "@/components/auth/auth-modal";
 import { Heart, Search, ShoppingCart, UserRound } from "lucide-react";
 import { getCart } from "@/lib/cart";
 import { scopedKey } from "@/lib/user-scope";
@@ -241,12 +240,12 @@ function TopnavActions() {
 
 /**
  * Account icon switches its destination + label by auth state. Signed-out
- * users see a Sign in button that opens the AuthModal. Signed-in users get
+ * users see Sign in + Create account buttons that link to the standalone auth
+ * pages (/auth/sign-in, /auth/sign-up). Signed-in users get
  * the usual person icon linking to their profile.
  */
 function AccountNavSlot() {
   const [authed, setAuthed] = React.useState<boolean | null>(null);
-  const [authOpen, setAuthOpen] = React.useState(false);
 
   React.useEffect(() => {
     const read = () => {
@@ -270,17 +269,24 @@ function AccountNavSlot() {
   }, []);
 
   if (authed === false) {
+    // Go straight to the standalone auth PAGES (the old in-navbar modal's
+    // dialog hung the renderer → "Something went wrong"). "Sign in" → sign-in
+    // page; "Create account" → the business-registration page.
     return (
-      <>
-        <button
-          type="button"
-          onClick={() => setAuthOpen(true)}
+      <div className="flex items-center gap-2">
+        <Link
+          href="/auth/sign-in"
           className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border-subtle bg-surface-raised px-3 text-body-sm font-medium text-text-primary transition-colors duration-fast hover:bg-surface-sunken focus-visible:ring-focus"
         >
           Sign in
-        </button>
-        <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
-      </>
+        </Link>
+        <Link
+          href="/auth/sign-up"
+          className="hidden h-9 items-center gap-1.5 rounded-md bg-action-primary-bg px-3 text-body-sm font-medium text-action-primary-text transition-colors duration-fast hover:bg-action-primary-bg-hover focus-visible:ring-focus sm:inline-flex"
+        >
+          Create account
+        </Link>
+      </div>
     );
   }
   // authed === true OR null (still resolving — render the icon, which
