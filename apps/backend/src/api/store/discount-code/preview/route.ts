@@ -1,5 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { z } from "zod"
 
 /**
@@ -49,14 +49,23 @@ async function lookupNativePromotion(
   code: string,
 ): Promise<NativePromotion | null> {
   try {
-    const promo = scope.resolve(Modules.PROMOTION) as {
-      listPromotions: (
-        f: { code: string[] },
-        opts?: { take?: number },
-      ) => Promise<NativePromotion[]>
-    }
-    const [match] = await promo.listPromotions({ code: [code] }, { take: 1 })
-    return match ?? null
+    // query.graph so the application_method relation is actually loaded — the
+    // module's listPromotions returns only the promotion's own columns, so
+    // `application_method` came back undefined and every code 404'd.
+    const query = scope.resolve(ContainerRegistrationKeys.QUERY)
+    const { data } = await query.graph({
+      entity: "promotion",
+      fields: [
+        "id",
+        "code",
+        "status",
+        "application_method.type",
+        "application_method.value",
+        "application_method.currency_code",
+      ],
+      filters: { code },
+    })
+    return (data?.[0] as NativePromotion) ?? null
   } catch {
     return null
   }
@@ -86,7 +95,12 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   if (discountType === "percentage") {
     discount_paise = Math.floor((subtotal_paise * appMethod.value) / 100)
   } else {
-    discount_paise = Math.min(Math.max(0, appMethod.value), subtotal_paise)
+    // Fixed amount: application_method.value is in MAJOR units (₹200 → 200),
+    // so convert to paise, capped at the subtotal.
+    discount_paise = Math.min(
+      Math.round(Math.max(0, appMethod.value) * 100),
+      subtotal_paise,
+    )
   }
 
   return res.json({
