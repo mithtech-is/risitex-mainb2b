@@ -9,25 +9,25 @@ const CATEGORIES = [
     href: "/wholesale/catalogue?cat=men-innerwear",
     label: "Innerwear",
     desc: "Inner boxers, boxer shorts",
-    image: "/demo/products/photo-02.jpg",
+    image: "/demo/products/photo-05.jpg",
   },
   {
     href: "/wholesale/catalogue?cat=men-bottom-wear",
     label: "Bottom Wear",
     desc: "Pyjamas, jeans, trousers",
-    image: "/demo/products/photo-15.jpg",
+    image: "/demo/products/images.jpeg",
   },
   {
     href: "/wholesale/catalogue?cat=men-jeans",
     label: "Jeans",
     desc: "Slim, straight, tapered & more",
-    image: "/demo/products/photo-05.jpg",
+    image: "/demo/products/jeans-light-blue.jpg",
   },
   {
     href: "/wholesale/catalogue?cat=men-pyjamas",
     label: "Pyjamas",
     desc: "Comfort loungewear & nightwear",
-    image: "/demo/products/photo-12.jpg",
+    image: "/demo/products/jeans-dark-blue.jpg",
   },
 ];
 
