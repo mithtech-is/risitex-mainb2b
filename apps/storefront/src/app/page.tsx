@@ -1,5 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
+import {
+  ShieldCheck,
+  BadgePercent,
+  Boxes,
+  Truck,
+  ReceiptText,
+  Handshake,
+} from "lucide-react";
 import { Button } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
 import { SignedOut, SignedIn } from "@/components/auth/signed-out";
@@ -32,12 +40,48 @@ const CATEGORIES = [
 ];
 
 const FEATURES = [
-  { title: "MOQ from 240 pcs", desc: "Low minimum order quantities to help you scale at your own pace." },
-  { title: "Tier-based Pricing", desc: "Volume discounts across Bronze, Silver, Gold, and Platinum tiers." },
-  { title: "Master Carton Packing", desc: "Standardised carton quantities for easy logistics and inventory." },
-  { title: "GST Invoicing", desc: "Automatic GST-compliant invoices with CGST, SGST, and IGST." },
-  { title: "PAN-India Delivery", desc: "Reliable shipping network covering all states and union territories." },
-  { title: "Dedicated Support", desc: "Relationship manager assigned to every wholesale account." },
+  {
+    icon: ShieldCheck,
+    title: "Verified Wholesale Platform",
+    desc: "Only verified retailers, distributors, and business buyers can place wholesale orders, ensuring a secure B2B marketplace.",
+    chip: "bg-indigo-500",
+    bar: "bg-indigo-500",
+  },
+  {
+    icon: BadgePercent,
+    title: "Business Pricing Engine",
+    desc: "Access tier-based pricing, bulk discounts, and volume incentives tailored to your business profile.",
+    chip: "bg-ochre-500",
+    bar: "bg-ochre-500",
+  },
+  {
+    icon: Boxes,
+    title: "Intelligent Inventory",
+    desc: "Monitor live inventory, production capacity, and lead times so you can plan procurement with confidence.",
+    chip: "bg-sage-500",
+    bar: "bg-sage-500",
+  },
+  {
+    icon: Truck,
+    title: "End-to-End Order Visibility",
+    desc: "Track your order from approval through dispatch and delivery, with real-time shipment updates and downloadable invoices.",
+    chip: "bg-madder-500",
+    bar: "bg-madder-500",
+  },
+  {
+    icon: ReceiptText,
+    title: "GST & Business Compliance",
+    desc: "Receive GST-ready invoices, complete order history, and business documentation designed for accounting and compliance.",
+    chip: "bg-slate-cool-500",
+    bar: "bg-slate-cool-500",
+  },
+  {
+    icon: Handshake,
+    title: "Dedicated Relationship Support",
+    desc: "Our team assists with quotations, sourcing, logistics, and ongoing wholesale requirements to help your business grow.",
+    chip: "bg-indigo-500",
+    bar: "bg-indigo-500",
+  },
 ];
 
 const INDUSTRIES = [
@@ -191,20 +235,48 @@ export default function HomePage() {
       {/* WHY RISITEX */}
       <section className="border-b border-border-subtle py-16 md:py-20">
         <Container>
-          <div className="text-center">
-            <p className="text-micro text-text-muted">Why RISITEX</p>
-            <h2 className="mt-2 text-heading-xl text-text-primary">
-              Built for Wholesale
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-micro font-semibold uppercase tracking-[0.2em] text-brand-accent">
+              Why RISITEX
+            </p>
+            <h2 className="mt-3 font-display text-display-lg text-text-primary">
+              Built for{" "}
+              <span className="relative whitespace-nowrap">
+                Wholesale
+                <span
+                  aria-hidden
+                  className="absolute -bottom-1 left-0 h-1 w-full rounded-full bg-ochre-400"
+                />
+              </span>
             </h2>
+            <p className="mt-4 text-body-md text-text-secondary">
+              Everything a serious B2B buyer needs — from verification to
+              delivery — engineered into one platform.
+            </p>
           </div>
-          <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
               <div
                 key={f.title}
-                className="rounded-lg border border-border-subtle p-6 transition-all duration-base hover:shadow-raised"
+                className="group relative overflow-hidden rounded-2xl border border-border-subtle bg-surface-raised p-6 transition-all duration-base ease-standard hover:-translate-y-1 hover:border-border-strong hover:shadow-popover"
               >
-                <h3 className="text-heading-sm text-text-primary">{f.title}</h3>
-                <p className="mt-2 text-body-md text-text-secondary">{f.desc}</p>
+                {/* solid colour chip — tilts + grows on hover */}
+                <span
+                  className={`relative inline-flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-rest transition-transform duration-base ease-standard group-hover:-rotate-6 group-hover:scale-110 ${f.chip}`}
+                >
+                  <f.icon className="h-6 w-6" aria-hidden />
+                </span>
+                <h3 className="relative mt-5 font-display text-heading-md text-text-primary">
+                  {f.title}
+                </h3>
+                <p className="relative mt-2 text-body-md leading-relaxed text-text-secondary">
+                  {f.desc}
+                </p>
+                {/* constant colour accent along the bottom edge */}
+                <span
+                  aria-hidden
+                  className={`absolute inset-x-0 bottom-0 h-1 ${f.bar}`}
+                />
               </div>
             ))}
           </div>
