@@ -1,134 +1,195 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  Factory,
+  ShieldCheck,
+  BadgePercent,
+  Gauge,
+  Truck,
+  Headphones,
+  ArrowRight,
+} from "lucide-react";
 import { Button } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
-import { SignedOut } from "@/components/auth/signed-out";
+import { Reveal } from "@/components/site/reveal";
 
 export const metadata: Metadata = {
-  title: "About RISITEX",
-  description: "About RISITEX — India's premier B2B textile platform for wholesalers, dealers, and distributors.",
+  title: "About RISITEX — Premium Apparel Manufacturing for Businesses",
+  description:
+    "RISITEX is an Indian textile manufacturer building premium men's apparel for wholesale. Six decades of craftsmanship, large-scale production, and a wholesale-first partnership model.",
+  alternates: { canonical: "/about" },
 };
 
-const FACTS = [
-  { label: "Founded", value: "1962" },
-  { label: "Manufacturing", value: "Karnataka" },
-  { label: "Products", value: "500+" },
-  { label: "Dealers Nationwide", value: "50+" },
-  { label: "Export Markets", value: "12 countries" },
-  { label: "Years of Excellence", value: "60+" },
+const WHY_CHOOSE = [
+  { icon: Factory, title: "Reliable Manufacturing", desc: "Vertically-run production lines with the capacity and discipline to deliver every order on schedule.", chip: "bg-indigo-500" },
+  { icon: ShieldCheck, title: "Consistent Quality", desc: "Every batch is inspected against a fixed standard — the tenth carton matches the first.", chip: "bg-sage-500" },
+  { icon: BadgePercent, title: "Competitive Wholesale Pricing", desc: "Factory-direct, tier-based pricing with volume incentives and no hidden charges.", chip: "bg-ochre-500" },
+  { icon: Gauge, title: "Large Production Capacity", desc: "Scale from a first trial order to full container loads without changing suppliers.", chip: "bg-madder-500" },
+  { icon: Truck, title: "Fast Nationwide Delivery", desc: "A logistics network reaching every state and union territory, with live dispatch tracking.", chip: "bg-slate-cool-500" },
+  { icon: Headphones, title: "Dedicated Business Support", desc: "A named account manager for quotations, sourcing, and ongoing wholesale requirements.", chip: "bg-indigo-500" },
 ];
 
-const MILESTONES = [
-  { year: "1962", event: "Founded as a family textile mill in Bangalore, Karnataka" },
-  { year: "1985", event: "Expanded into garment manufacturing with modern sewing lines" },
-  { year: "2000", event: "Built in-house quality testing laboratory" },
-  { year: "2015", event: "Launched RISITEX brand for wholesale distribution" },
-  { year: "2020", event: "Digitised operations with ERPNext integration" },
-  { year: "2025", event: "Launched B2B wholesale platform with tier pricing and online ordering" },
-];
+/** Small reusable label above each section heading. */
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-micro font-semibold uppercase tracking-[0.2em] text-brand-accent">
+      {children}
+    </p>
+  );
+}
+
+/** A heading word with the signature gold underline. */
+function Underline({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="relative whitespace-nowrap">
+      {children}
+      <span
+        aria-hidden
+        className="absolute -bottom-1 left-0 h-1 w-full rounded-full bg-ochre-400"
+      />
+    </span>
+  );
+}
 
 export default function AboutPage() {
   return (
     <>
-      <section className="border-b border-border-subtle">
+      <style>{`
+        @keyframes risitexFloatA { 0%,100%{transform:translate3d(0,0,0)} 50%{transform:translate3d(0,-26px,0)} }
+        @keyframes risitexFloatB { 0%,100%{transform:translate3d(0,0,0)} 50%{transform:translate3d(0,24px,0)} }
+        @media (prefers-reduced-motion: reduce){ .risitex-float{animation:none !important} }
+      `}</style>
+
+      {/* 1 ── HERO ─────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden border-b border-border-subtle">
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div
+            className="risitex-float absolute -left-16 -top-10 h-[300px] w-[300px] rounded-full bg-indigo-400/25 blur-3xl"
+            style={{ animation: "risitexFloatA 15s ease-in-out infinite" }}
+          />
+          <div
+            className="risitex-float absolute -right-10 top-24 h-[340px] w-[340px] rounded-full bg-ochre-400/20 blur-3xl"
+            style={{ animation: "risitexFloatB 18s ease-in-out infinite" }}
+          />
+          <div
+            className="risitex-float absolute bottom-0 left-1/3 h-[260px] w-[260px] rounded-full bg-sage-400/15 blur-3xl"
+            style={{ animation: "risitexFloatA 21s ease-in-out infinite" }}
+          />
+        </div>
         <Container>
-          <div className="py-20 md:py-28">
-            <p className="text-micro text-text-muted">About</p>
-            <h1 className="mt-3 text-display-xl text-text-primary">
-              India&rsquo;s Trusted Textile Partner for Businesses
-            </h1>
-            <p className="mt-6 max-w-prose text-body-lg text-text-secondary">
-              For over six decades, RISITEX has been manufacturing premium textiles and garments
-              for businesses across India and worldwide. Today, we serve dealers, distributors,
-              retailers, and corporate clients through our digital B2B platform.
-            </p>
+          <div className="relative py-24 md:py-32">
+            <Reveal>
+              <Eyebrow>RISITEX · Manufacturing since 1962</Eyebrow>
+            </Reveal>
+            <Reveal delay={80}>
+              <h1 className="mt-4 max-w-4xl font-display text-display-xl text-text-primary md:text-display-2xl">
+                Crafting Quality.{" "}
+                <span className="text-brand-accent">Building Business.</span>
+              </h1>
+            </Reveal>
+            <Reveal delay={160}>
+              <p className="mt-6 max-w-2xl text-body-lg text-text-secondary">
+                Premium men&rsquo;s apparel manufacturing for modern businesses —
+                six decades of textile craftsmanship, engineered for wholesale
+                and built for partners who plan to grow.
+              </p>
+            </Reveal>
+            <Reveal delay={240}>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Button asChild size="lg">
+                  <Link href="/wholesale/catalogue">
+                    Browse Catalogue <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="secondary">
+                  <Link href="/contact">Contact Us</Link>
+                </Button>
+              </div>
+            </Reveal>
           </div>
         </Container>
       </section>
 
-      <section className="border-b border-border-subtle py-20">
+      {/* 2 ── WHY BUSINESSES CHOOSE RISITEX ────────────────────── */}
+      <section className="border-b border-border-subtle py-20 md:py-24">
         <Container>
-          <dl className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-6">
-            {FACTS.map((f) => (
-              <div key={f.label} className="text-center">
-                <dt className="text-micro text-text-muted">{f.label}</dt>
-                <dd className="mt-1 text-heading-lg text-text-primary numerics-tabular">{f.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </Container>
-      </section>
-
-      <section className="border-b border-border-subtle bg-surface-sunken py-20">
-        <Container>
-          <p className="text-micro text-text-muted">Our Story</p>
-          <h2 className="mt-2 text-heading-xl text-text-primary">Six Decades of Textile Excellence</h2>
-          <div className="mt-10 space-y-8">
-            {MILESTONES.map((m) => (
-              <div key={m.year} className="flex items-start gap-6">
-                <span className="text-mono-md text-brand-accent shrink-0 w-16">{m.year}</span>
-                <div className="h-px w-8 bg-border-subtle mt-2.5 shrink-0" />
-                <p className="text-body-lg text-text-secondary">{m.event}</p>
-              </div>
-            ))}
-          </div>
-        </Container>
-      </section>
-
-      <section className="border-b border-border-subtle py-20">
-        <Container>
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
-            <div>
-              <h2 className="text-heading-xl text-text-primary">Our Mission</h2>
-              <p className="mt-4 text-body-lg text-text-secondary">
-                To make premium textile sourcing simple, transparent, and accessible for every
-                business. We combine decades of manufacturing expertise with modern technology
-                to deliver consistent quality, competitive pricing, and reliable service.
+          <Reveal>
+            <div className="mx-auto max-w-2xl text-center">
+              <Eyebrow>Why RISITEX</Eyebrow>
+              <h2 className="mt-3 font-display text-heading-xl text-text-primary">
+                Why businesses{" "}
+                <Underline>choose us</Underline>
+              </h2>
+              <p className="mt-4 text-body-md text-text-secondary">
+                An international textile manufacturer, wholesale-first by design —
+                everything a serious B2B buyer needs to source with confidence.
               </p>
             </div>
-            <div>
-              <h2 className="text-heading-xl text-text-primary">Our Values</h2>
-              <ul className="mt-4 space-y-4">
-                {[
-                  { title: "Quality First", desc: "Every product batch is tested before dispatch. Consistent quality across every order." },
-                  { title: "Transparent Pricing", desc: "No hidden charges. Clear tier-based pricing with volume discounts." },
-                  { title: "Reliable Delivery", desc: "On-time dispatch with real-time tracking. PAN-India delivery network." },
-                  { title: "Long-term Partnerships", desc: "We grow with our clients. Dealer and distributor relationships built on trust." },
-                ].map((v) => (
-                  <li key={v.title}>
-                    <h3 className="text-heading-sm text-text-primary">{v.title}</h3>
-                    <p className="text-body-md text-text-secondary">{v.desc}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          </Reveal>
+          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {WHY_CHOOSE.map((f, i) => (
+              <Reveal key={f.title} delay={(i % 3) * 80}>
+                <div className="group relative h-full overflow-hidden rounded-2xl border border-border-subtle bg-surface-raised p-6 transition-all duration-base ease-standard hover:-translate-y-1 hover:border-border-strong hover:shadow-popover">
+                  <span
+                    className={`inline-flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-rest transition-transform duration-base ease-standard group-hover:-rotate-6 group-hover:scale-110 ${f.chip}`}
+                  >
+                    <f.icon className="h-6 w-6" aria-hidden />
+                  </span>
+                  <h3 className="mt-5 font-display text-heading-md text-text-primary">
+                    {f.title}
+                  </h3>
+                  <p className="mt-2 text-body-md leading-relaxed text-text-secondary">
+                    {f.desc}
+                  </p>
+                  <span
+                    aria-hidden
+                    className={`absolute inset-x-0 bottom-0 h-1 ${f.chip}`}
+                  />
+                </div>
+              </Reveal>
+            ))}
           </div>
         </Container>
       </section>
 
-      {/* Sign-in CTA — only shown to visitors who aren't logged in. */}
-      <SignedOut>
-        <section className="py-20">
-          <Container width="narrow" className="text-center">
-            <h2 className="text-heading-xl text-text-primary">Partner with RISITEX</h2>
-            <p className="mt-3 text-body-lg text-text-secondary">Join 50+ dealers and distributors nationwide.</p>
-            <div className="mt-8">
-              <Button asChild size="lg">
-                <Link href="/auth/sign-in">Sign In</Link>
-              </Button>
-              <p className="mt-3 text-body-sm text-text-muted">
-                Don&rsquo;t have an account?{" "}
-                <Link
-                  href="/auth/sign-up"
-                  className="text-text-primary underline-offset-4 hover:underline"
-                >
-                  Apply for a wholesale account
-                </Link>
+      {/* 3 ── CTA ──────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden py-24 md:py-32">
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div
+            className="risitex-float absolute -left-10 top-6 h-[300px] w-[300px] rounded-full bg-indigo-400/20 blur-3xl"
+            style={{ animation: "risitexFloatB 17s ease-in-out infinite" }}
+          />
+          <div
+            className="risitex-float absolute -right-12 -bottom-10 h-[300px] w-[300px] rounded-full bg-ochre-400/20 blur-3xl"
+            style={{ animation: "risitexFloatA 20s ease-in-out infinite" }}
+          />
+        </div>
+        <Container width="narrow">
+          <Reveal>
+            <div className="relative text-center">
+              <h2 className="mx-auto max-w-3xl font-display text-display-lg text-text-primary md:text-display-xl">
+                Ready to grow your business with{" "}
+                <span className="text-brand-accent">RISITEX?</span>
+              </h2>
+              <p className="mx-auto mt-5 max-w-xl text-body-lg text-text-secondary">
+                Explore the range, apply for a wholesale account, or talk to our
+                team about your requirement.
               </p>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <Button asChild size="lg">
+                  <Link href="/wholesale/catalogue">Browse Catalogue</Link>
+                </Button>
+                <Button asChild size="lg" variant="secondary">
+                  <Link href="/auth/sign-up">Become a Business Partner</Link>
+                </Button>
+                <Button asChild size="lg" variant="tertiary">
+                  <Link href="/contact">Contact Us</Link>
+                </Button>
+              </div>
             </div>
-          </Container>
-        </section>
-      </SignedOut>
+          </Reveal>
+        </Container>
+      </section>
     </>
   );
 }

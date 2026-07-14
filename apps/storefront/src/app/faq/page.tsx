@@ -1,17 +1,26 @@
 "use client";
 
-
 import * as React from "react";
+import { ChevronDown } from "lucide-react";
 import { Container } from "@/components/site/container";
 import { Breadcrumb } from "@/components/site/breadcrumb";
+import { Reveal } from "@/components/site/reveal";
 
 const FAQS: { q: string; a: string }[] = [
   {
-    q: "How can I track my order?",
-    a: "Tracking information is shared after dispatch. You can follow your shipment any time from your account orders, where each order shows a live status timeline.",
+    q: "Do you offer wholesale pricing and MOQs?",
+    a: "Yes. RISITEX runs a wholesale programme with tier-based pricing and minimum order quantities that flex with your volume. Apply for a business account to unlock trade pricing.",
   },
   {
-    q: "Can I change my shipping address after placing an order?",
+    q: "Who can buy on RISITEX?",
+    a: "Our platform is for verified retailers, distributors, and business buyers. Approved accounts get access to wholesale pricing, MOQ ladders, and bulk ordering.",
+  },
+  {
+    q: "How can I track my order?",
+    a: "Tracking is shared after dispatch. Every order shows a live status timeline in your account, from approval through production, dispatch, and delivery.",
+  },
+  {
+    q: "Can I change my shipping address after ordering?",
     a: "Contact support immediately. Changes are subject to the order’s status — once an order is shipped, the address can no longer be changed.",
   },
   {
@@ -20,19 +29,15 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "When will I receive my refund?",
-    a: "Refunds are generally processed after return inspection. Timelines vary by payment method and are credited to your original payment method or RISITEX wallet.",
-  },
-  {
-    q: "Are products genuine?",
-    a: "Yes. All products sold on RISITEX are genuine and quality checked.",
+    a: "Refunds are processed after return inspection. Timelines vary by payment method and are credited to your original payment method or RISITEX wallet.",
   },
   {
     q: "What payment methods are accepted?",
-    a: "UPI, Debit Cards, Credit Cards, Net Banking, and other supported options. Cash on Delivery is available for orders up to ₹10,000.",
+    a: "UPI, debit cards, credit cards, net banking, and other supported options. GST-compliant invoices are issued for every order.",
   },
   {
-    q: "Do you offer wholesale pricing?",
-    a: "Yes. RISITEX runs a wholesale programme with tiered pricing and minimum order quantities. Apply for a wholesale account to access trade pricing.",
+    q: "Are products genuine and quality-checked?",
+    a: "Yes. Every batch is inspected against a fixed quality standard before dispatch, so consistency holds from the first carton to the last.",
   },
 ];
 
@@ -40,22 +45,20 @@ export default function FaqPage() {
   const [openIndex, setOpenIndex] = React.useState<number | null>(null);
   const headerRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
 
-  const toggle = (index: number) => {
+  // Opening a question closes any other that was open.
+  const toggle = (index: number) =>
     setOpenIndex(openIndex === index ? null : index);
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
     switch (e.key) {
       case "ArrowDown": {
         e.preventDefault();
-        const nextIndex = (index + 1) % FAQS.length;
-        headerRefs.current[nextIndex]?.focus();
+        headerRefs.current[(index + 1) % FAQS.length]?.focus();
         break;
       }
       case "ArrowUp": {
         e.preventDefault();
-        const prevIndex = (index - 1 + FAQS.length) % FAQS.length;
-        headerRefs.current[prevIndex]?.focus();
+        headerRefs.current[(index - 1 + FAQS.length) % FAQS.length]?.focus();
         break;
       }
       case "Home":
@@ -94,66 +97,90 @@ export default function FaqPage() {
         />
       </div>
 
-      <header className="border-b border-border-subtle py-10">
-        <p className="text-micro text-text-muted">Help</p>
-        <h1 className="mt-2 text-display-lg text-text-primary font-display">
-          Frequently asked questions
-        </h1>
-        <p className="mt-3 max-w-2xl text-body-md text-text-secondary">
-          Quick answers on orders, tracking, returns, and payments. Still stuck?{" "}
-          <a
-            href="/contact"
-            className="text-text-primary underline underline-offset-4 font-medium"
-          >
-            Contact us
-          </a>
-          .
-        </p>
+      <header className="relative overflow-hidden border-b border-border-subtle py-12 md:py-16">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 -top-16 h-[280px] w-[280px] rounded-full bg-ochre-400/10 blur-3xl"
+        />
+        <Reveal className="relative">
+          <p className="text-micro font-semibold uppercase tracking-[0.2em] text-brand-accent">
+            Help Centre
+          </p>
+          <h1 className="mt-3 font-display text-display-lg text-text-primary md:text-display-xl">
+            Frequently asked questions
+          </h1>
+          <p className="mt-4 max-w-2xl text-body-lg text-text-secondary">
+            Quick answers on wholesale, orders, tracking, returns, and payments.
+            Still stuck?{" "}
+            <a
+              href="/contact"
+              className="font-medium text-text-primary underline underline-offset-4"
+            >
+              Talk to our team
+            </a>
+            .
+          </p>
+        </Reveal>
       </header>
 
-      <div className="max-w-2xl divide-y divide-border-subtle py-4">
-        {FAQS.map((f, i) => {
-          const isOpen = openIndex === i;
-          return (
-            <div key={f.q} className="py-4">
-              <h2 className="text-heading-sm">
-                <button
-                  type="button"
-                  ref={(el) => {
-                    headerRefs.current[i] = el;
-                  }}
-                  aria-expanded={isOpen}
-                  aria-controls={`faq-answer-${i}`}
-                  id={`faq-header-${i}`}
-                  onClick={() => toggle(i)}
-                  onKeyDown={(e) => handleKeyDown(e, i)}
-                  className="flex w-full items-center justify-between gap-4 text-left font-display text-text-primary hover:text-action-primary-bg transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 py-2 rounded"
+      <div className="max-w-3xl py-8">
+        <ul className="space-y-3">
+          {FAQS.map((f, i) => {
+            const isOpen = openIndex === i;
+            return (
+              <Reveal key={f.q} delay={(i % 4) * 50}>
+                <li
+                  className={`overflow-hidden rounded-xl border bg-surface-raised transition-colors duration-base ease-standard ${
+                    isOpen ? "border-border-strong" : "border-border-subtle"
+                  }`}
                 >
-                  <span>{f.q}</span>
-                  <span
-                    className={`text-text-muted text-xl transform transition-transform duration-normal ${
-                      isOpen ? "rotate-45 text-action-primary-bg" : ""
+                  <h2>
+                    <button
+                      type="button"
+                      ref={(el) => {
+                        headerRefs.current[i] = el;
+                      }}
+                      aria-expanded={isOpen}
+                      aria-controls={`faq-answer-${i}`}
+                      id={`faq-header-${i}`}
+                      onClick={() => toggle(i)}
+                      onKeyDown={(e) => handleKeyDown(e, i)}
+                      className="flex w-full items-center justify-between gap-4 p-5 text-left font-display text-heading-sm text-text-primary transition-colors duration-fast hover:text-brand-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                    >
+                      <span>{f.q}</span>
+                      <span
+                        aria-hidden
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-base ease-standard ${
+                          isOpen
+                            ? "rotate-180 bg-brand-accent text-white"
+                            : "bg-surface-sunken text-text-muted"
+                        }`}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </span>
+                    </button>
+                  </h2>
+                  <div
+                    id={`faq-answer-${i}`}
+                    role="region"
+                    aria-labelledby={`faq-header-${i}`}
+                    className={`grid transition-all duration-base ease-standard ${
+                      isOpen
+                        ? "grid-rows-[1fr] opacity-100"
+                        : "grid-rows-[0fr] opacity-0"
                     }`}
                   >
-                    +
-                  </span>
-                </button>
-              </h2>
-              <div
-                id={`faq-answer-${i}`}
-                role="region"
-                aria-labelledby={`faq-header-${i}`}
-                className={`transition-all duration-normal overflow-hidden ${
-                  isOpen ? "max-h-[200px] opacity-100 mt-2" : "max-h-0 opacity-0"
-                }`}
-              >
-                <p className="text-body-md text-text-secondary leading-relaxed pb-2">
-                  {f.a}
-                </p>
-              </div>
-            </div>
-          );
-        })}
+                    <div className="overflow-hidden">
+                      <p className="px-5 pb-5 text-body-md leading-relaxed text-text-secondary">
+                        {f.a}
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              </Reveal>
+            );
+          })}
+        </ul>
       </div>
     </Container>
   );
