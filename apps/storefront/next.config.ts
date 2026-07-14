@@ -3,6 +3,12 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   reactStrictMode: true,
 
+  // Zero-downtime deploys: build into an inactive slot (NEXT_DIST_DIR=.next-a
+  // / .next-b) while the live slot keeps serving, then flip + restart. Both
+  // `next build` and `next start` read the same env var, so the output dir is
+  // always consistent. Unset (local dev / CI) → the default ".next".
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+
   // Production builds should not fail on lint style rules (prefer-const,
   // unused vars, etc.) — linting is a dev/CI concern, not a build gate.
   // Type-checking still runs and blocks the build on real type errors.
