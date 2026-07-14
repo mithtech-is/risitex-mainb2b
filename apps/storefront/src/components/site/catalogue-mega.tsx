@@ -180,9 +180,13 @@ export function CatalogueMega() {
         />
       </Link>
 
-      {/* Full-width panel, pinned to the header bottom (40px nav + 1px border). */}
+      {/* Full-width panel anchored to the header's bottom. `absolute top-[100%]`
+          measures from the sticky header (nearest positioned ancestor + the
+          backdrop-blur containing block), so it always sits flush at the header
+          bottom regardless of its exact height — and spans the header's full
+          width edge-to-edge. */}
       <div
-        className={`fixed inset-x-0 top-[41px] z-popover transition-all duration-base ease-standard ${
+        className={`absolute inset-x-0 top-[100%] z-popover transition-all duration-base ease-standard ${
           open
             ? "pointer-events-auto translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-2 opacity-0"
