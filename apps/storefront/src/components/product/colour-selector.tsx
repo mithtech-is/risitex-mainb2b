@@ -47,13 +47,13 @@ export function ColourSelector({
               aria-label={sw.name}
               onClick={() => onChange(sw.value)}
               className={cn(
-                "group flex w-[92px] flex-col items-center gap-1.5 rounded-md border p-1.5 transition-colors duration-fast",
+                "group flex w-[112px] flex-col items-center gap-2 rounded-md border p-1 transition-colors duration-fast",
                 active
                   ? "border-text-primary ring-1 ring-text-primary"
                   : "border-border-subtle hover:border-border-strong",
               )}
             >
-              <span className="block h-[76px] w-full overflow-hidden rounded-sm bg-surface-sunken">
+              <span className="block h-[120px] w-full overflow-hidden rounded-sm bg-surface-sunken">
                 {thumb ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img

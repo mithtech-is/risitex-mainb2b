@@ -93,7 +93,7 @@ function NavLinks() {
   );
 }
 
-type SearchHit = { id: string; title: string; handle: string; thumbnail: string | null };
+type SearchHit = { id: string; title: string; handle: string };
 
 /**
  * Inline pill search with a live product-name typeahead. As you type, matching
@@ -121,7 +121,7 @@ function NavSearch() {
     const ctrl = new AbortController();
     const t = setTimeout(() => {
       fetch(
-        `${MEDUSA_BASE_URL}/store/products?q=${encodeURIComponent(term)}&limit=6&fields=id,title,handle,thumbnail`,
+        `${MEDUSA_BASE_URL}/store/products?q=${encodeURIComponent(term)}&limit=6&fields=id,title,handle`,
         { headers: { "x-publishable-api-key": PUB_KEY }, signal: ctrl.signal },
       )
         .then((r) => (r.ok ? r.json() : null))
@@ -193,19 +193,9 @@ function NavSearch() {
                   <button
                     type="button"
                     onClick={() => go(`/wholesale/p/${h.handle}`)}
-                    className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors duration-fast hover:bg-surface-sunken"
+                    className="block w-full truncate rounded-md px-3 py-2 text-left text-body-sm text-text-primary transition-colors duration-fast hover:bg-surface-sunken"
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-sunken text-caption font-semibold text-text-muted">
-                      {h.thumbnail ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={h.thumbnail} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        (h.title || "?").charAt(0).toUpperCase()
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-body-sm text-text-primary">
-                      {h.title}
-                    </span>
+                    {h.title}
                   </button>
                 </li>
               ))}
