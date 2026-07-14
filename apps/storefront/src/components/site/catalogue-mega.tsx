@@ -99,7 +99,7 @@ function SubLink({
     <Link
       href={href}
       onClick={onNavigate}
-      className="group/sub flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-body-sm text-text-secondary transition-colors duration-fast hover:bg-surface-sunken hover:text-text-primary focus-visible:bg-surface-sunken focus-visible:text-text-primary focus-visible:outline-none"
+      className="group/sub flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-body-sm text-text-secondary transition-colors duration-fast hover:bg-surface-sunken hover:text-text-primary focus-visible:bg-surface-sunken focus-visible:text-text-primary focus-visible:outline-none"
     >
       <span className="truncate">{name}</span>
       <ChevronRight
@@ -117,6 +117,12 @@ function SubLink({
  * aligned to the site container. Data-driven from Medusa so new admin
  * categories appear with zero code change. Desktop only; the mobile sheet keeps
  * its simple list.
+ *
+ * NOTE on spacing: the @risitex/ui Tailwind spacing scale is a REPLACEMENT
+ * (only 0,px,0.5,1,2,3,4,5,6,8,10,12,16,20,24,32). Classes like top-14 / w-64 /
+ * py-2.5 generate no CSS, so all sizing here uses scale values or explicit
+ * [px] arbitrary values — including top-[41px] to pin the panel exactly to the
+ * 40px nav + 1px border.
  */
 export function CatalogueMega() {
   const pathname = usePathname() ?? "";
@@ -161,7 +167,7 @@ export function CatalogueMega() {
       >
         Catalogue
         <ChevronDown
-          className={`h-3.5 w-3.5 transition-transform duration-base ease-standard ${
+          className={`h-4 w-4 transition-transform duration-base ease-standard ${
             open ? "rotate-180" : "rotate-0"
           }`}
           aria-hidden
@@ -174,9 +180,9 @@ export function CatalogueMega() {
         />
       </Link>
 
-      {/* Full-width panel, pinned just below the sticky header (h-14 = 56px). */}
+      {/* Full-width panel, pinned to the header bottom (40px nav + 1px border). */}
       <div
-        className={`fixed inset-x-0 top-14 z-popover transition-all duration-base ease-standard ${
+        className={`fixed inset-x-0 top-[41px] z-popover transition-all duration-base ease-standard ${
           open
             ? "pointer-events-auto translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-2 opacity-0"
@@ -192,11 +198,11 @@ export function CatalogueMega() {
               {/* Category sections */}
               <div className="flex flex-1 flex-wrap gap-6 lg:gap-8">
                 {roots.length === 0 ? (
-                  <div className="flex w-48 flex-col gap-2">
+                  <div className="flex w-[200px] flex-col gap-2">
                     <div className="h-3 w-24 animate-pulse rounded bg-surface-sunken" />
-                    <div className="h-9 w-full animate-pulse rounded bg-surface-sunken" />
-                    <div className="h-9 w-full animate-pulse rounded bg-surface-sunken" />
-                    <div className="h-9 w-3/4 animate-pulse rounded bg-surface-sunken" />
+                    <div className="h-8 w-full animate-pulse rounded bg-surface-sunken" />
+                    <div className="h-8 w-full animate-pulse rounded bg-surface-sunken" />
+                    <div className="h-8 w-3/4 animate-pulse rounded bg-surface-sunken" />
                   </div>
                 ) : (
                   roots.map((root) => (
@@ -204,7 +210,7 @@ export function CatalogueMega() {
                       <Link
                         href={catHref(root.handle)}
                         onClick={closeNow}
-                        className="mb-2.5 block px-3 text-caption font-semibold uppercase tracking-[0.16em] text-text-muted transition-colors duration-fast hover:text-text-primary"
+                        className="mb-2 block px-3 text-caption font-semibold uppercase tracking-[0.16em] text-text-muted transition-colors duration-fast hover:text-text-primary"
                       >
                         {root.name}
                       </Link>
@@ -231,11 +237,11 @@ export function CatalogueMega() {
               <Link
                 href="/wholesale/catalogue"
                 onClick={closeNow}
-                className="group/cta relative flex w-64 shrink-0 flex-col justify-end overflow-hidden rounded-2xl bg-action-primary-bg p-6 text-action-primary-text transition-colors duration-base hover:bg-action-primary-bg-hover"
+                className="group/cta relative flex w-[264px] shrink-0 flex-col justify-end overflow-hidden rounded-2xl bg-action-primary-bg p-6 text-action-primary-text transition-colors duration-base hover:bg-action-primary-bg-hover"
               >
                 <span
                   aria-hidden
-                  className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-action-primary-text/10 transition-transform duration-base group-hover/cta:scale-125"
+                  className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-action-primary-text/10 transition-transform duration-base group-hover/cta:scale-125"
                 />
                 <ArrowRight
                   className="absolute right-5 top-5 h-5 w-5 text-action-primary-text/50 transition-transform duration-base group-hover/cta:translate-x-1"
@@ -244,13 +250,13 @@ export function CatalogueMega() {
                 <span className="text-caption font-semibold uppercase tracking-[0.16em] text-action-primary-text/60">
                   Wholesale
                 </span>
-                <span className="mt-1.5 text-heading-sm font-semibold leading-tight">
+                <span className="mt-1 text-heading-sm font-semibold leading-tight">
                   Browse the full range
                 </span>
                 <span className="mt-2 text-body-sm text-action-primary-text/70">
                   500+ products · factory-direct pricing
                 </span>
-                <span className="mt-4 inline-flex items-center gap-1.5 text-body-sm font-medium">
+                <span className="mt-4 inline-flex items-center gap-1 text-body-sm font-medium">
                   Shop all products
                   <ArrowRight className="h-4 w-4 transition-transform duration-base group-hover/cta:translate-x-1" />
                 </span>
