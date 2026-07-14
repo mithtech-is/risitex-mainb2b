@@ -7,6 +7,7 @@ import { Container } from "./container";
 import { Wordmark } from "./wordmark";
 import * as React from "react";
 import { MobileMenu } from "./mobile-menu";
+import { CatalogueMega } from "./catalogue-mega";
 import { WalletIconButton } from "@/components/wallet/wallet-icon-button";
 import { AuthModal } from "@/components/auth/auth-modal";
 import { Heart, Search, ShoppingCart, UserRound } from "lucide-react";
@@ -58,6 +59,11 @@ function NavLinks() {
   return (
     <ul className="hidden items-center gap-8 lg:flex">
       {NAV.map((item) => {
+        // Catalogue gets the premium hover mega-menu (category sections);
+        // the other links stay as simple underline-hover items.
+        if (item.href === "/wholesale/catalogue") {
+          return <CatalogueMega key={item.href} />;
+        }
         const active =
           pathname === item.href ||
           (item.href !== "/" && pathname.startsWith(item.href));
