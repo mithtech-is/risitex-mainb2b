@@ -46,8 +46,14 @@ export const PUT = async (req: MedusaRequest, res: MedusaResponse) => {
             })
         }
         const input = { ...parsed.data }
-        // "" means "keep existing" — strip it before passing through.
-        if (typeof input.auth_key === "string" && input.auth_key.length === 0) {
+        // Sticky secret: null/blank/redacted all mean "keep existing" — only a
+        // real non-empty string replaces it, so a normal re-save never wipes
+        // the auth key.
+        if (
+            input.auth_key == null ||
+            (typeof input.auth_key === "string" &&
+                input.auth_key.trim().length === 0)
+        ) {
             delete input.auth_key
         }
         const mod = req.scope.resolve(

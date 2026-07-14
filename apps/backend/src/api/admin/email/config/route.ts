@@ -43,8 +43,15 @@ export const PUT = async (req: MedusaRequest, res: MedusaResponse) => {
             })
         }
         const input = { ...parsed.data }
-        // Empty-string password means "don't change"
-        if (typeof input.password === "string" && input.password.length === 0) {
+        // Sticky secret: never clear the password just because the field came
+        // back blank/null (it's redacted on GET, so a normal re-save sends it
+        // empty). Only a real non-empty string replaces it — otherwise editing
+        // e.g. the from-name and saving would silently wipe SMTP auth.
+        if (
+            input.password == null ||
+            (typeof input.password === "string" &&
+                input.password.trim().length === 0)
+        ) {
             delete input.password
         }
         const mod = req.scope.resolve(POLEMARCH_EMAIL_MODULE) as EmailModuleService

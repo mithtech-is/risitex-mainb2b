@@ -65,12 +65,23 @@ export const PUT = async (req: MedusaRequest, res: MedusaResponse) => {
             })
         }
         const input = { ...parsed.data }
-        if (typeof input.token === "string" && input.token.length === 0) {
+        // Secrets are sticky: a settings save must NEVER clear the token just
+        // because the field came back blank/null/redacted (the value is never
+        // sent back to the browser, so a normal re-save has an empty field).
+        // Only a real, non-empty string replaces it. This prevents the
+        // token from being silently wiped when the operator edits, say, the
+        // sender number and saves. (To rotate: paste a new token. To disable
+        // WhatsApp entirely: toggle `enabled` off.)
+        if (
+            input.token == null ||
+            (typeof input.token === "string" && input.token.trim().length === 0)
+        ) {
             delete input.token
         }
         if (
-            typeof input.dashboard_token === "string" &&
-            input.dashboard_token.length === 0
+            input.dashboard_token == null ||
+            (typeof input.dashboard_token === "string" &&
+                input.dashboard_token.trim().length === 0)
         ) {
             delete input.dashboard_token
         }
