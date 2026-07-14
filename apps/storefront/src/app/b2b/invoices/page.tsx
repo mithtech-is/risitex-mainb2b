@@ -483,35 +483,69 @@ function InvoiceCard({
 }
 
 function Rail({ steps }: { steps: Step[] }) {
+  // These milestones are strictly sequential — reaching a later one means all
+  // earlier ones happened too (an approved/invoiced order is, by definition,
+  // paid). Fill every node up to the furthest-reached step so the timeline is
+  // always a clean progression, never "Approved ✓ while Paid ○". Each step is
+  // an equal-width column with its node centred and connector halves joining
+  // neighbours, so labels sit exactly under their node.
+  const lastDone = steps.reduce((acc, s, i) => (s.done ? i : acc), -1);
   return (
-    <div className="my-5 flex items-center">
-      {steps.map((s, i) => (
-        <React.Fragment key={s.label}>
-          <div className="flex flex-col items-center gap-1">
+    <ol className="my-5 flex items-start">
+      {steps.map((s, i) => {
+        const done = i <= lastDone;
+        const first = i === 0;
+        const last = i === steps.length - 1;
+        return (
+          <li
+            key={s.label}
+            className="flex flex-1 flex-col items-center text-center"
+          >
+            <div className="flex w-full items-center">
+              <span
+                aria-hidden
+                className={`h-[2px] flex-1 rounded-full ${
+                  first
+                    ? "opacity-0"
+                    : i <= lastDone
+                      ? "bg-feedback-success-text"
+                      : "bg-border-strong"
+                }`}
+              />
+              <span
+                className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full ${
+                  done
+                    ? "bg-feedback-success-text text-white"
+                    : "border-[1.5px] border-border-strong bg-surface-raised"
+                }`}
+              >
+                {done && (
+                  <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
+                )}
+              </span>
+              <span
+                aria-hidden
+                className={`h-[2px] flex-1 rounded-full ${
+                  last
+                    ? "opacity-0"
+                    : i < lastDone
+                      ? "bg-feedback-success-text"
+                      : "bg-border-strong"
+                }`}
+              />
+            </div>
             <span
-              className={`flex h-[18px] w-[18px] items-center justify-center rounded-full ${
-                s.done
-                  ? "bg-feedback-success-text text-white"
-                  : "border-[1.5px] border-border-strong bg-surface-raised"
+              className={`mt-2 text-micro ${
+                done ? "text-text-primary" : "text-text-secondary"
               }`}
             >
-              {s.done && <Check className="h-2.5 w-2.5" />}
+              {s.label}
             </span>
-            <span className="text-micro text-text-secondary">{s.label}</span>
             <span className="text-micro text-text-muted">{s.date ?? "—"}</span>
-          </div>
-          {i < steps.length - 1 && (
-            <div
-              className={`mb-7 h-0.5 flex-1 ${
-                steps[i + 1]?.done
-                  ? "bg-feedback-success-text"
-                  : "bg-border-strong"
-              }`}
-            />
-          )}
-        </React.Fragment>
-      ))}
-    </div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
