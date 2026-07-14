@@ -273,6 +273,9 @@ export default function CheckoutPage() {
     gstin: "",
   });
   const [billingSeeded, setBillingSeeded] = React.useState(false);
+  // Lets the buyer edit an already-complete company billing address at checkout
+  // (their current address); edits are persisted back to the company profile.
+  const [editBilling, setEditBilling] = React.useState(false);
   React.useEffect(() => {
     if (billingSeeded || !context) return;
     const ba = context.b2b?.company?.billing_address;
@@ -427,7 +430,9 @@ export default function CheckoutPage() {
   // (the order snapshot below still uses the entered values).
   const [savingBilling, setSavingBilling] = React.useState(false);
   const persistBillingIfNeeded = async () => {
-    if (companyBillingComplete) return; // nothing was edited
+    // Persist when the company address was incomplete OR the buyer just edited
+    // a complete one; otherwise nothing changed.
+    if (companyBillingComplete && !editBilling) return;
     setSavingBilling(true);
     try {
       await fetch(`${MEDUSA_BASE_URL}/store/companies/me`, {
@@ -457,6 +462,7 @@ export default function CheckoutPage() {
     if (step === 1 && canStep2) setStep(2);
     else if (step === 2 && canStep3) {
       await persistBillingIfNeeded();
+      setEditBilling(false);
       setStep(3);
     } else if (step === 3 && canStep4) setStep(4);
     else if (step === 4 && canStep5) setStep(5);
@@ -562,6 +568,9 @@ export default function CheckoutPage() {
         po_number: poNumber,
         value_major: paiseToRupees(grandTotalPaise),
         shipping_major: paiseToRupees(shippingPaise),
+        discount_major:
+          discountPaise > 0 ? paiseToRupees(discountPaise) : undefined,
+        discount_code: coupon?.code,
         notes: [
           courierDetail,
           courierNoteDetail,
@@ -736,26 +745,46 @@ export default function CheckoutPage() {
               aria-current={isActive ? "step" : undefined}
               className="flex items-center gap-2"
             >
-              <span
-                className={[
-                  "inline-flex h-7 w-7 items-center justify-center rounded-full text-caption font-medium",
-                  isDone
-                    ? "bg-feedback-success-bg text-feedback-success-text ring-1 ring-feedback-success-border"
-                    : isActive
-                      ? "bg-action-primary-bg text-action-primary-text"
-                      : "bg-surface-sunken text-text-muted",
-                ].join(" ")}
-              >
-                {isDone ? "✓" : s.id}
-              </span>
-              <span
-                className={[
-                  "text-body-sm",
-                  isActive ? "font-medium text-text-primary" : "text-text-muted",
-                ].join(" ")}
-              >
-                {s.label}
-              </span>
+              {isDone ? (
+                // Completed steps are clickable — jump straight back to edit
+                // that section without stepping through each Back click.
+                <button
+                  type="button"
+                  onClick={() => setStep(s.id as Step)}
+                  title={`Back to ${s.label}`}
+                  className="group flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-focus"
+                >
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-feedback-success-bg text-caption font-medium text-feedback-success-text ring-1 ring-feedback-success-border transition-shadow group-hover:ring-feedback-success-text">
+                    ✓
+                  </span>
+                  <span className="text-body-sm text-text-secondary transition-colors group-hover:text-text-primary">
+                    {s.label}
+                  </span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span
+                    className={[
+                      "inline-flex h-7 w-7 items-center justify-center rounded-full text-caption font-medium",
+                      isActive
+                        ? "bg-action-primary-bg text-action-primary-text"
+                        : "bg-surface-sunken text-text-muted",
+                    ].join(" ")}
+                  >
+                    {s.id}
+                  </span>
+                  <span
+                    className={[
+                      "text-body-sm",
+                      isActive
+                        ? "font-medium text-text-primary"
+                        : "text-text-muted",
+                    ].join(" ")}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+              )}
               {i < STEPS.length - 1 && (
                 <span aria-hidden className="mx-1 hidden h-px w-6 bg-border-subtle md:inline-block" />
               )}
@@ -804,16 +833,27 @@ export default function CheckoutPage() {
                 Billing &amp; shipping addresses
               </h2>
               <p className="mt-1 text-caption text-text-muted">
-                Billing is locked to your approved company GSTIN; shipping can
-                differ (e.g. to a warehouse or contract manufacturer).
+                Billing uses your approved company address — edit it if it&rsquo;s
+                changed. Shipping can differ (e.g. to a warehouse or contract
+                manufacturer).
               </p>
 
-              {/* Billing — read-only when the company record is complete;
-                  editable (and persisted) when it's missing fields so the
-                  buyer can complete it instead of being stuck. */}
-              {companyBillingComplete ? (
+              {/* Billing — read-only summary when the company record is
+                  complete and not being edited; editable (and persisted back to
+                  the company) when incomplete OR when the buyer taps Edit. */}
+              {companyBillingComplete && !editBilling ? (
                 <div className="mt-4 rounded-sm border border-border-subtle bg-surface-background p-4">
-                  <p className="text-micro text-text-muted">Billing</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-micro text-text-muted">Billing</p>
+                    <Button
+                      type="button"
+                      variant="tertiary"
+                      size="xs"
+                      onClick={() => setEditBilling(true)}
+                    >
+                      Edit
+                    </Button>
+                  </div>
                   <p className="mt-1 text-body-md text-text-primary">
                     {company?.trade_name ?? "Your company"}
                   </p>
@@ -827,15 +867,40 @@ export default function CheckoutPage() {
                 </div>
               ) : (
                 <div className="mt-4 rounded-sm border border-border-subtle bg-surface-background p-4">
-                  <p className="text-micro text-text-muted">Billing</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-micro text-text-muted">Billing</p>
+                    {companyBillingComplete && (
+                      <Button
+                        type="button"
+                        variant="tertiary"
+                        size="xs"
+                        onClick={() => {
+                          // Revert edits back to the saved company address.
+                          const ba = company?.billing_address;
+                          setBilling({
+                            line1: ba?.line1 ?? "",
+                            city: ba?.city ?? "",
+                            state: ba?.state ?? "",
+                            postal_code: ba?.postal_code ?? "",
+                            gstin: company?.gstin ?? "",
+                          });
+                          setEditBilling(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
                   <p className="mt-1 text-body-md text-text-primary">
                     {company?.trade_name ?? "Your company"}
                   </p>
-                  <p className="mt-2 rounded-md bg-feedback-warning-bg px-3 py-2 text-caption text-feedback-warning-text">
-                    Your company billing address is incomplete. Complete it below
-                    to continue — we&rsquo;ll save it to your company profile for
-                    future orders and invoices.
-                  </p>
+                  {!companyBillingComplete && (
+                    <p className="mt-2 rounded-md bg-feedback-warning-bg px-3 py-2 text-caption text-feedback-warning-text">
+                      Your company billing address is incomplete. Complete it
+                      below to continue — we&rsquo;ll save it to your company
+                      profile for future orders and invoices.
+                    </p>
+                  )}
                   <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div className="flex flex-col gap-1.5 md:col-span-2">
                       <Label htmlFor="bill-line1" required>Billing address</Label>

@@ -67,16 +67,39 @@ type UnifiedRow = {
   linked_order_id: string | null;
 };
 
-function orderToRow(o: Order): UnifiedRow {
+// Real payment state. The native order's payment_status is "not_paid" for
+// every B2B order (payment is tracked on PO metadata, not a Medusa payment
+// collection), so we derive from the PO: admin-approved / verified → paid;
+// captured / confirmed → awaiting verification; else the native status.
+function derivePaymentLabel(
+  nativeStatus: string | null | undefined,
+  po?: DraftPurchaseOrder,
+): string {
+  const meta = (po?.metadata ?? {}) as Record<string, unknown>;
+  const has = (k: string) => typeof meta[k] === "string" && !!meta[k];
+  if (po?.admin_approved_at || has("payment_verified_at")) return "paid";
+  if (po?.payment_confirmed_at || has("payment_captured_at"))
+    return "awaiting verification";
+  const ns = (nativeStatus ?? "").toLowerCase();
+  if (ns === "captured" || ns === "paid" || ns === "partially_refunded")
+    return "paid";
+  if (ns === "not_paid" || ns === "") return "pending";
+  return nativeStatus ?? "—";
+}
+
+function orderToRow(o: Order, po?: DraftPurchaseOrder): UnifiedRow {
+  // Prefer the PO's billed total — it carries the discount + GST the buyer
+  // actually paid; the native order.total omits the coupon.
+  const total = po ? Number(po.value_major ?? o.total ?? 0) : Number(o.total ?? 0);
   return {
     kind: "order",
     id: o.id,
     label: `RST-${String(o.display_id).padStart(6, "0")}`,
     search_id: `${o.id} RST-${String(o.display_id).padStart(6, "0")}`,
     status: o.fulfillment_status ?? o.status ?? "—",
-    payment_status: o.payment_status ?? null,
+    payment_status: derivePaymentLabel(o.payment_status, po),
     created_at: o.created_at,
-    total_major: Number(o.total ?? 0),
+    total_major: total,
     item_count: (o.items ?? []).reduce((s, it) => s + Number(it.quantity ?? 0), 0),
     linked_order_id: null,
   };
@@ -101,7 +124,7 @@ function poToRow(p: DraftPurchaseOrder): UnifiedRow {
     label: p.po_number,
     search_id: `${p.id} ${p.po_number}`,
     status: derivedStatus,
-    payment_status: p.status === "draft" ? "pending" : null,
+    payment_status: derivePaymentLabel(null, p),
     created_at: p.created_at,
     total_major: Number(p.value_major ?? 0),
     item_count: 0,
@@ -265,7 +288,17 @@ export default function B2bOrdersPage() {
             .map((p) => (p as unknown as { order?: { id?: string } | null }).order?.id)
             .filter((id): id is string => !!id),
         );
-        const orderRows = orderList.map(orderToRow);
+        // Join each native order to its PO so the row shows the real payment
+        // state + the billed (discounted) total, not the raw native values.
+        const poByOrderId = new Map<string, DraftPurchaseOrder>();
+        for (const p of poList) {
+          const oid = (p as unknown as { order?: { id?: string } | null }).order
+            ?.id;
+          if (oid) poByOrderId.set(oid, p);
+        }
+        const orderRows = orderList.map((o) =>
+          orderToRow(o, poByOrderId.get(o.id)),
+        );
         const poRows = poList
           .filter(
             (p) =>
@@ -470,8 +503,21 @@ export default function B2bOrdersPage() {
                         {prettyStatus(r.status)}
                       </Badge>
                     </td>
-                    <td className="px-5 py-3 text-body-sm text-text-secondary">
-                      {r.payment_status ?? "—"}
+                    <td className="px-5 py-3">
+                      <span
+                        className={[
+                          "text-body-sm capitalize",
+                          (r.payment_status ?? "").toLowerCase() === "paid"
+                            ? "text-feedback-success-text"
+                            : (r.payment_status ?? "")
+                                  .toLowerCase()
+                                  .includes("awaiting")
+                              ? "text-feedback-warning-text"
+                              : "text-text-secondary",
+                        ].join(" ")}
+                      >
+                        {r.payment_status ?? "—"}
+                      </span>
                     </td>
                     <td className="px-5 py-3 text-right text-body-sm text-text-primary font-mono">
                       {formatINR(Math.round(r.total_major))}

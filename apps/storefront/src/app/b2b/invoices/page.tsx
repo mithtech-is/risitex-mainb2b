@@ -182,8 +182,11 @@ export default function InvoicesPage() {
     orphanPOs.length > 0 ||
     state.invoices.length > 0;
 
-  const orderSum = (arr: Order[]) =>
-    arr.reduce((s, o) => s + Number(o.total ?? 0), 0);
+  // The billed amount is the PO's value_major (discount + GST included); the
+  // native order.total omits the coupon, so it disagrees with the order detail.
+  const orderBilled = (o: Order) =>
+    Number(poByOrderId.get(o.id)?.value_major ?? o.total ?? 0);
+  const orderSum = (arr: Order[]) => arr.reduce((s, o) => s + orderBilled(o), 0);
   const poSum = (arr: DraftPurchaseOrder[]) =>
     arr.reduce((s, p) => s + Number(p.value_major ?? 0), 0);
   const invSum = (arr: CreditInvoice[]) =>
@@ -267,7 +270,7 @@ export default function InvoicesPage() {
                   key={o.id}
                   status={status}
                   idLabel={idLabel}
-                  amountMajor={Number(o.total ?? 0)}
+                  amountMajor={orderBilled(o)}
                   subtitle={
                     approved
                       ? `Approved ${shortDate(po?.admin_approved_at) ?? "—"}${po?.payment_confirmed_method ? ` · paid via ${po.payment_confirmed_method}` : ""}`

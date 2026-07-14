@@ -186,6 +186,12 @@ const PostBody = z.object({
   file_url: z.string().url().or(z.string().startsWith("/")),
   value_major: z.number().int().positive().max(100_000_000),
   shipping_major: z.number().nonnegative().max(100_000_000).optional(),
+  // Order-level discount (coupon) in major rupees. Applied to the native order
+  // so its computed total matches the buyer's billed grand total (value_major)
+  // — otherwise the order shows full price + GST-on-full while the PO shows the
+  // discounted total, and the two disagree everywhere they're displayed.
+  discount_major: z.number().nonnegative().max(100_000_000).optional(),
+  discount_code: z.string().max(64).optional(),
   expected_payment_date: z.string().datetime().optional(),
   notes: z.string().max(2_000).optional(),
   items: z.array(z.object({
@@ -380,7 +386,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
           description: `GST ${GST_RATE}%`,
         }
 
-        const orderItems = input.items.map((item) => {
+        let orderItems = input.items.map((item) => {
           const v = variants.find((x) => x.id === item.variant_id)
           const price = v?.calculated_price?.calculated_amount ?? 100
           return {
@@ -388,10 +394,29 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
             variant_id: item.variant_id,
             sku: v?.sku || "",
             quantity: item.quantity,
-            unit_price: price, // in minor units
+            unit_price: price,
             tax_lines: [gstTaxLine],
           }
         })
+
+        // Apply the coupon by proportionally reducing line unit prices, so the
+        // rate-based GST recomputes on the DISCOUNTED (taxable) base — matching
+        // both the storefront grand total and Indian GST (a discount given at
+        // sale reduces the taxable value). A negative discount line wouldn't
+        // reduce the taxable base, so GST would stay on the full amount and the
+        // order total would still disagree with what the buyer paid.
+        const discountMajor = Number(input.discount_major ?? 0) || 0
+        const rawSubtotal = orderItems.reduce(
+          (s, it) => s + it.unit_price * it.quantity,
+          0,
+        )
+        if (discountMajor > 0 && discountMajor < rawSubtotal) {
+          const ratio = (rawSubtotal - discountMajor) / rawSubtotal
+          orderItems = orderItems.map((it) => ({
+            ...it,
+            unit_price: Math.round(it.unit_price * ratio * 100) / 100,
+          }))
+        }
 
         const shippingAmount = Number(input.shipping_major ?? 0) || 0
 
@@ -485,6 +510,14 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
         : null,
       metadata: {
         ...(input.notes ? { notes: input.notes } : {}),
+        ...(input.discount_major
+          ? {
+              discount_major: input.discount_major,
+              ...(input.discount_code
+                ? { discount_code: input.discount_code }
+                : {}),
+            }
+          : {}),
         ...(paymentMeta ?? {}),
       },
     })

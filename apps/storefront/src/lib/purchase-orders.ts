@@ -58,6 +58,11 @@ export type CreatePurchaseOrderInput = {
   /** Shipping charge in major rupees — applied to the native order so its
    *  total matches the buyer's billed grand total. */
   shipping_major?: number;
+  /** Coupon discount in major rupees — applied to the native order so its
+   *  computed total matches value_major (otherwise the order shows full price
+   *  + GST-on-full and disagrees with the PO/invoice everywhere). */
+  discount_major?: number;
+  discount_code?: string;
   expected_payment_date?: string;
   notes?: string;
   items?: Array<{ variant_id: string; quantity: number }>;
