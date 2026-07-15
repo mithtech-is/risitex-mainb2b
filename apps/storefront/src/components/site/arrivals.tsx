@@ -28,9 +28,16 @@ export function Arrivals({ items, cats }: { items: Arrival[]; cats: string[] }) 
   const reduced = useReducedMotion();
   const shown = cat === "All" ? items : items.filter((i) => i.cat === cat);
 
+  // Nothing live to show — render nothing rather than an empty grid frame.
+  if (!items.length) return null;
+
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-8 border-b border-border-subtle pb-4">
+      {/* Tabs only when there is genuinely something to filter between. The
+          caller passes [] for a single-category catalogue. */}
+      <div
+        className={`${cats.length > 1 ? "flex" : "hidden"} flex-wrap items-center gap-8 border-b border-border-subtle pb-4`}
+      >
         {cats.map((c) => (
           <button
             key={c}

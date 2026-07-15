@@ -3,6 +3,8 @@ import Image from "next/image";
 import { Container } from "@/components/site/container";
 import { SignedOut, SignedIn } from "@/components/auth/signed-out";
 import { Arrivals, type Arrival } from "@/components/site/arrivals";
+import { getWholesaleProducts } from "@/lib/wholesale-products";
+import type { Product } from "@/data/products";
 import { FaqList } from "@/components/site/faq";
 import { SmoothScroll, Cursor, Reveal, Lines, RevealImage, Magnetic } from "@/components/site/fx";
 
@@ -39,18 +41,34 @@ import { SmoothScroll, Cursor, Reveal, Lines, RevealImage, Magnetic } from "@/co
  *     claims. styles.css wins. Probe the browser, don't read the TS.
  */
 
-const CATS = ["All", "Innerwear", "Jeans", "Bottom Wear", "Pyjamas"];
-
-const ARRIVALS: Arrival[] = [
-  { href: "/wholesale/catalogue?cat=men-innerwear", name: "Boxer Short — Poplin", cat: "Innerwear", spec: "180 GSM", moq: "240 pcs", badge: "New", image: "/demo/products/photo-04.jpg", hover: "/demo/products/photo-05.jpg" },
-  { href: "/wholesale/catalogue?cat=men-jeans", name: "Straight Jean — Rigid", cat: "Jeans", spec: "12 OZ", moq: "240 pcs", image: "/demo/products/jeans-light-blue.jpg", hover: "/demo/products/jeans-dark-blue.jpg" },
-  { href: "/wholesale/catalogue?cat=men-bottom-wear", name: "Printed Boxer — Sateen", cat: "Bottom Wear", spec: "140 GSM", moq: "480 pcs", badge: "Low MOQ", image: "/demo/products/images.jpeg", hover: "/demo/products/photo-12.jpg" },
-  { href: "/wholesale/catalogue?cat=men-pyjamas", name: "Lounge Pyjama — Twill", cat: "Pyjamas", spec: "140 GSM", moq: "240 pcs", image: "/demo/products/photo-13.jpg", hover: "/demo/products/photo-07.jpg" },
-  { href: "/wholesale/catalogue?cat=men-jeans", name: "Tapered Jean — Stretch", cat: "Jeans", spec: "10 OZ", moq: "240 pcs", image: "/demo/products/jeans-dark-blue.jpg", hover: "/demo/products/photo-12.jpg" },
-  { href: "/wholesale/catalogue?cat=men-innerwear", name: "Inner Boxer — Combed", cat: "Innerwear", spec: "160 GSM", moq: "480 pcs", image: "/demo/products/photo-05.jpg", hover: "/demo/products/photo-04.jpg" },
-  { href: "/wholesale/catalogue?cat=men-bottom-wear", name: "Utility Trouser — Drill", cat: "Bottom Wear", spec: "8 OZ", moq: "240 pcs", badge: "New", image: "/demo/products/photo-07.jpg", hover: "/demo/products/photo-13.jpg" },
-  { href: "/wholesale/catalogue?cat=men-pyjamas", name: "Night Set — Khadi", cat: "Pyjamas", spec: "140 GSM", moq: "240 pcs", image: "/demo/products/photo-09.jpg", hover: "/demo/products/photo-05.jpg" },
-];
+/**
+ * The grid is fed from the LIVE Medusa catalogue — never fixtures.
+ *
+ * It used to be eight hardcoded demo garments with invented GSM/MOQ. Those are
+ * gone: the homepage now shows exactly what is orderable, so it can never
+ * advertise a product that does not exist. `getWholesaleProducts()` already
+ * merges live + fixtures, and `data/products.ts` PRODUCTS is `[]`, so this is
+ * live-only. Add a product in admin and it appears here; unpublish it and it
+ * leaves. Tabs derive from the products' real categories rather than a fixed
+ * list, so we can't show a tab that filters to nothing.
+ */
+function toArrivals(products: Product[]): Arrival[] {
+  return products
+    // A card is a photograph — one without art renders as a broken tile, so a
+    // product with no image is skipped rather than shown empty.
+    .map((p) => ({ p, art: p.image ?? p.images?.[0] }))
+    .filter((x): x is { p: Product; art: string } => Boolean(x.art))
+    .slice(0, 8)
+    .map(({ p, art }) => ({
+      href: `/wholesale/p/${p.slug}`,
+      name: p.name,
+      cat: p.subcategory?.trim() || "Essentials",
+      spec: p.specs?.[0]?.value ?? "",
+      moq: p.moq ? `${p.moq} pcs` : "On request",
+      image: art,
+      hover: p.images?.find((i) => i !== art) ?? art,
+    }));
+}
 
 /**
  * The narrative spine: fabric → colour → craft → delivery.
@@ -144,7 +162,13 @@ function InkLink({ href, children, solid = false }: { href: string; children: Re
   );
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const arrivals = toArrivals(await getWholesaleProducts());
+  // Only offer tabs when there is something to filter — a lone "All" tab above
+  // two products is furniture, not navigation.
+  const cats = Array.from(new Set(arrivals.map((a) => a.cat)));
+  const arrivalCats = cats.length > 1 ? ["All", ...cats] : [];
+
   return (
     <>
       <style>{`
@@ -261,7 +285,7 @@ export default function HomePage() {
               </Reveal>
             </div>
             <div className="mt-12">
-              <Arrivals items={ARRIVALS} cats={CATS} />
+              <Arrivals items={arrivals} cats={arrivalCats} />
             </div>
           </Container>
         </section>
