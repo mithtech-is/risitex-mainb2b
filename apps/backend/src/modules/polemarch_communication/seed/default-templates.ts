@@ -620,15 +620,18 @@ const customer: SeedTemplate[] = [
         slug: "company.approved",
         name: "Company · Wholesale approved",
         description:
-            "Admin approved the customer's B2B wholesale account.",
-        subject: "Your wholesale account is live",
+            "Admin approved the customer's B2B wholesale account. Fired inline from " +
+            "POST /admin/companies/applications/:id/approve — the same request that " +
+            "marks email_verified + phone_verified, so 'verified' is literally true here.",
+        subject: "You're verified — sign in and start shopping",
         html: renderShell({
             kicker: "Wholesale",
             accent: "#059669",
-            heading: "You're approved",
+            heading: "You're verified",
             lead:
-                "Great news, {{customer.first_name}} — your RISITEX wholesale account is approved. " +
-                "You can now see tier pricing, place bulk orders, and access the B2B catalog.",
+                "Great news, {{customer.first_name}} — your email address and company details " +
+                "have been verified, and your RISITEX wholesale account is live. " +
+                "You can sign in now to see your tier pricing and start shopping.",
             details: {
                 rows: [
                     { label: "Trade name", value: "{{trade_name}}" },
@@ -637,8 +640,8 @@ const customer: SeedTemplate[] = [
                     { label: "Payment terms", value: "{{payment_terms}}" },
                 ],
             },
-            cta: { label: "Open B2B catalog", href: "{{storefront_url}}/wholesale/catalogue" },
-            preview: "Your RISITEX wholesale account is live.",
+            cta: { label: "Sign in & start shopping", href: "{{login_url}}" },
+            preview: "Your email and company are verified — sign in and start shopping.",
         }),
         sample_data: {
             customer: { first_name: "Aarav", email: "aarav@example.com" },
@@ -646,6 +649,7 @@ const customer: SeedTemplate[] = [
             gstin: "33ABCCC1234A1Z5",
             tier_name: "Silver",
             payment_terms: "Net 30",
+            login_url: "https://risitex.in/auth/sign-in?email=aarav%40example.com",
             storefront_url: "https://risitex.in",
             dashboard_url: "https://risitex.in/b2b/dashboard",
             support_url: "https://risitex.in/contact",

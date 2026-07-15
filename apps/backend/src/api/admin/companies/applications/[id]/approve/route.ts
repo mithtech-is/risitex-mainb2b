@@ -4,6 +4,8 @@ import { z } from "zod"
 import { COMPANY_MODULE } from "../../../../../../modules/company"
 import type { CompanyModuleService } from "../../../../../../modules/company"
 import { syncCustomerTierMembership } from "../../../../../../lib/tier-group"
+import { CUSTOMER_TIER_MODULE } from "../../../../../../modules/customer_tier"
+import { sendEventNotification } from "../../../../../../modules/polemarch_communication/helpers/send-event-email"
 
 /**
  * POST /admin/companies/applications/:id/approve  (FR-1.02, FR-1.03)
@@ -173,41 +175,59 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     // verification flags are best-effort; approval still succeeds
   }
 
-  // ── 7. Approval email (FR-1.02): build the "verified + login link" and
-  //       deliver it. Done inline (not via the event bus) so it reliably
-  //       fires on every approval. Sends via the communication module if it
-  //       exposes a send API; otherwise logs the link (the dev default).
+  // ── 7. "You're verified — sign in and start shopping" (FR-1.02).
+  //       Fired inline (not via the event bus) so it reliably fires on every
+  //       approval. sendEventNotification fans out to email (the
+  //       `company.approved` template) AND WhatsApp/SMS via the event maps,
+  //       resolves the recipient from customer_id, and never throws.
+  //       Step 6 above just set email_verified + phone_verified, so the
+  //       "email and company verified" wording is accurate at this point.
+  const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER)
+  const storefront = process.env.STOREFRONT_URL ?? "http://localhost:3000"
+  const loginUrl = `${storefront}/auth/sign-in?email=${encodeURIComponent(
+    customer.email ?? "",
+  )}`
   try {
-    const logger = req.scope.resolve(ContainerRegistrationKeys.LOGGER)
-    const storefront = process.env.STOREFRONT_URL ?? "http://localhost:3000"
-    const loginLink = `${storefront}/auth/sign-in?email=${encodeURIComponent(
-      customer.email ?? "",
-    )}`
-    const subject = "Your RISITEX wholesale account is approved ✓"
-    const body =
-      `Hi ${company.trade_name || "there"}, your RISITEX wholesale account is ` +
-      `approved and verified. Sign in: ${loginLink} — use the password you set ` +
-      `when you applied.`
-    let sent = false
+    // Tier + payment-terms labels are cosmetic detail rows in the email.
+    let tierName = ""
     try {
-      const comm = req.scope.resolve("polemarch_communication") as any
-      if (typeof comm?.sendEmail === "function") {
-        await comm.sendEmail({ to: customer.email, subject, body })
-        sent = true
+      const tiers = req.scope.resolve(CUSTOMER_TIER_MODULE) as {
+        retrieveCustomerTier: (id: string) => Promise<{ name?: string }>
       }
+      const tier = await tiers.retrieveCustomerTier(parsed.data.customer_tier_id)
+      tierName = tier?.name ?? ""
     } catch {
-      /* comm module absent / different API — fall through to log */
+      // tier lookup is best-effort — the email still sends without it
     }
-    // Always log the link so it's grabbable in dev (SMTP may not be wired
-    // even if the comm module accepted the message).
-    logger.info(
-      `[approve] approval email for ${customer.email} ` +
-        `${sent ? "(handed to comm module)" : "(no provider — dev log only)"}: ` +
-        `LOGIN LINK → ${loginLink}`,
-    )
+    const termsLabel =
+      paymentTerms === "net_30"
+        ? "Net 30"
+        : paymentTerms === "net_60"
+          ? "Net 60"
+          : paymentTerms === "advance_100"
+            ? "100% advance"
+            : ""
+
+    await sendEventNotification(req.scope, "company.approved", {
+      customer_id: customer.id,
+      customer: { email: customer.email, first_name: customer.first_name || "there" },
+      // Top-level first_name/tier_name feed the WhatsApp template's
+      // positional variables; the email reads {{customer.first_name}}.
+      first_name: customer.first_name || "there",
+      trade_name: company.trade_name ?? "",
+      gstin: String((company as { gstin?: string }).gstin ?? payload.gstin ?? ""),
+      tier_name: tierName,
+      payment_terms: termsLabel,
+      login_url: loginUrl,
+      storefront_url: storefront,
+    })
   } catch {
-    // email is non-critical to the approval transaction
+    // notification is non-critical to the approval transaction
   }
+  // Log the link regardless so it's grabbable in dev when SMTP isn't wired.
+  logger.info(
+    `[approve] verified-notification sent for ${customer.email}; LOGIN LINK → ${loginUrl}`,
+  )
 
   return res.json({
     company,
