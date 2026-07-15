@@ -27,7 +27,12 @@ const NAV = [
 
 export function Topnav() {
   return (
-    <header className="sticky top-0 z-sticky border-b border-border-subtle bg-surface-background/90 backdrop-blur-modal">
+    // Solid background — NOT `bg-surface-background/90`. The semantic colours
+    // are plain `var(--…)` values with no `<alpha-value>`, so Tailwind emits NO
+    // css for an alpha modifier: `/90` silently produced a fully transparent
+    // header and the page content showed through the nav (unreadable links +
+    // buttons). Keep this opaque unless the preset gains alpha support.
+    <header className="sticky top-0 z-sticky border-b border-border-subtle bg-surface-background shadow-[0_1px_3px_rgba(20,20,18,0.04)]">
       <Container>
         <nav
           className="flex h-14 items-center justify-between gap-3"
