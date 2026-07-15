@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Inter_Tight, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
+import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
 import { Topnav } from "@/components/site/topnav";
@@ -7,28 +7,27 @@ import { Footer } from "@/components/site/footer";
 import { ThemeProvider } from "@/components/site/theme-provider";
 import { WhatsAppButton } from "@/components/site/whatsapp-button";
 
-const inter = Inter({
+/**
+ * The single typeface for the whole site — Space Grotesk.
+ *
+ * Chosen by the user after five "this looks boring" rounds: it is the face on
+ * mith.tech, the site they hold up as the standard. Geometric and slightly odd
+ * (it descends from Space Mono), it reads designed rather than default, which
+ * Inter Tight — the previous pick — did not.
+ *
+ * It carries display, body and numerics alike: it holds up at a 100px+ hero and
+ * stays legible at a 13px table label, and it has tabular figures, which is
+ * what keeps invoice and order columns aligned (see the global
+ * `font-variant-numeric` rule in @risitex/ui/styles.css).
+ *
+ * This used to load four families — Inter, Inter Tight, JetBrains Mono and
+ * Source Serif 4 — while the CSS only ever resolved to one of them. Source
+ * Serif in particular was downloaded on every page and referenced nowhere. If
+ * you add a face here, make sure something actually renders in it.
+ */
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-// Primary UI face — Inter Tight (tighter, more editorial than Inter).
-const interTight = Inter_Tight({
-  subsets: ["latin"],
-  variable: "--font-inter-tight",
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
-  display: "swap",
-});
-
-const sourceSerif = Source_Serif_4({
-  subsets: ["latin"],
-  variable: "--font-source-serif",
+  variable: "--font-space-grotesk",
   display: "swap",
 });
 
@@ -73,7 +72,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} ${sourceSerif.variable}`}
+      className={spaceGrotesk.variable}
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-surface-background text-text-primary text-body-md antialiased">

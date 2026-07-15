@@ -169,10 +169,16 @@ function NavSearch() {
   return (
     <div ref={wrapRef} className="relative hidden md:block">
       <form onSubmit={submit} role="search">
-        {/* left-4 (16px) is on the spacing scale — the old `left-3.5` was NOT,
-            so it emitted no CSS and the icon sat jammed against the pill edge. */}
+        {/*
+         * left-5 = 20px, matching the pill's cap radius (rounded-full on a 40px
+         * field = a 20px semicircle) and the 20px pr-5 on the other end. At
+         * left-4 the icon sat *inside* the curve and the two ends were
+         * optically lopsided — which is what read as broken padding.
+         * NB on-scale keys only: `left-3.5`/`left-[18px]`-style values from the
+         * replaced spacing scale emit no CSS at all.
+         */}
         <Search
-          className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
+          className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
           aria-hidden
         />
         <input
@@ -188,8 +194,10 @@ function NavSearch() {
           aria-label="Search all products"
           /* Widths are arbitrary [px] on purpose: w-44 / w-64 are OFF the
              replaced spacing scale and emitted nothing, so the field had no
-             width at all. pl-12 (48px) clears the 16px icon at left-4 (ends
-             32px) with a 16px gutter — text can never collide with it. */
+             width at all. The icon runs 20→36px (left-5, 16px wide), so pl-12
+             (48px) leaves a 12px gutter before the text — tight enough to read
+             as one unit, wide enough that they never touch. pr-5 (20px)
+             mirrors the icon's 20px inset, so both caps are optically equal. */
           className="h-10 w-[210px] rounded-full border border-text-primary bg-surface-raised pl-12 pr-5 text-body-sm text-text-primary placeholder:text-text-muted outline-none transition-[width,box-shadow] duration-base ease-standard focus:w-[300px] focus-visible:ring-2 focus-visible:ring-text-primary"
         />
       </form>

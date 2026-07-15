@@ -1,515 +1,452 @@
 import Link from "next/link";
 import Image from "next/image";
-import {
-  ShieldCheck,
-  BadgePercent,
-  Boxes,
-  Truck,
-  ReceiptText,
-  Handshake,
-} from "lucide-react";
-import { Button } from "@risitex/ui/components";
 import { Container } from "@/components/site/container";
 import { SignedOut, SignedIn } from "@/components/auth/signed-out";
+import { Arrivals, type Arrival } from "@/components/site/arrivals";
+import { FaqList } from "@/components/site/faq";
+import { SmoothScroll, Cursor, Reveal, Lines, RevealImage, Magnetic } from "@/components/site/fx";
 
-const CATEGORIES = [
+/**
+ * Homepage — "Cut From The Same Cloth".
+ *
+ * Direction agreed after five rejected iterations. The thing that finally
+ * explained them: every previous attempt was on CREAM, while mith.tech — the
+ * site the user holds up as the standard — is PURE BLACK with one characterful
+ * face and scroll motion. It has no 3D and no custom cursor at all; the depth
+ * they were describing is contrast + motion. Palette was the variable nobody
+ * changed.
+ *
+ * THE WHOLE PAGE FOLLOWS THE THEME. An earlier pass pinned the photographic
+ * spine to ink in both themes on the theory that white type over photography
+ * needs a dark plate; the user rejected that outright — clicking light mode
+ * must turn the entire homepage light. So every surface here uses semantic
+ * tokens, and scrims are built from `--rx-plate` (the current surface as an RGB
+ * triplet, flipped in the <style> block) so a photo always fades into the real
+ * background instead of into a hardcoded black.
+ *
+ * Content is a narrative, not a stack: Thread → Loom → Cut → Carton, so
+ * scrolling is a garment being made.
+ *
+ * HARD RULES (each has shipped a bug here):
+ *   - NEVER a colour alpha modifier (`bg-x/90`, `text-x/60`). Semantic colours
+ *     are plain `var(--…)` with no <alpha-value> → Tailwind emits NOTHING and
+ *     the element renders transparent. Use `opacity-*` or an explicit rgba().
+ *   - Spacing keys are a REPLACED scale: 0 px 0.5 1 2 3 4 5 6 8 10 12 16 20 24
+ *     32 only. Anything else (7, 14, 44, 1.5…) emits nothing → arbitrary [Npx].
+ *   - `text-display-*` caps at 104px — far too small for a hero. Display type
+ *     uses arbitrary viewport clamps.
+ *   - `--brand-accent` is #222222 (monochrome), NOT the indigo semantic.ts
+ *     claims. styles.css wins. Probe the browser, don't read the TS.
+ */
+
+const CATS = ["All", "Innerwear", "Jeans", "Bottom Wear", "Pyjamas"];
+
+const ARRIVALS: Arrival[] = [
+  { href: "/wholesale/catalogue?cat=men-innerwear", name: "Boxer Short — Poplin", cat: "Innerwear", spec: "180 GSM", moq: "240 pcs", badge: "New", image: "/demo/products/photo-04.jpg", hover: "/demo/products/photo-05.jpg" },
+  { href: "/wholesale/catalogue?cat=men-jeans", name: "Straight Jean — Rigid", cat: "Jeans", spec: "12 OZ", moq: "240 pcs", image: "/demo/products/jeans-light-blue.jpg", hover: "/demo/products/jeans-dark-blue.jpg" },
+  { href: "/wholesale/catalogue?cat=men-bottom-wear", name: "Printed Boxer — Sateen", cat: "Bottom Wear", spec: "140 GSM", moq: "480 pcs", badge: "Low MOQ", image: "/demo/products/images.jpeg", hover: "/demo/products/photo-12.jpg" },
+  { href: "/wholesale/catalogue?cat=men-pyjamas", name: "Lounge Pyjama — Twill", cat: "Pyjamas", spec: "140 GSM", moq: "240 pcs", image: "/demo/products/photo-13.jpg", hover: "/demo/products/photo-07.jpg" },
+  { href: "/wholesale/catalogue?cat=men-jeans", name: "Tapered Jean — Stretch", cat: "Jeans", spec: "10 OZ", moq: "240 pcs", image: "/demo/products/jeans-dark-blue.jpg", hover: "/demo/products/photo-12.jpg" },
+  { href: "/wholesale/catalogue?cat=men-innerwear", name: "Inner Boxer — Combed", cat: "Innerwear", spec: "160 GSM", moq: "480 pcs", image: "/demo/products/photo-05.jpg", hover: "/demo/products/photo-04.jpg" },
+  { href: "/wholesale/catalogue?cat=men-bottom-wear", name: "Utility Trouser — Drill", cat: "Bottom Wear", spec: "8 OZ", moq: "240 pcs", badge: "New", image: "/demo/products/photo-07.jpg", hover: "/demo/products/photo-13.jpg" },
+  { href: "/wholesale/catalogue?cat=men-pyjamas", name: "Night Set — Khadi", cat: "Pyjamas", spec: "140 GSM", moq: "240 pcs", image: "/demo/products/photo-09.jpg", hover: "/demo/products/photo-05.jpg" },
+];
+
+/**
+ * The narrative spine: fabric → colour → craft → delivery.
+ *
+ * `title` is an ARRAY OF LINES, not a sentence — <Lines> clips each entry to
+ * exactly one line height, so anything that wraps gets guillotined. Break by
+ * hand and keep each line short enough to hold at the clamp's max size.
+ */
+const CHAPTERS = [
   {
-    href: "/wholesale/catalogue?cat=men-innerwear",
-    label: "Innerwear",
-    desc: "Inner boxers, boxer shorts",
-    image: "/demo/products/photo-05.jpg",
+    n: "01",
+    kicker: "The Fabric",
+    title: ["Every great garment", "starts with the", "right fabric."],
+    body: "Comfort begins long before the first stitch. Every fabric is selected for softness, durability and breathability, ensuring every garment delivers lasting performance and everyday comfort.",
+    image: "/demo/products/photo-09.jpg",
+    meta: [{ k: "Fabric", v: "Premium cotton blends" }, { k: "Origin", v: "Carefully sourced" }],
   },
   {
-    href: "/wholesale/catalogue?cat=men-bottom-wear",
-    label: "Bottom Wear",
-    desc: "Pyjamas, jeans, trousers",
-    image: "/demo/products/images.jpeg",
+    n: "02",
+    kicker: "The Colour",
+    title: ["Then comes", "character."],
+    body: "From timeless indigo denim to refined everyday shades, every colour is developed for consistency, lasting richness and dependable performance through repeated wear.",
+    image: "/demo/products/photo-12.jpg",
+    meta: [{ k: "Colour fastness", v: "High" }, { k: "Finish", v: "Premium washes" }],
+    align: "right" as const,
   },
   {
-    href: "/wholesale/catalogue?cat=men-jeans",
-    label: "Jeans",
-    desc: "Slim, straight, tapered & more",
-    image: "/demo/products/jeans-light-blue.jpg",
+    n: "03",
+    kicker: "The Craft",
+    title: ["Every stitch", "has a purpose."],
+    body: "Precision cutting, reinforced construction and careful finishing ensure every pair of jeans, boxer shorts and pyjamas is built to last and made to be worn every day.",
+    image: "/demo/products/photo-07.jpg",
+    meta: [{ k: "Quality", v: "100% checked" }, { k: "Construction", v: "Precision tailoring" }],
   },
   {
-    href: "/wholesale/catalogue?cat=men-pyjamas",
-    label: "Pyjamas",
-    desc: "Comfort loungewear & nightwear",
-    image: "/demo/products/jeans-dark-blue.jpg",
+    n: "04",
+    kicker: "Ready to Deliver",
+    title: ["Prepared for", "your business."],
+    body: "Each order is inspected, packed and dispatched with consistency, giving retailers dependable products that arrive ready for shelves and customers.",
+    image: "/demo/products/photo-13.jpg",
+    meta: [{ k: "MOQ", v: "Business friendly" }, { k: "Lead time", v: "Reliable delivery" }],
+    align: "right" as const,
   },
 ];
 
-const FEATURES = [
-  {
-    icon: ShieldCheck,
-    title: "Verified Wholesale Platform",
-    desc: "Only verified retailers, distributors, and business buyers can place wholesale orders, ensuring a secure B2B marketplace.",
-    chip: "bg-indigo-500",
-    bar: "bg-indigo-500",
-  },
-  {
-    icon: BadgePercent,
-    title: "Business Pricing Engine",
-    desc: "Access tier-based pricing, bulk discounts, and volume incentives tailored to your business profile.",
-    chip: "bg-ochre-500",
-    bar: "bg-ochre-500",
-  },
-  {
-    icon: Boxes,
-    title: "Intelligent Inventory",
-    desc: "Monitor live inventory, production capacity, and lead times so you can plan procurement with confidence.",
-    chip: "bg-sage-500",
-    bar: "bg-sage-500",
-  },
-  {
-    icon: Truck,
-    title: "End-to-End Order Visibility",
-    desc: "Track your order from approval through dispatch and delivery, with real-time shipment updates and downloadable invoices.",
-    chip: "bg-madder-500",
-    bar: "bg-madder-500",
-  },
-  {
-    icon: ReceiptText,
-    title: "GST & Business Compliance",
-    desc: "Receive GST-ready invoices, complete order history, and business documentation designed for accounting and compliance.",
-    chip: "bg-slate-cool-500",
-    bar: "bg-slate-cool-500",
-  },
-  {
-    icon: Handshake,
-    title: "Dedicated Relationship Support",
-    desc: "Our team assists with quotations, sourcing, logistics, and ongoing wholesale requirements to help your business grow.",
-    chip: "bg-indigo-500",
-    bar: "bg-indigo-500",
-  },
+const TRADE = [
+  { n: "01", t: "Verified business platform", d: "Business-only access for retailers, distributors and wholesale buyers." },
+  { n: "02", t: "Competitive wholesale pricing", d: "Factory-direct pricing designed to improve your margins." },
+  { n: "03", t: "Reliable inventory", d: "Clear stock visibility and dependable production planning." },
+  { n: "04", t: "Transparent order tracking", d: "Track every order from confirmation to dispatch." },
+  { n: "05", t: "GST ready", d: "Professional GST invoices and complete order records." },
+  { n: "06", t: "Dedicated business support", d: "Real people helping you source with confidence." },
 ];
 
-const INDUSTRIES = [
-  { href: "/wholesale/catalogue", label: "Retail Chains", desc: "Multi-brand stores and retail networks" },
-  { href: "/wholesale/catalogue", label: "Hospitality", desc: "Hotels, resorts, and serviced apartments" },
-  { href: "/wholesale/catalogue", label: "Corporate", desc: "Uniform programmes and bulk corporate orders" },
-  { href: "/wholesale/catalogue", label: "E-commerce Sellers", desc: "Online retailers and marketplace sellers" },
+const FAQS = [
+  { q: "What is the minimum order quantity?", a: "Most products start from 240 pieces per SKU, while selected collections may be available with lower trial quantities." },
+  { q: "Who can purchase from Risitex?", a: "Risitex is exclusively for retailers, distributors, wholesalers and registered business buyers." },
+  { q: "What payment options do you offer?", a: "We support secure business payments through approved payment methods shared during order confirmation." },
+  { q: "Do you deliver across India?", a: "Yes. We deliver across India through trusted logistics partners." },
+  { q: "How long does production take?", a: "Lead times generally range from 10–35 days depending on product category and order quantity." },
+  { q: "Can I request custom manufacturing?", a: "Yes. We support OEM manufacturing, private labelling and custom production for qualifying order volumes." },
 ];
+
+const MARQUEE = ["Jeans", "Boxer shorts", "Innerwear", "Pyjamas", "Made in India", "Business only"];
+
+/** Ink link with an underline that wipes in from the left. */
+function InkLink({ href, children, solid = false }: { href: string; children: React.ReactNode; solid?: boolean }) {
+  return (
+    <Link
+      href={href}
+      data-cursor=""
+      className={
+        solid
+          ? "group relative inline-flex items-center gap-3 overflow-hidden bg-text-primary px-8 py-4 text-caption uppercase tracking-[0.16em] text-surface-background"
+          : "group relative inline-flex items-center gap-3 py-4 text-caption uppercase tracking-[0.16em] text-text-primary"
+      }
+    >
+      <Magnetic>
+        <span className="inline-flex items-center gap-3">
+          {children}
+          <span aria-hidden className="transition-transform duration-500 ease-standard group-hover:translate-x-1">→</span>
+        </span>
+      </Magnetic>
+      {!solid ? (
+        <span
+          aria-hidden
+          className="absolute inset-x-0 bottom-2 h-px origin-left scale-x-100 bg-border-strong transition-transform duration-500 ease-standard group-hover:scale-x-0"
+        />
+      ) : null}
+    </Link>
+  );
+}
 
 export default function HomePage() {
   return (
     <>
-      {/* HERO */}
-      <section className="relative overflow-hidden border-b border-border-subtle bg-gradient-to-br from-surface-background via-surface-sunken to-surface-background">
-        <Container>
-          <div className="grid grid-cols-1 gap-12 py-16 md:py-24 lg:grid-cols-12 lg:gap-10 lg:py-32">
-            <div className="flex flex-col justify-center lg:col-span-7 xl:col-span-6">
-              <p className="text-micro uppercase tracking-[0.18em] text-text-muted">
-                India&rsquo;s Premium B2B Textile Platform
-              </p>
-              <h1 className="mt-4 text-display-xl text-text-primary">
-                Manufactured in India.
-                <br />
-                <span className="font-display italic">Priced for Volume.</span>
-              </h1>
-              <p className="mt-6 max-w-prose text-body-lg text-text-secondary">
-                RISITEX connects textile manufacturers directly with dealers,
-                distributors, retailers, and businesses. Premium innerwear,
-                loungewear, and fabrics at factory-direct wholesale pricing.
-              </p>
+      <style>{`
+        @keyframes rx-marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+        .rx-marquee { animation: rx-marquee 38s linear infinite; }
+        @media (prefers-reduced-motion: reduce) { .rx-marquee { animation: none !important } }
 
-              <div className="mt-10 flex flex-wrap items-center gap-3">
-                <Button asChild size="lg">
-                  <Link href="/wholesale/catalogue">Browse Catalogue</Link>
-                </Button>
-                <SignedOut>
-                  <Button variant="secondary" size="lg" asChild>
-                    <Link href="/auth/sign-in">Sign In &rarr;</Link>
-                  </Button>
-                </SignedOut>
-                <SignedIn>
-                  <Button variant="secondary" size="lg" asChild>
-                    <Link href="/b2b/dashboard">Open dashboard &rarr;</Link>
-                  </Button>
-                </SignedIn>
-              </div>
-              <SignedOut>
-                <p className="mt-3 text-body-sm text-text-muted">
-                  Don&rsquo;t have an account?{" "}
-                  <Link
-                    href="/auth/sign-up"
-                    className="text-text-primary underline-offset-4 hover:underline"
-                  >
-                    Register your business
-                  </Link>
+        /*
+         * --rx-plate: the RGB triplet of whatever the page surface currently is.
+         * Scrims over photography are built from it, so a photo plate always
+         * fades into the real background instead of into a hardcoded black.
+         * This is what makes the hero flip properly in light mode — the whole
+         * page follows the theme, not just the copy.
+         * Selectors mirror @risitex/ui/styles.css exactly; keep them in sync.
+         */
+        .rx-spine { --rx-plate: 247,247,242; }
+        @media (prefers-color-scheme: dark) {
+          :root:not([data-theme="light"]) .rx-spine { --rx-plate: 10,10,9; }
+        }
+        :root[data-theme="dark"] .rx-spine { --rx-plate: 10,10,9; }
+
+        /* The custom cursor replaces the pointer on fine-pointer devices only. */
+        @media (min-width: 1024px) and (pointer: fine) {
+          .rx-spine, .rx-spine a, .rx-spine button { cursor: none }
+        }
+      `}</style>
+
+      <SmoothScroll />
+      <Cursor />
+
+      {/* ══ THE SPINE — ink in BOTH themes, on purpose (see header note) ══ */}
+      <div className="rx-spine bg-surface-background text-text-primary">
+        {/* ── HERO ─────────────────────────────────────────── */}
+        <section className="relative flex h-[92svh] min-h-[560px] w-full flex-col justify-end overflow-hidden">
+          {/* Wrapped, not `className="absolute inset-0"` — RevealImage is itself
+              `relative`, and Tailwind emits `relative` AFTER `absolute`, so the
+              caller's `absolute` loses and the frame collapses to zero height. */}
+          <div className="absolute inset-0">
+            <RevealImage
+              src="/demo/products/photo-04.jpg"
+              alt="RISITEX cut-and-sew apparel"
+              className="h-full w-full"
+              parallax={0.2}
+              priority
+            />
+          </div>
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(var(--rx-plate),0.72) 0%, rgba(var(--rx-plate),0.12) 30%, rgba(var(--rx-plate),0.55) 72%, rgba(var(--rx-plate),0.95) 100%)",
+            }}
+          />
+
+          <Container className="relative z-10 pb-12">
+            <Reveal>
+              <p className="text-micro uppercase tracking-[0.3em] opacity-70">
+                Est. 2019 · Bengaluru · Made for men
+              </p>
+            </Reveal>
+            <h1 className="mt-6 text-[clamp(2.25rem,7.6vw,7rem)] font-medium leading-[0.92] tracking-[-0.04em]">
+              <Lines delay={0.1}>{["Everyday essentials.", "Crafted properly."]}</Lines>
+            </h1>
+            <div className="mt-10 flex flex-wrap items-end justify-between gap-8 border-t border-border-subtle pt-6">
+              <Reveal delay={0.25}>
+                <p className="max-w-[44ch] text-body-lg leading-relaxed opacity-75">
+                  Premium jeans, boxer shorts, innerwear and pyjamas made with
+                  quality fabrics and precise craftsmanship. Built for everyday
+                  wear, for retailers and distributors across India.
                 </p>
-              </SignedOut>
-
-              <div className="mt-12 grid grid-cols-3 gap-6">
-                <div>
-                  <p className="text-heading-lg text-text-primary numerics-tabular">500+</p>
-                  <p className="text-caption text-text-muted">Products</p>
+              </Reveal>
+              <Reveal delay={0.35}>
+                <div className="flex flex-wrap items-center gap-4">
+                  <InkLink href="/wholesale/catalogue" solid>Explore Collection</InkLink>
+                  <SignedOut><InkLink href="/auth/sign-up">Become a Partner</InkLink></SignedOut>
+                  <SignedIn><InkLink href="/b2b/dashboard">Go to Dashboard</InkLink></SignedIn>
                 </div>
-                <div>
-                  <p className="text-heading-lg text-text-primary numerics-tabular">50+</p>
-                  <p className="text-caption text-text-muted">Dealers Nationwide</p>
-                </div>
-                <div>
-                  <p className="text-heading-lg text-text-primary numerics-tabular">10</p>
-                  <p className="text-caption text-text-muted">Years of Excellence</p>
-                </div>
-              </div>
+              </Reveal>
             </div>
+          </Container>
+        </section>
 
-            <div className="lg:col-span-5 xl:col-span-6">
-              <div className="group relative aspect-[4/5] w-full overflow-hidden rounded-xl ring-1 ring-border-subtle shadow-rest">
-                <Image
-                  src="/demo/products/photo-07.jpg"
-                  alt="RISITEX wholesale textiles — manufactured in India"
-                  fill
-                  priority
-                  sizes="(min-width: 1280px) 50vw, (min-width: 1024px) 42vw, 100vw"
-                  className="object-cover transition-transform duration-slow ease-standard group-hover:scale-[1.02]"
-                />
-                <div
-                  aria-hidden
-                  className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"
-                />
-                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-3 rounded-md bg-surface-background/85 px-4 py-2.5 backdrop-blur-modal">
-                  <div>
-                    <p className="text-micro uppercase tracking-[0.2em] text-text-muted">
-                      Bangalore · Karnataka
-                    </p>
-                    <p className="mt-0.5 text-body-sm text-text-primary">
-                      Factory-direct, GST-invoiced, palletised dispatch
-                    </p>
-                  </div>
-                </div>
+        {/* ── MARQUEE ──────────────────────────────────────── */}
+        <div className="overflow-hidden border-y border-border-subtle py-5">
+          <div className="rx-marquee flex w-max whitespace-nowrap">
+            {[0, 1].map((dup) => (
+              <div key={dup} className="flex shrink-0 items-center" aria-hidden={dup === 1}>
+                {MARQUEE.map((m) => (
+                  <span key={`${dup}-${m}`} className="flex items-center text-[clamp(1.5rem,3.4vw,3rem)] font-medium uppercase tracking-[-0.02em]">
+                    <span className="px-8">{m}</span>
+                    <span className="opacity-40">✳</span>
+                  </span>
+                ))}
               </div>
-            </div>
+            ))}
           </div>
-        </Container>
-      </section>
+        </div>
 
-      {/* CATEGORIES */}
-      <section className="border-b border-border-subtle py-16 md:py-20">
-        <Container>
-          <div className="text-center">
-            <p className="text-micro text-text-muted">Product Categories</p>
-            <h2 className="mt-2 text-heading-xl text-text-primary">
-              Explore Our Range
+        {/* ── NEW ARRIVALS ─────────────────────────────────── */}
+        <section className="py-24 md:py-32">
+          <Container>
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <div>
+                <Reveal>
+                  <p className="text-micro uppercase tracking-[0.3em] opacity-55">Our collection</p>
+                </Reveal>
+                <h2 className="mt-5 text-[clamp(2rem,5vw,4rem)] font-medium leading-[0.95] tracking-[-0.035em]">
+                  <Lines>{["Men's essentials.", "Done right."]}</Lines>
+                </h2>
+              </div>
+              <Reveal delay={0.1}>
+                <InkLink href="/wholesale/catalogue">View Full Collection</InkLink>
+              </Reveal>
+            </div>
+            <div className="mt-12">
+              <Arrivals items={ARRIVALS} cats={CATS} />
+            </div>
+          </Container>
+        </section>
+
+        {/* ── THE FOUR CHAPTERS — the story spine ──────────── */}
+        {CHAPTERS.map((c) => (
+          <section key={c.n} className="border-t border-border-subtle py-20 md:py-28">
+            <Container>
+              <div className={`grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-16 ${c.align === "right" ? "" : ""}`}>
+                <div className={`lg:col-span-6 ${c.align === "right" ? "lg:order-2" : ""}`}>
+                  <RevealImage
+                    src={c.image}
+                    alt={c.kicker}
+                    className="aspect-[4/5] w-full"
+                    parallax={0.16}
+                  />
+                </div>
+                <div className={`lg:col-span-6 ${c.align === "right" ? "lg:order-1" : ""}`}>
+                  <Reveal>
+                    <p className="text-micro uppercase tracking-[0.3em] opacity-55">
+                      <span className="opacity-100">{c.n}</span>
+                      <span className="mx-3">—</span>
+                      {c.kicker}
+                    </p>
+                  </Reveal>
+                  <h2 className="mt-5 text-[clamp(2rem,4.6vw,3.75rem)] font-medium leading-[0.98] tracking-[-0.035em]">
+                    <Lines>{c.title}</Lines>
+                  </h2>
+                  <Reveal delay={0.15}>
+                    <p className="mt-6 max-w-[46ch] text-body-lg leading-relaxed opacity-70">{c.body}</p>
+                  </Reveal>
+                  <Reveal delay={0.25}>
+                    <dl className="mt-10 flex flex-wrap gap-x-12 gap-y-5 border-t border-border-subtle pt-6">
+                      {c.meta.map((m) => (
+                        <div key={m.k}>
+                          <dt className="text-micro uppercase tracking-[0.2em] opacity-45">{m.k}</dt>
+                          <dd className="mt-2 text-body-lg numerics-tabular">{m.v}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </Reveal>
+                </div>
+              </div>
+            </Container>
+          </section>
+        ))}
+
+        {/* ── TWO EDITORIAL CARDS (the reference's mid-page pair) ── */}
+        <section className="border-t border-border-subtle py-20 md:py-28">
+          <Container>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
+              {[
+                { t: "Order once. Reorder with confidence.", d: "The same fabric, the same fit, every run.", href: "/wholesale/catalogue", img: "/demo/products/photo-05.jpg", cta: "Explore" },
+                { t: "Made for business buyers.", d: "Wholesale pricing, clear stock, GST invoices, real support.", href: "/auth/sign-up", img: "/demo/products/images.jpeg", cta: "Apply" },
+              ].map((card) => (
+                <Link key={card.t} href={card.href} data-cursor={card.cta} className="group relative block aspect-[4/3] overflow-hidden">
+                  <Image
+                    src={card.img}
+                    alt=""
+                    fill
+                    sizes="(min-width: 768px) 50vw, 100vw"
+                    className="scale-[1.02] object-cover transition-transform duration-[900ms] ease-standard group-hover:scale-[1.08]"
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 transition-opacity duration-500 group-hover:opacity-80"
+                    style={{ background: "linear-gradient(0deg, rgba(var(--rx-plate),0.88) 0%, rgba(var(--rx-plate),0.15) 60%, rgba(var(--rx-plate),0) 100%)" }}
+                  />
+                  <div className="absolute inset-x-0 bottom-0 p-8">
+                    <h3 className="max-w-[16ch] text-[clamp(1.5rem,2.6vw,2.25rem)] font-medium leading-[1.05] tracking-[-0.03em]">
+                      {card.t}
+                    </h3>
+                    <p className="mt-3 max-w-[36ch] text-body-sm opacity-70">{card.d}</p>
+                    <span className="mt-6 inline-block overflow-hidden">
+                      <span className="inline-block border-b border-border-strong pb-1 text-caption uppercase tracking-[0.16em] transition-transform duration-500 ease-standard group-hover:translate-x-2">
+                        {card.cta} →
+                      </span>
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </Container>
+        </section>
+
+        {/* ── CLOSER — overlapping display type over photography ── */}
+        <section className="relative flex h-[80vh] min-h-[460px] items-center justify-center overflow-hidden border-t border-border-subtle">
+          <div className="absolute inset-0">
+            <RevealImage src="/demo/products/photo-12.jpg" alt="" className="h-full w-full" parallax={0.22} />
+          </div>
+          {/*
+           * Plate + vignette, no ghosted display type.
+           * A giant marquee ran behind this headline and it was unreadable —
+           * two competing texts at 14vw fighting over the same pixels. The
+           * photograph is the interest; the copy just needs to sit on it
+           * cleanly. Radial first (focuses the eye centre), then a floor so the
+           * buttons never land on a highlight.
+           */}
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(120% 90% at 50% 45%, rgba(var(--rx-plate),0.62) 0%, rgba(var(--rx-plate),0.82) 55%, rgba(var(--rx-plate),0.94) 100%)",
+            }}
+          />
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 h-1/3"
+            style={{ background: "linear-gradient(0deg, rgba(var(--rx-plate),0.9) 0%, rgba(var(--rx-plate),0) 100%)" }}
+          />
+          <Container className="relative z-10 text-center">
+            <h2 className="text-[clamp(2.25rem,6vw,5rem)] font-medium leading-[0.95] tracking-[-0.04em]">
+              <Lines>{["Let's build your", "next collection."]}</Lines>
             </h2>
-            <p className="mt-3 text-body-lg text-text-secondary max-w-2xl mx-auto">
-              Premium textile products across categories, available for wholesale
-              and bulk orders.
-            </p>
-          </div>
-          <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
-            {CATEGORIES.map((cat) => (
-              <Link
-                key={cat.label}
-                href={cat.href}
-                className="group block rounded-lg focus-visible:ring-focus"
-              >
-                <article className="flex flex-col gap-3">
-                  <div className="relative aspect-square overflow-hidden rounded-lg ring-1 ring-border-subtle bg-surface-sunken transition-all duration-base ease-standard group-hover:-translate-y-1 group-hover:shadow-raised">
-                    <Image
-                      src={cat.image}
-                      alt={cat.label}
-                      fill
-                      sizes="(min-width: 768px) 25vw, 50vw"
-                      className="object-cover transition-transform duration-normal ease-standard group-hover:scale-[1.04]"
-                    />
-                  </div>
-                  <h3 className="text-body-md font-medium text-text-primary">
-                    {cat.label}
+            <Reveal delay={0.2}>
+              <p className="mx-auto mt-6 max-w-[44ch] text-body-lg opacity-70">
+                Whether you're a retailer, distributor or growing brand, Risitex
+                delivers dependable manufacturing, consistent quality and
+                business-first service.
+              </p>
+            </Reveal>
+            <Reveal delay={0.3}>
+              <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+                <InkLink href="/auth/sign-up" solid>Create Business Account</InkLink>
+                <InkLink href="/contact">Contact Sales</InkLink>
+              </div>
+            </Reveal>
+          </Container>
+        </section>
+      </div>
+
+      {/* ══ TRADE CONTENT — follows the theme (light-mode support) ══ */}
+      <section className="border-b border-border-subtle bg-surface-background py-24 md:py-32">
+        <Container>
+          <Reveal>
+            <p className="text-micro uppercase tracking-[0.3em] text-text-muted">Why Risitex</p>
+          </Reveal>
+          <h2 className="mt-5 max-w-[18ch] text-[clamp(2rem,4.6vw,3.5rem)] font-medium leading-[0.98] tracking-[-0.035em] text-text-primary">
+            <Lines>{["Why businesses", "choose Risitex."]}</Lines>
+          </h2>
+          <div className="mt-14 border-t border-border-subtle">
+            {TRADE.map((f, i) => (
+              <Reveal key={f.n} delay={i * 0.04}>
+                <div className="group grid grid-cols-1 items-start gap-3 border-b border-border-subtle py-8 transition-colors duration-base hover:bg-surface-sunken md:grid-cols-12 md:gap-6">
+                  <span className="text-caption tracking-[0.16em] text-text-muted md:col-span-1 md:pt-2">{f.n}</span>
+                  <h3 className="text-heading-sm text-text-primary transition-transform duration-slow ease-standard group-hover:translate-x-2 md:col-span-3">
+                    {f.t}
                   </h3>
-                  <p className="text-body-sm text-text-muted">{cat.desc}</p>
-                </article>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-10 text-center">
-            <Button variant="secondary" asChild>
-              <Link href="/wholesale/catalogue">View Full Catalogue &rarr;</Link>
-            </Button>
-          </div>
-        </Container>
-      </section>
-
-      {/* WHY RISITEX */}
-      <section className="border-b border-border-subtle py-16 md:py-20">
-        <Container>
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-micro font-semibold uppercase tracking-[0.2em] text-brand-accent">
-              Why RISITEX
-            </p>
-            <h2 className="mt-3 font-display text-display-lg text-text-primary">
-              Built for{" "}
-              <span className="relative whitespace-nowrap">
-                Wholesale
-                <span
-                  aria-hidden
-                  className="absolute -bottom-1 left-0 h-1 w-full rounded-full bg-ochre-400"
-                />
-              </span>
-            </h2>
-            <p className="mt-4 text-body-md text-text-secondary">
-              Everything a serious B2B buyer needs — from verification to
-              delivery — engineered into one platform.
-            </p>
-          </div>
-          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((f) => (
-              <div
-                key={f.title}
-                className="group relative overflow-hidden rounded-2xl border border-border-subtle bg-surface-raised p-6 transition-all duration-base ease-standard hover:-translate-y-1 hover:border-border-strong hover:shadow-popover"
-              >
-                {/* solid colour chip — tilts + grows on hover */}
-                <span
-                  className={`relative inline-flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-rest transition-transform duration-base ease-standard group-hover:-rotate-6 group-hover:scale-110 ${f.chip}`}
-                >
-                  <f.icon className="h-6 w-6" aria-hidden />
-                </span>
-                <h3 className="relative mt-5 font-display text-heading-md text-text-primary">
-                  {f.title}
-                </h3>
-                <p className="relative mt-2 text-body-md leading-relaxed text-text-secondary">
-                  {f.desc}
-                </p>
-                {/* constant colour accent along the bottom edge */}
-                <span
-                  aria-hidden
-                  className={`absolute inset-x-0 bottom-0 h-1 ${f.bar}`}
-                />
-              </div>
+                  <p className="text-body-md leading-relaxed text-text-secondary md:col-span-8">{f.d}</p>
+                </div>
+              </Reveal>
             ))}
           </div>
         </Container>
       </section>
 
-      {/* INDUSTRIES */}
-      <section className="border-b border-border-subtle py-16 md:py-20 bg-surface-sunken">
+      {/* ── FAQ ──────────────────────────────────────────── */}
+      <section className="bg-surface-background py-24 md:py-32">
+        {/* Full width on purpose — a 4/8 split parked the heading in a narrow
+            column and left a dead gap beside every short question. */}
         <Container>
-          <div className="text-center">
-            <p className="text-micro text-text-muted">Buyer Segments</p>
-            <h2 className="mt-2 text-heading-xl text-text-primary">
-              Who We Partner With
-            </h2>
-          </div>
-          <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {INDUSTRIES.map((ind) => (
-              <Link
-                key={ind.label}
-                href={ind.href}
-                className="group block rounded-lg border border-border-subtle bg-surface-background p-6 transition-all duration-base hover:shadow-raised"
-              >
-                <h3 className="text-heading-sm text-text-primary group-hover:text-brand-accent">
-                  {ind.label}
-                </h3>
-                <p className="mt-2 text-body-md text-text-secondary">
-                  {ind.desc}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </Container>
-      </section>
-
-      {/* MANUFACTURING CAPABILITIES */}
-      <section className="border-b border-border-subtle py-16 md:py-20">
-        <Container>
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-10">
-            <div className="lg:col-span-5">
-              <p className="text-micro text-text-muted">Production Standards</p>
-              <h2 className="mt-3 text-display-lg text-text-primary">
-                Vertically Integrated Manufacturing
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <Reveal>
+                <p className="text-micro uppercase tracking-[0.3em] text-text-muted">FAQ</p>
+              </Reveal>
+              <h2 className="mt-5 text-[clamp(2rem,4.6vw,3.5rem)] font-medium leading-[1] tracking-[-0.035em] text-text-primary">
+                <Lines>{["Questions, answered."]}</Lines>
               </h2>
-              <p className="mt-4 text-body-lg text-text-secondary">
-                From fibre to finished garment, our facilities in Karnataka
-                handle every stage of production with rigorous quality control.
-              </p>
-              <ul className="mt-6 space-y-3">
-                <li className="flex items-start gap-3 text-body-md text-text-secondary">
-                  <span aria-hidden className="mt-1 h-1.5 w-1.5 rounded-full bg-brand-accent shrink-0" />
-                  Spinning &amp; weaving units
-                </li>
-                <li className="flex items-start gap-3 text-body-md text-text-secondary">
-                  <span aria-hidden className="mt-1 h-1.5 w-1.5 rounded-full bg-brand-accent shrink-0" />
-                  Dyeing &amp; finishing facilities
-                </li>
-                <li className="flex items-start gap-3 text-body-md text-text-secondary">
-                  <span aria-hidden className="mt-1 h-1.5 w-1.5 rounded-full bg-brand-accent shrink-0" />
-                  Cutting, sewing &amp; packaging lines
-                </li>
-                <li className="flex items-start gap-3 text-body-md text-text-secondary">
-                  <span aria-hidden className="mt-1 h-1.5 w-1.5 rounded-full bg-brand-accent shrink-0" />
-                  In-house quality testing lab
-                </li>
-              </ul>
-              <div className="mt-8">
-                <Button variant="secondary" asChild>
-                  <Link href="/about">Explore RISITEX &rarr;</Link>
-                </Button>
-              </div>
             </div>
-            <div className="lg:col-span-7">
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl ring-1 ring-border-subtle">
-                <Image
-                  src="/demo/products/photo-09.jpg"
-                  alt="RISITEX vertically-integrated manufacturing facility, Karnataka"
-                  fill
-                  sizes="(min-width: 1024px) 60vw, 100vw"
-                  className="object-cover"
-                />
-                <div
-                  aria-hidden
-                  className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent"
-                />
-                <div className="absolute bottom-4 left-4 right-4 grid grid-cols-3 gap-3 rounded-md bg-surface-background/85 px-4 py-3 backdrop-blur-modal">
-                  <div>
-                    <p className="font-mono text-heading-sm text-text-primary numerics-tabular">
-                      4 lines
-                    </p>
-                    <p className="text-caption text-text-muted">Sewing</p>
-                  </div>
-                  <div>
-                    <p className="font-mono text-heading-sm text-text-primary numerics-tabular">
-                      120k/mo
-                    </p>
-                    <p className="text-caption text-text-muted">Pieces</p>
-                  </div>
-                  <div>
-                    <p className="font-mono text-heading-sm text-text-primary numerics-tabular">
-                      AQL 2.5
-                    </p>
-                    <p className="text-caption text-text-muted">QA bar</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      {/* B2B PROCESS */}
-      <section className="border-b border-border-subtle py-16 md:py-20 bg-surface-sunken">
-        <Container>
-          <div className="text-center">
-            <p className="text-micro text-text-muted">How It Works</p>
-            <h2 className="mt-2 text-heading-xl text-text-primary">
-              Start Sourcing in Three Steps
-            </h2>
-          </div>
-          <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-3">
-            {[
-              { step: "01", title: "Apply", desc: "Submit your business details, GSTIN, and trade references. We verify within 24 hours." },
-              { step: "02", title: "Get Approved", desc: "Once verified, you're assigned a pricing tier based on your business volume and profile." },
-              { step: "03", title: "Order & Grow", desc: "Browse wholesale catalogue, place orders at tier pricing, and scale your business." },
-            ].map((s) => (
-              <div key={s.step} className="text-center">
-                <span className="text-mono-md text-text-muted">{s.step}</span>
-                <h3 className="mt-3 text-heading-md text-text-primary">{s.title}</h3>
-                <p className="mt-2 text-body-md text-text-secondary">{s.desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-10 text-center">
-            <Button asChild>
-              <Link href="/auth/sign-in">Sign In</Link>
-            </Button>
-            <p className="mt-3 text-body-sm text-text-muted">
-              New to RISITEX?{" "}
+            <Reveal delay={0.1}>
               <Link
-                href="/auth/sign-up"
-                className="text-text-primary underline-offset-4 hover:underline"
+                href="/contact"
+                data-cursor=""
+                className="group inline-flex items-center gap-2 border-b border-text-primary pb-1 text-caption uppercase tracking-[0.16em] text-text-primary transition-colors duration-base hover:border-brand-accent hover:text-brand-accent"
               >
-                Apply for a wholesale account
+                Still stuck? Talk to us
+                <span aria-hidden className="transition-transform duration-base group-hover:translate-x-1">→</span>
               </Link>
-            </p>
+            </Reveal>
           </div>
-        </Container>
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section className="border-b border-border-subtle py-16 md:py-20">
-        <Container>
-          <div className="text-center">
-            <h2 className="text-heading-xl text-text-primary">
-              Trusted by Businesses Nationwide
-            </h2>
-          </div>
-          <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-            {[
-              { quote: "RISITEX has been our primary supplier for two years. Consistent quality, on-time delivery.", author: "Rajesh K.", role: "Retail Chain Owner, Chennai" },
-              { quote: "The tier pricing structure makes it easy to scale. We started with Silver and moved to Gold within months.", author: "Priya S.", role: "Distributor, Mumbai" },
-              { quote: "Their GST invoicing and logistics network save us hours of administrative work every week.", author: "Amit V.", role: "Procurement Manager, Delhi" },
-            ].map((t) => (
-              <div key={t.author} className="rounded-lg border border-border-subtle p-6">
-                <p className="text-body-md text-text-secondary italic">&ldquo;{t.quote}&rdquo;</p>
-                <div className="mt-4 border-t border-border-subtle pt-4">
-                  <p className="text-body-sm font-medium text-text-primary">{t.author}</p>
-                  <p className="text-caption text-text-muted">{t.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Container>
-      </section>
-
-      {/* FAQ */}
-      <section className="border-b border-border-subtle py-16 md:py-20 bg-surface-sunken">
-        <Container>
-          <div className="text-center">
-            <h2 className="text-heading-xl text-text-primary">
-              Frequently Asked Questions
-            </h2>
-          </div>
-          <div className="mt-10 mx-auto max-w-3xl space-y-4">
-            {[
-              { q: "What is the minimum order quantity?", a: "MOQ starts at 240 pieces per SKU. Selected products may have lower MOQs for trial orders." },
-              { q: "How do I become a dealer or distributor?", a: "Apply through our wholesale program. Dealers and distributors receive exclusive pricing, priority dispatch, and dedicated support." },
-              { q: "What payment terms are available?", a: "We offer advance payment, COD for approved customers, and credit terms for established dealers with good payment history." },
-              { q: "Do you ship outside India?", a: "Yes, we export to select international markets. Contact us for international shipping rates and MOQs." },
-              { q: "How long does delivery take?", a: "Standard manufacturing lead time is 10–35 days depending on the product and order volume. In-stock items ship within 48 hours." },
-            ].map((faq) => (
-              <details key={faq.q} className="group rounded-lg border border-border-subtle bg-surface-background">
-                <summary className="flex cursor-pointer items-center justify-between px-6 py-4 text-body-md font-medium text-text-primary">
-                  {faq.q}
-                  <span aria-hidden className="ml-2 transition-transform group-open:rotate-180">&darr;</span>
-                </summary>
-                <div className="px-6 pb-4 text-body-md text-text-secondary">
-                  {faq.a}
-                </div>
-              </details>
-            ))}
-          </div>
-        </Container>
-      </section>
-
-      {/* CTA */}
-      <section className="py-20">
-        <Container width="narrow">
-          <div className="text-center">
-            <h2 className="text-heading-xl text-text-primary">
-              Ready to Start Sourcing?
-            </h2>
-            <p className="mt-3 text-body-lg text-text-secondary">
-              Create your wholesale account today and access factory-direct pricing.
-            </p>
-            <div className="mt-8 inline-flex flex-wrap items-center justify-center gap-3">
-              <Button asChild size="lg">
-                <Link href="/auth/sign-in">Sign In</Link>
-              </Button>
-              <Button variant="secondary" size="lg" asChild>
-                <Link href="/contact">Talk to Sales</Link>
-              </Button>
-            </div>
-            <p className="mt-4 text-body-sm text-text-muted">
-              Don&rsquo;t have an account?{" "}
-              <Link
-                href="/auth/sign-up"
-                className="text-text-primary underline-offset-4 hover:underline"
-              >
-                Register your business
-              </Link>
-            </p>
-          </div>
+          <Reveal delay={0.15} className="mt-14">
+            <FaqList items={FAQS} />
+          </Reveal>
         </Container>
       </section>
     </>

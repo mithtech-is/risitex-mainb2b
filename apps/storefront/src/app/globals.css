@@ -10,26 +10,15 @@
 @import "@risitex/ui/styles.css";
 
 /*
- * Wire next/font CSS variables into the design tokens.
- * Inter → --font-sans, JetBrains Mono → --font-mono. The display face stays on
- * the system serif fallback declared in @risitex/ui/styles.css until the
- * foundry face is licensed.
+ * The site runs on ONE typeface: Space Grotesk, loaded by next/font in
+ * layout.tsx as --font-space-grotesk and self-hosted (no external request).
  *
- * Each next/font call in layout.tsx exposes a CSS variable named below. We
- * remap our semantic font tokens to those variables so all Tailwind font-*
- * utilities pick up the loaded fonts.
+ * The full chain lives in @risitex/ui/styles.css and already resolves display,
+ * sans and mono to it, so there is nothing to remap here. Overriding these
+ * tokens again is what previously left the app loading four faces while only
+ * ever rendering one — if you need a different face, change it in the design
+ * system, not per-app.
  */
-:root {
-  /* Inter Tight is the primary UI + display face for a clean, modern-luxury
-     monochrome look; Inter is the fallback, JetBrains Mono stays for numerics. */
-  --font-sans: var(--font-inter-tight), var(--font-inter), "Söhne", Geist,
-    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
-  --font-mono: var(--font-jetbrains-mono), "Söhne Mono", "IBM Plex Mono",
-    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --font-display: var(--font-inter-tight), var(--font-inter), "Söhne", Geist,
-    system-ui, -apple-system, "Segoe UI", sans-serif;
-}
 
 /*
  * Homepage hero motion — pure CSS, no JS, no client component. Keeps the
