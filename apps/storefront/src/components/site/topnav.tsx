@@ -169,8 +169,10 @@ function NavSearch() {
   return (
     <div ref={wrapRef} className="relative hidden md:block">
       <form onSubmit={submit} role="search">
+        {/* left-4 (16px) is on the spacing scale — the old `left-3.5` was NOT,
+            so it emitted no CSS and the icon sat jammed against the pill edge. */}
         <Search
-          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
+          className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
           aria-hidden
         />
         <input
@@ -184,7 +186,11 @@ function NavSearch() {
           onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
           placeholder="Search"
           aria-label="Search all products"
-          className="h-10 w-44 rounded-full bg-surface-sunken pl-10 pr-4 text-body-sm text-text-primary placeholder:text-text-muted outline-none transition-[width,box-shadow] duration-base ease-standard focus:w-64 focus-visible:bg-surface-raised focus-visible:ring-2 focus-visible:ring-border-strong"
+          /* Widths are arbitrary [px] on purpose: w-44 / w-64 are OFF the
+             replaced spacing scale and emitted nothing, so the field had no
+             width at all. pl-12 (48px) clears the 16px icon at left-4 (ends
+             32px) with a 16px gutter — text can never collide with it. */
+          className="h-10 w-[210px] rounded-full border border-text-primary bg-surface-raised pl-12 pr-5 text-body-sm text-text-primary placeholder:text-text-muted outline-none transition-[width,box-shadow] duration-base ease-standard focus:w-[300px] focus-visible:ring-2 focus-visible:ring-text-primary"
         />
       </form>
 
