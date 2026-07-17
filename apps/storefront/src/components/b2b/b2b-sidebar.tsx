@@ -20,7 +20,6 @@ import {
   Bell,
   FileSpreadsheet,
   LogOut,
-  PackageSearch,
   Heart,
 } from "lucide-react";
 import { Wordmark } from "@/components/site/wordmark";
@@ -50,7 +49,6 @@ const GROUPS: SidebarGroup[] = [
     items: [
       { href: "/b2b/orders", label: "Orders", icon: <ListOrdered /> },
       { href: "/b2b/shipments", label: "Shipments", icon: <Truck /> },
-      { href: "/b2b/sample-requests", label: "Sample Requests", icon: <PackageSearch /> },
     ],
   },
   {

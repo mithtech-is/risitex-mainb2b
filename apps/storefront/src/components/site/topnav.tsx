@@ -27,18 +27,11 @@ const NAV = [
 
 export function Topnav() {
   return (
-    // Solid background — NOT `bg-surface-background/90`. The semantic colours
-    // are plain `var(--…)` values with no `<alpha-value>`, so Tailwind emits NO
-    // css for an alpha modifier: `/90` silently produced a fully transparent
-    // header and the page content showed through the nav (unreadable links +
-    // buttons). Keep this opaque unless the preset gains alpha support.
-    <header className="sticky top-0 z-sticky border-b border-border-subtle bg-surface-background shadow-[0_1px_3px_rgba(20,20,18,0.04)]">
+    <header className="sticky top-0 z-sticky bg-surface-background">
       <Container>
-        <nav
-          className="flex h-14 items-center justify-between gap-3"
-          aria-label="Primary"
-        >
-          <div className="flex items-center gap-6">
+        <div className="flex h-16 items-center justify-between gap-4">
+          {/* Left — logo */}
+          <div className="flex items-center gap-3">
             <MobileMenu />
             <Link
               href="/"
@@ -47,24 +40,30 @@ export function Topnav() {
             >
               <Wordmark showMonogram />
             </Link>
-            <NavLinks />
           </div>
 
+          {/* Centre — pill nav bar */}
+          <nav
+            aria-label="Primary"
+            className="hidden lg:flex items-center rounded-full border border-border-subtle bg-surface-raised px-[6px] py-[6px] shadow-[0_1px_3px_rgba(20,20,18,0.06),0_1px_2px_rgba(20,20,18,0.04)]"
+          >
+            <NavLinks />
+          </nav>
+
+          {/* Right — actions */}
           <TopnavActions />
-        </nav>
+        </div>
       </Container>
+      <div className="h-px bg-border-subtle" />
     </header>
   );
 }
 
-/** Primary nav links with an active-page indicator + smooth hover underline. */
 function NavLinks() {
   const pathname = usePathname() ?? "";
   return (
-    <ul className="hidden items-center gap-8 lg:flex">
+    <ul className="flex items-center gap-2">
       {NAV.map((item) => {
-        // Catalogue gets the premium hover mega-menu (category sections);
-        // the other links stay as simple underline-hover items.
         if (item.href === "/wholesale/catalogue") {
           return <CatalogueMega key={item.href} />;
         }
@@ -76,19 +75,14 @@ function NavLinks() {
             <Link
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`group relative text-body-md transition-colors duration-fast ${
+              className={[
+                "relative block rounded-full px-4 py-2 text-body-sm font-medium transition-all duration-fast",
                 active
-                  ? "text-text-primary"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
+                  ? "bg-text-primary text-text-on-inverse"
+                  : "text-text-secondary hover:bg-text-primary hover:text-text-on-inverse",
+              ].join(" ")}
             >
               {item.label}
-              <span
-                className={`pointer-events-none absolute -bottom-1.5 left-0 h-px bg-text-primary transition-all duration-base ease-standard ${
-                  active ? "w-full" : "w-0 group-hover:w-full"
-                }`}
-                aria-hidden
-              />
             </Link>
           </li>
         );
@@ -99,21 +93,15 @@ function NavLinks() {
 
 type SearchHit = { id: string; title: string; handle: string };
 
-/**
- * Inline pill search with a live product-name typeahead. As you type, matching
- * product names appear in a dropdown (from Medusa `/store/products?q=`); pick one
- * to jump straight to its page, or press Enter to see all results in the
- * catalogue. Icon sits clear of the placeholder (no overlap).
- */
 function NavSearch() {
   const router = useRouter();
+  const pathname = usePathname() ?? "";
   const [q, setQ] = React.useState("");
   const [hits, setHits] = React.useState<SearchHit[]>([]);
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const wrapRef = React.useRef<HTMLDivElement>(null);
 
-  // Debounced live search against the store products endpoint.
   React.useEffect(() => {
     const term = q.trim();
     if (term.length < 2) {
@@ -133,15 +121,26 @@ function NavSearch() {
           setHits((data?.products ?? []) as SearchHit[]);
           setLoading(false);
         })
-        .catch(() => {
-          /* aborted or offline — ignore */
-        });
+        .catch(() => {});
     }, 180);
     return () => {
       clearTimeout(t);
       ctrl.abort();
     };
   }, [q]);
+
+  React.useEffect(() => {
+    const term = q.trim();
+    if (term.length < 1) return;
+    if (pathname === "/wholesale/catalogue") return;
+    const t = setTimeout(() => {
+      router.push(
+        `/wholesale/catalogue?q=${encodeURIComponent(term)}`,
+        { scroll: false },
+      );
+    }, 400);
+    return () => clearTimeout(t);
+  }, [q, pathname, router]);
 
   React.useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -168,17 +167,13 @@ function NavSearch() {
 
   return (
     <div ref={wrapRef} className="relative hidden md:block">
-      <form onSubmit={submit} role="search">
-        {/*
-         * left-5 = 20px, matching the pill's cap radius (rounded-full on a 40px
-         * field = a 20px semicircle) and the 20px pr-5 on the other end. At
-         * left-4 the icon sat *inside* the curve and the two ends were
-         * optically lopsided — which is what read as broken padding.
-         * NB on-scale keys only: `left-3.5`/`left-[18px]`-style values from the
-         * replaced spacing scale emit no CSS at all.
-         */}
+      <form
+        onSubmit={submit}
+        role="search"
+        className="flex items-center gap-2 border border-text-primary bg-surface-background pl-3 h-10 rounded-md overflow-hidden w-[260px] focus-within:w-[340px] transition-[width] duration-base ease-standard"
+      >
         <Search
-          className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
+          className="pointer-events-none h-[18px] w-[18px] shrink-0 text-text-muted"
           aria-hidden
         />
         <input
@@ -190,28 +185,25 @@ function NavSearch() {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
-          placeholder="Search"
+          placeholder="Search products"
           aria-label="Search all products"
-          /* Widths are arbitrary [px] on purpose: w-44 / w-64 are OFF the
-             replaced spacing scale and emitted nothing, so the field had no
-             width at all. The icon runs 20→36px (left-5, 16px wide), so pl-12
-             (48px) leaves a 12px gutter before the text — tight enough to read
-             as one unit, wide enough that they never touch. pr-5 (20px)
-             mirrors the icon's 20px inset, so both caps are optically equal. */
-          className="h-10 w-[210px] rounded-full border border-text-primary bg-surface-raised pl-12 pr-5 text-body-sm text-text-primary placeholder:text-text-muted outline-none transition-[width,box-shadow] duration-base ease-standard focus:w-[300px] focus-visible:ring-2 focus-visible:ring-text-primary"
+          className="w-full h-full outline-none bg-transparent text-body-sm text-text-primary placeholder:text-text-muted"
         />
       </form>
 
       {showPanel && (
-        <div className="absolute right-0 top-full z-popover mt-2 w-[min(88vw,340px)] animate-fade-down overflow-hidden rounded-lg border border-border-subtle bg-surface-raised shadow-popover">
+        <div className="absolute right-0 top-full z-popover mt-1 w-full overflow-hidden rounded-md border border-text-primary bg-surface-background py-3">
+          <p className="px-4 pb-2 text-[11px] text-text-muted">
+            {loading ? "Searching…" : "Search Results"}
+          </p>
           {hits.length > 0 ? (
-            <ul className="max-h-[60vh] overflow-y-auto p-1.5">
+            <ul className="max-h-[60vh] overflow-y-auto">
               {hits.map((h) => (
                 <li key={h.id}>
                   <button
                     type="button"
                     onClick={() => go(`/wholesale/p/${h.handle}`)}
-                    className="block w-full truncate rounded-md px-3 py-2 text-left text-body-sm text-text-primary transition-colors duration-fast hover:bg-surface-sunken"
+                    className="block w-full truncate px-4 py-1.5 text-left text-body-sm text-text-secondary transition-colors duration-fast hover:bg-surface-sunken cursor-pointer"
                   >
                     {h.title}
                   </button>
@@ -221,15 +213,15 @@ function NavSearch() {
                 <button
                   type="button"
                   onClick={submit}
-                  className="w-full rounded-md px-2 py-2 text-left text-caption font-medium text-text-secondary transition-colors duration-fast hover:bg-surface-sunken hover:text-text-primary"
+                  className="w-full px-4 py-1.5 text-left text-caption font-medium text-text-muted transition-colors duration-fast hover:bg-surface-sunken hover:text-text-primary"
                 >
-                  See all results for “{q.trim()}”
+                  See all results for &ldquo;{q.trim()}&rdquo;
                 </button>
               </li>
             </ul>
           ) : (
-            <p className="px-3 py-4 text-body-sm text-text-muted">
-              {loading ? "Searching…" : "No products found."}
+            <p className="px-4 py-1 text-body-sm text-text-muted">
+              {loading ? "" : "No products found."}
             </p>
           )}
         </div>
@@ -242,27 +234,21 @@ function TopnavActions() {
   const counts = useNavActionCounts();
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       <NavSearch />
       <ThemeSwitch />
       <NavIcon href="/b2b/wishlist" label="Wishlist" count={counts.wishlist}>
-        <Heart className="h-5 w-5" />
+        <Heart className="h-[18px] w-[18px]" />
       </NavIcon>
       <WalletIconButton />
       <NavIcon href="/b2b/cart" label="Cart" count={counts.cart}>
-        <ShoppingCart className="h-5 w-5" />
+        <ShoppingCart className="h-[18px] w-[18px]" />
       </NavIcon>
       <AccountNavSlot />
     </div>
   );
 }
 
-/**
- * Account icon switches its destination + label by auth state. Signed-out
- * users see Sign in + Create account buttons that link to the standalone auth
- * pages (/auth/sign-in, /auth/sign-up). Signed-in users get
- * the usual person icon linking to their profile.
- */
 function AccountNavSlot() {
   const [authed, setAuthed] = React.useState<boolean | null>(null);
 
@@ -288,31 +274,26 @@ function AccountNavSlot() {
   }, []);
 
   if (authed === false) {
-    // Go straight to the standalone auth PAGES (the old in-navbar modal's
-    // dialog hung the renderer → "Something went wrong"). "Sign in" → sign-in
-    // page; "Create account" → the business-registration page.
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 ml-1.5">
         <Link
           href="/auth/sign-in"
-          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border-subtle bg-surface-raised px-3 text-body-sm font-medium text-text-primary transition-colors duration-fast hover:bg-surface-sunken focus-visible:ring-focus"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border-subtle bg-surface-raised px-4 text-body-sm font-medium text-text-primary transition-all duration-fast hover:border-text-primary hover:shadow-[0_1px_3px_rgba(20,20,18,0.08)] focus-visible:ring-focus"
         >
           Sign in
         </Link>
         <Link
           href="/auth/sign-up"
-          className="hidden h-9 items-center gap-1.5 rounded-md bg-action-primary-bg px-3 text-body-sm font-medium text-action-primary-text transition-colors duration-fast hover:bg-action-primary-bg-hover focus-visible:ring-focus sm:inline-flex"
+          className="hidden h-9 items-center gap-1.5 rounded-full bg-text-primary px-4 text-body-sm font-medium text-text-on-inverse transition-all duration-fast hover:opacity-90 focus-visible:ring-focus sm:inline-flex"
         >
-          Create account
+          Get started
         </Link>
       </div>
     );
   }
-  // authed === true OR null (still resolving — render the icon, which
-  // links to a guarded route that handles the redirect itself).
   return (
     <NavIcon href="/b2b/profile" label="Account">
-      <UserRound className="h-5 w-5" />
+      <UserRound className="h-[18px] w-[18px]" />
     </NavIcon>
   );
 }
@@ -334,7 +315,7 @@ function NavIcon({
     <Link
       href={href}
       aria-label={showBadge ? `${label}, ${count} items` : label}
-      className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors duration-fast hover:bg-surface-sunken hover:text-text-primary focus-visible:ring-focus"
+      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-text-secondary transition-colors duration-fast hover:bg-surface-sunken hover:text-text-primary focus-visible:ring-focus"
     >
       {children}
       {showBadge && (
@@ -351,17 +332,6 @@ function useNavActionCounts() {
 
   React.useEffect(() => {
     let cancelled = false;
-
-    // Cart badge = number of distinct LINES in the cart, not total units.
-    // Total units for a B2B cart is typically in the hundreds or thousands
-    // (just one carton can be 60+ pieces), which would always cap at "99+"
-    // — useless. Line count tells the buyer "I have 2 different products
-    // waiting" at a glance, which is the actionable signal.
-    //
-    // Wishlist is read from localStorage only — the older code path
-    // contaminated this count with /store/saved-carts.length, which is a
-    // totally unrelated archive of named baskets. Reading purely from
-    // local keeps the badge in sync with the heart-toggle UI.
     const recomputeCart = () => getCart().length;
     const load = () => {
       if (cancelled) return;
@@ -372,8 +342,6 @@ function useNavActionCounts() {
     };
 
     load();
-    // React to wishlist heart toggles AND cart mutations so the navbar
-    // badges update without a page reload.
     const onWishlistChange = () => {
       if (cancelled) return;
       setCounts((c) => ({
@@ -392,8 +360,6 @@ function useNavActionCounts() {
     window.addEventListener("risitex:wishlist-changed", onWishlistChange);
     window.addEventListener("risitex:cart-changed", onCartChange);
     window.addEventListener("storage", onStorage);
-    // Sign-in / sign-out re-scopes both keys — recompute both badges so they
-    // reflect the new user, not whoever was signed in before.
     window.addEventListener("risitex:auth-changed", load);
     return () => {
       cancelled = true;
