@@ -56,8 +56,39 @@ const FALLBACK_ICONS: (typeof Shirt)[] = [
   LayoutGrid,
 ];
 
+/**
+ * Shown when Medusa returns no categories — i.e. locally with the backend down,
+ * or before the fetch resolves. Mirrors the live site's tree (Innerwear /
+ * Bottom Wear) so the mega-menu is visible for preview instead of collapsing to
+ * a plain link. On a server WITH categories, the real tree replaces this.
+ */
+const FALLBACK_TREE: Cat[] = [
+  {
+    id: "fb-innerwear",
+    name: "Innerwear",
+    handle: "innerwear",
+    rank: 0,
+    parentId: null,
+    children: [
+      { id: "fb-inner-boxer", name: "Inner Boxer", handle: "inner-boxer", rank: 0, parentId: "fb-innerwear", children: [] },
+      { id: "fb-boxer-shorts", name: "Boxer Shorts", handle: "boxer-shorts", rank: 1, parentId: "fb-innerwear", children: [] },
+    ],
+  },
+  {
+    id: "fb-bottomwear",
+    name: "Bottom Wear",
+    handle: "bottom-wear",
+    rank: 1,
+    parentId: null,
+    children: [
+      { id: "fb-pyjamas", name: "Pyjamas", handle: "pyjamas", rank: 0, parentId: "fb-bottomwear", children: [] },
+      { id: "fb-jeans", name: "Jeans", handle: "jeans", rank: 1, parentId: "fb-bottomwear", children: [] },
+    ],
+  },
+];
+
 function useCategoryTree() {
-  const [roots, setRoots] = React.useState<Cat[]>([]);
+  const [roots, setRoots] = React.useState<Cat[]>(FALLBACK_TREE);
 
   React.useEffect(() => {
     let alive = true;
@@ -85,9 +116,12 @@ function useCategoryTree() {
         }
         rootList.sort(byRank);
         rootList.forEach((r) => r.children.sort(byRank));
-        setRoots(rootList);
+        // Keep the fallback visible if the backend returned nothing.
+        if (rootList.length > 0) setRoots(rootList);
       })
-      .catch(() => {});
+      .catch(() => {
+        // Network error / no backend → the fallback tree stays.
+      });
     return () => {
       alive = false;
     };

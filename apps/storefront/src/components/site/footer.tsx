@@ -1,6 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Container } from "./container";
-import { Wordmark } from "./wordmark";
 import { COMPANY } from "@/lib/company";
 
 const FOOTER_COLUMNS = [
@@ -62,7 +62,26 @@ export function Footer() {
       <Container>
         <div className="grid grid-cols-2 gap-8 py-12 md:grid-cols-4 lg:grid-cols-5">
           <div className="col-span-2 lg:col-span-1">
-            <Wordmark showMonogram />
+            {/* The real RISITEX mark. Two variants toggled by the same
+                .rx-logo-black / .rx-logo-light CSS in globals.css the navbar
+                uses, so it flips with the theme: black on the light footer,
+                light on the dark footer. */}
+            <Link href="/" aria-label="RISITEX home" className="relative block h-[76px] w-[76px]">
+              <Image
+                src="/brand/risitex-logo-black.png"
+                alt="RISITEX"
+                fill
+                sizes="76px"
+                className="rx-logo-black object-contain object-left"
+              />
+              <Image
+                src="/brand/risitex-logo-light.png"
+                alt=""
+                fill
+                sizes="76px"
+                className="rx-logo-light object-contain object-left"
+              />
+            </Link>
             <p className="mt-4 max-w-xs text-body-sm text-text-muted">
               Premium textile manufacturing and wholesale. Serving dealers,
               distributors, and businesses across India and worldwide.

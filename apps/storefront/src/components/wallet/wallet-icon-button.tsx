@@ -29,23 +29,21 @@ export function WalletIconButton() {
   const balanceLabel = formatBalance(balancePaise);
 
   return (
+    // Same 40px square + 20px icon as the other navbar action buttons, so the
+    // row stays evenly aligned. The balance used to render as inline text that
+    // made this button wider than its neighbours; it's now a small corner dot
+    // (funds present / not) matching the count badges on wishlist and cart.
     <Link
       href="/b2b/wallet"
-      aria-label={
-        wallet.loading
-          ? "Wallet"
-          : `Wallet, balance ${balanceLabel}`
-      }
-      className="relative inline-flex h-9 items-center gap-1.5 rounded-md px-2 text-text-secondary transition-colors duration-fast hover:bg-surface-sunken hover:text-text-primary"
+      aria-label={wallet.loading ? "Wallet" : `Wallet, balance ${balanceLabel}`}
+      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-text-secondary transition-colors duration-fast hover:bg-surface-sunken hover:text-text-primary focus-visible:ring-focus"
     >
       <Wallet className="h-5 w-5" />
       {showBadge && (
         <span
-          className="font-mono text-caption text-text-primary numerics-tabular hidden sm:inline"
           aria-hidden
-        >
-          {balanceLabel}
-        </span>
+          className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-brand-accent"
+        />
       )}
     </Link>
   );

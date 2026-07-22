@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk } from "next/font/google";
+import { Space_Grotesk, Archivo, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
 import { Topnav } from "@/components/site/topnav";
@@ -28,6 +28,28 @@ import { WhatsAppButton } from "@/components/site/whatsapp-button";
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space-grotesk",
+  display: "swap",
+});
+
+/*
+ * Homepage display pair (Vexo redesign). Space Grotesk still carries body,
+ * numerics and the whole B2B dashboard; these two are used ONLY by the
+ * homepage's `.rx-vexo` scope — everywhere else they are unused CSS variables.
+ *
+ *  - Archivo (variable grotesque) is the heavy display face for headlines.
+ *  - Instrument Serif supplies the italic accent words the reference mixes
+ *    into every heading ("every SEASON", "peak PERFORMANCE").
+ */
+const archivo = Archivo({
+  subsets: ["latin"],
+  variable: "--font-archivo",
+  display: "swap",
+});
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-instrument",
   display: "swap",
 });
 
@@ -72,7 +94,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={spaceGrotesk.variable}
+      className={`${spaceGrotesk.variable} ${archivo.variable} ${instrumentSerif.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-surface-background text-text-primary text-body-md antialiased">

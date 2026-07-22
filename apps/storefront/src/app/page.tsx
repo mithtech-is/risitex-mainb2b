@@ -1,129 +1,115 @@
 import Link from "next/link";
-import Image from "next/image";
-import { Container } from "@/components/site/container";
 import { SignedOut, SignedIn } from "@/components/auth/signed-out";
-import { Arrivals, type Arrival } from "@/components/site/arrivals";
 import { getWholesaleProducts } from "@/lib/wholesale-products";
 import type { Product } from "@/data/products";
-import { FaqList } from "@/components/site/faq";
-import { SmoothScroll, Cursor, Reveal, Lines, RevealImage, Magnetic } from "@/components/site/fx";
+import { SmoothScroll, Reveal } from "@/components/site/fx";
+import { CountUp, HeroSlideshow } from "@/components/site/elegance";
+import { FaqList, type Faq } from "@/components/site/faq";
+import {
+  MixedHeading,
+  Pill,
+  Watermark,
+  Marquee,
+  FloatingCutout,
+  FeatureCard,
+  ShowcaseFigure,
+  ProductGrid,
+  LookScroller,
+  type GridItem,
+  type Look,
+} from "@/components/site/vexo";
 
 /**
- * Homepage — "Cut From The Same Cloth".
+ * Homepage — rebuilt against the Vexo eCommerce concept (Zeyox Studio,
+ * Dribbble #25931151), chosen by the user as the reference. Layout, motion,
+ * palette and the mixed grotesque/italic-serif type all come from that shot;
+ * the COPY stays true to RISITEX (a Bengaluru B2B garment manufacturer), per
+ * the user's decision — Vexo's streetwear voice, RISITEX's real facts.
  *
- * Direction agreed after five rejected iterations. The thing that finally
- * explained them: every previous attempt was on CREAM, while mith.tech — the
- * site the user holds up as the standard — is PURE BLACK with one characterful
- * face and scroll motion. It has no 3D and no custom cursor at all; the depth
- * they were describing is contrast + motion. Palette was the variable nobody
- * changed.
+ * The previous editorial homepage is preserved at
+ * apps/storefront/.backup/page.cocoon.*.tsx (outside the app dir, so Next never
+ * compiles it as a route). The navbar and mega-menu are deliberately untouched.
  *
- * THE WHOLE PAGE FOLLOWS THE THEME. An earlier pass pinned the photographic
- * spine to ink in both themes on the theory that white type over photography
- * needs a dark plate; the user rejected that outright — clicking light mode
- * must turn the entire homepage light. So every surface here uses semantic
- * tokens, and scrims are built from `--rx-plate` (the current surface as an RGB
- * triplet, flipped in the <style> block) so a photo always fades into the real
- * background instead of into a hardcoded black.
+ * IMAGERY: the floating figures and garments are rembg cut-outs of the RISITEX
+ * model/product shots, generated into /public/demo/cutouts. The full-frame
+ * feature panels use the original photographs. `photo-07`/`images.jpeg` stay
+ * excluded everywhere (they carry other brands' labels).
  *
- * Content is a narrative, not a stack: Thread → Loom → Cut → Carton, so
- * scrolling is a garment being made.
- *
- * HARD RULES (each has shipped a bug here):
- *   - NEVER a colour alpha modifier (`bg-x/90`, `text-x/60`). Semantic colours
- *     are plain `var(--…)` with no <alpha-value> → Tailwind emits NOTHING and
- *     the element renders transparent. Use `opacity-*` or an explicit rgba().
- *   - Spacing keys are a REPLACED scale: 0 px 0.5 1 2 3 4 5 6 8 10 12 16 20 24
- *     32 only. Anything else (7, 14, 44, 1.5…) emits nothing → arbitrary [Npx].
- *   - `text-display-*` caps at 104px — far too small for a hero. Display type
- *     uses arbitrary viewport clamps.
- *   - `--brand-accent` is #222222 (monochrome), NOT the indigo semantic.ts
- *     claims. styles.css wins. Probe the browser, don't read the TS.
+ * THEME: the homepage is THEME-REACTIVE — light in light mode, dark in dark
+ * mode. The `.rx-vexo` `--vx-*` palette has a light default and a dark override
+ * (`html[data-theme="dark"] .rx-vexo`); the navbar's semantic tokens are forced
+ * light ONLY in light mode so the design system's own dark tokens drive it in
+ * dark mode; the footer is left to the theme entirely. See the <style> block.
  */
 
-/**
- * The grid is fed from the LIVE Medusa catalogue — never fixtures.
- *
- * It used to be eight hardcoded demo garments with invented GSM/MOQ. Those are
- * gone: the homepage now shows exactly what is orderable, so it can never
- * advertise a product that does not exist. `getWholesaleProducts()` already
- * merges live + fixtures, and `data/products.ts` PRODUCTS is `[]`, so this is
- * live-only. Add a product in admin and it appears here; unpublish it and it
- * leaves. Tabs derive from the products' real categories rather than a fixed
- * list, so we can't show a tab that filters to nothing.
- */
-function toArrivals(products: Product[]): Arrival[] {
-  return products
-    // A card is a photograph — one without art renders as a broken tile, so a
-    // product with no image is skipped rather than shown empty.
-    .map((p) => ({ p, art: p.image ?? p.images?.[0] }))
-    .filter((x): x is { p: Product; art: string } => Boolean(x.art))
-    .slice(0, 8)
-    .map(({ p, art }) => ({
-      href: `/wholesale/p/${p.slug}`,
-      name: p.name,
-      cat: p.subcategory?.trim() || "Essentials",
-      spec: p.specs?.[0]?.value ?? "",
-      moq: p.moq ? `${p.moq} pcs` : "On request",
-      image: art,
-      hover: p.images?.find((i) => i !== art) ?? art,
-    }));
-}
+const CUT = "/demo/cutouts";
+const PROD = "/demo/products";
 
-/**
- * The narrative spine: fabric → colour → craft → delivery.
- *
- * `title` is an ARRAY OF LINES, not a sentence — <Lines> clips each entry to
- * exactly one line height, so anything that wraps gets guillotined. Break by
- * hand and keep each line short enough to hold at the clamp's max size.
- */
-const CHAPTERS = [
+/* Hero slideshow — the cross-fading photography the user asked to bring back.
+ * Chosen for landscape crops that survive a wide frame and hold white type. */
+const HERO_SLIDES = [
+  { src: `${PROD}/hero-shorts-wall.jpg`, alt: "RISITEX men's essentials", label: "The range" },
+  { src: `${PROD}/photo-12.jpg`, alt: "", label: "Denim" },
+  { src: `${PROD}/alan-quirvan-Xr1y8o4rzsU-unsplash.jpg`, alt: "", label: "Made to order" },
+  { src: `${PROD}/ramy-mamdouh-GchQFkmUHcE-unsplash.jpg`, alt: "", label: "Summer" },
+];
+
+const FEATURES = [
   {
-    n: "01",
-    kicker: "The Fabric",
-    title: ["Every great garment", "starts with the", "right fabric."],
-    body: "Comfort begins long before the first stitch. Every fabric is selected for softness, durability and breathability, ensuring every garment delivers lasting performance and everyday comfort.",
-    image: "/demo/products/photo-09.jpg",
-    meta: [{ k: "Fabric", v: "Premium cotton blends" }, { k: "Origin", v: "Carefully sourced" }],
+    src: `${PROD}/alan-quirvan-Xr1y8o4rzsU-unsplash.jpg`,
+    alt: "RISITEX denim on model",
+    eyebrow: "The denim programme",
+    title: "Straight, slim & relaxed blocks",
+    cta: "View",
+    href: "/wholesale/catalogue",
+    tall: true,
   },
   {
-    n: "02",
-    kicker: "The Colour",
-    title: ["Then comes", "character."],
-    body: "From timeless indigo denim to refined everyday shades, every colour is developed for consistency, lasting richness and dependable performance through repeated wear.",
-    image: "/demo/products/photo-12.jpg",
-    meta: [{ k: "Colour fastness", v: "High" }, { k: "Finish", v: "Premium washes" }],
-    align: "right" as const,
-  },
-  {
-    n: "03",
-    kicker: "The Craft",
-    title: ["Every stitch", "has a purpose."],
-    body: "Precision cutting, reinforced construction and careful finishing ensure every pair of jeans, boxer shorts and pyjamas is built to last and made to be worn every day.",
-    image: "/demo/products/photo-07.jpg",
-    meta: [{ k: "Quality", v: "100% checked" }, { k: "Construction", v: "Precision tailoring" }],
-  },
-  {
-    n: "04",
-    kicker: "Ready to Deliver",
-    title: ["Prepared for", "your business."],
-    body: "Each order is inspected, packed and dispatched with consistency, giving retailers dependable products that arrive ready for shelves and customers.",
-    image: "/demo/products/photo-13.jpg",
-    meta: [{ k: "MOQ", v: "Business friendly" }, { k: "Lead time", v: "Reliable delivery" }],
-    align: "right" as const,
+    src: `${PROD}/photo-12.jpg`,
+    alt: "Denim construction detail",
+    eyebrow: "Base cloth & washes",
+    title: "Non-lycra and stretch, washed to order",
+    cta: "View",
+    href: "/wholesale/catalogue",
+    tall: false,
   },
 ];
 
-const TRADE = [
-  { n: "01", t: "Verified business platform", d: "Business-only access for retailers, distributors and wholesale buyers." },
-  { n: "02", t: "Competitive wholesale pricing", d: "Factory-direct pricing designed to improve your margins." },
-  { n: "03", t: "Reliable inventory", d: "Clear stock visibility and dependable production planning." },
-  { n: "04", t: "Transparent order tracking", d: "Track every order from confirmation to dispatch." },
-  { n: "05", t: "GST ready", d: "Professional GST invoices and complete order records." },
-  { n: "06", t: "Dedicated business support", d: "Real people helping you source with confidence." },
+/* The single-look scroller. hero-figure and figure-torso are the strongest
+ * full cut-outs; figure-boxer carries the innerwear look. */
+const LOOKS: Look[] = [
+  {
+    src: `${CUT}/hero-figure.png`,
+    alt: "RISITEX five-pocket denim look",
+    word: "Denim",
+    label: "Five-pocket denim",
+    spec: "Non-lycra & stretch · washed to order",
+  },
+  {
+    src: `${CUT}/figure-torso.png`,
+    alt: "RISITEX boxer shorts look",
+    word: "Shorts",
+    label: "Woven boxer shorts",
+    spec: "Combed cotton · built for repeat wear",
+  },
+  {
+    src: `${CUT}/figure-boxer.png`,
+    alt: "RISITEX innerwear look",
+    word: "Innerwear",
+    label: "Everyday innerwear",
+    spec: "Soft combed cotton · AQL 2.5 inspected",
+  },
 ];
 
-const FAQS = [
+const NUMBERS = [
+  { v: 120000, suffix: "+", k: "Pieces / month" },
+  { v: 4, suffix: "", k: "Sewing lines" },
+  { v: 240, suffix: "", k: "MOQ per SKU" },
+  { v: 2019, year: true as const, k: "Making since" },
+];
+
+/* FAQ — the same set the earlier homepage carried, brought back per request. */
+const FAQS: Faq[] = [
   { q: "What is the minimum order quantity?", a: "Most products start from 240 pieces per SKU, while selected collections may be available with lower trial quantities." },
   { q: "Who can purchase from Risitex?", a: "Risitex is exclusively for retailers, distributors, wholesalers and registered business buyers." },
   { q: "What payment options do you offer?", a: "We support secure business payments through approved payment methods shared during order confirmation." },
@@ -132,347 +118,375 @@ const FAQS = [
   { q: "Can I request custom manufacturing?", a: "Yes. We support OEM manufacturing, private labelling and custom production for qualifying order volumes." },
 ];
 
-const MARQUEE = ["Jeans", "Boxer shorts", "Innerwear", "Pyjamas", "Made in India", "Business only"];
+/* Fallback grid when the live catalogue is empty, so the section never renders
+ * as a broken row. Real product photography only. */
+const DEMO_ITEMS: GridItem[] = [
+  { href: "/wholesale/catalogue", name: "Straight denim", cat: "Jeans", moq: "240 pcs", image: `${PROD}/jeans-dark-blue.jpg` },
+  { href: "/wholesale/catalogue", name: "Relaxed denim", cat: "Jeans", moq: "240 pcs", image: `${PROD}/jeans-light-blue.jpg` },
+  { href: "/wholesale/catalogue", name: "Woven boxers", cat: "Shorts", moq: "240 pcs", image: `${PROD}/photo-04.jpg` },
+  { href: "/wholesale/catalogue", name: "Combed boxers", cat: "Innerwear", moq: "240 pcs", image: `${PROD}/photo-05.jpg` },
+];
 
-/** Ink link with an underline that wipes in from the left. */
-function InkLink({ href, children, solid = false }: { href: string; children: React.ReactNode; solid?: boolean }) {
-  return (
-    <Link
-      href={href}
-      data-cursor=""
-      className={
-        solid
-          ? "group relative inline-flex items-center gap-3 overflow-hidden bg-text-primary px-8 py-4 text-caption uppercase tracking-[0.16em] text-surface-background"
-          : "group relative inline-flex items-center gap-3 py-4 text-caption uppercase tracking-[0.16em] text-text-primary"
-      }
-    >
-      <Magnetic>
-        <span className="inline-flex items-center gap-3">
-          {children}
-          <span aria-hidden className="transition-transform duration-500 ease-standard group-hover:translate-x-1">→</span>
-        </span>
-      </Magnetic>
-      {!solid ? (
-        <span
-          aria-hidden
-          className="absolute inset-x-0 bottom-2 h-px origin-left scale-x-100 bg-border-strong transition-transform duration-500 ease-standard group-hover:scale-x-0"
-        />
-      ) : null}
-    </Link>
-  );
+function toGrid(products: Product[]): GridItem[] {
+  const items = products
+    .map((p) => ({ p, art: p.image ?? p.images?.[0] }))
+    .filter((x): x is { p: Product; art: string } => Boolean(x.art))
+    .slice(0, 8)
+    .map(({ p, art }) => ({
+      href: `/wholesale/p/${p.slug}`,
+      name: p.name,
+      cat: p.subcategory?.trim() || "Essentials",
+      moq: p.moq ? `${p.moq} pcs` : "On request",
+      image: art,
+      hover: p.images?.find((i) => i !== art) ?? art,
+    }));
+  return items.length ? items : DEMO_ITEMS;
 }
 
 export default async function HomePage() {
-  const arrivals = toArrivals(await getWholesaleProducts());
-  // Only offer tabs when there is something to filter — a lone "All" tab above
-  // two products is furniture, not navigation.
-  const cats = Array.from(new Set(arrivals.map((a) => a.cat)));
-  const arrivalCats = cats.length > 1 ? ["All", ...cats] : [];
+  const products = await getWholesaleProducts();
+  const grid = toGrid(products);
 
   return (
     <>
       <style>{`
-        @keyframes rx-marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
-        .rx-marquee { animation: rx-marquee 38s linear infinite; }
-        @media (prefers-reduced-motion: reduce) { .rx-marquee { animation: none !important } }
-
-        /*
-         * --rx-plate: the RGB triplet of whatever the page surface currently is.
-         * Scrims over photography are built from it, so a photo plate always
-         * fades into the real background instead of into a hardcoded black.
-         * This is what makes the hero flip properly in light mode — the whole
-         * page follows the theme, not just the copy.
-         * Selectors mirror @risitex/ui/styles.css exactly; keep them in sync.
+        /* ══ VEXO HOMEPAGE THEME — scoped, THEME-REACTIVE, no leak elsewhere ══
+         *
+         * The homepage now follows the site theme: light tokens in light mode,
+         * dark in dark mode. Header semantic tokens are overridden ONLY in light
+         * mode, so the design system's own dark tokens drive the navbar in dark
+         * mode. The --vx-* palette has a light default on .rx-vexo and a dark
+         * override. The footer is left to the design system so it flips with the
+         * theme and its logo toggle (.rx-logo-black/.rx-logo-light) resolves.
+         *
+         * Specificity: html:root:not([data-theme="dark"]):has(.rx-vexo) = (0,3,1)
+         * beats the design system's :root[data-theme="dark"] (0,2,0); the dark
+         * override html[data-theme="dark"] .rx-vexo = (0,2,1) beats .rx-vexo.
          */
-        .rx-spine { --rx-plate: 247,247,242; }
-        @media (prefers-color-scheme: dark) {
-          :root:not([data-theme="light"]) .rx-spine { --rx-plate: 10,10,9; }
+        html:root:not([data-theme="dark"]):has(.rx-vexo) {
+          --surface-background: #EDEFEF;
+          --surface-raised:     #FFFFFF;
+          --surface-sunken:     #F2F3F3;
+          --surface-inverse:    #0B0808;
+          --text-primary:       #0B0808;
+          --text-secondary:     #3A332F;
+          --text-muted:         #5D4D45;
+          --text-on-accent:     #FFFFFF;
+          --text-on-inverse:    #FFFFFF;
+          --border-subtle:      #E1E4E4;
+          --border-strong:      #D1D6D8;
+          --border-focus:       #0B0808;
+          --brand-accent:       #0B0808;
+          --brand-accent-muted: #5D4D45;
+          --brand-accent-surface: #F2F3F3;
+          --action-primary-bg:  #0B0808;
+          --action-primary-bg-hover: #5D4D45;
+          --action-primary-bg-active: #000000;
+          --action-primary-text: #FFFFFF;
+          --action-secondary-bg: #FFFFFF;
+          --action-secondary-bg-hover: #F2F3F3;
+          --action-secondary-text: #0B0808;
+          color-scheme: light;
         }
-        :root[data-theme="dark"] .rx-spine { --rx-plate: 10,10,9; }
 
-        /* The custom cursor replaces the pointer on fine-pointer devices only. */
-        @media (min-width: 1024px) and (pointer: fine) {
-          .rx-spine, .rx-spine a, .rx-spine button { cursor: none }
+        /* ── VEXO PALETTE — light default ── */
+        .rx-vexo {
+          --vx-bg:        #EDEFEF;
+          --vx-card:      #FFFFFF;
+          --vx-card-2:    #E4E7E7;
+          --vx-line:      #E1E4E4;
+          --vx-ink:       #0B0808;   /* PRIMARY TEXT (theme-aware)     */
+          --vx-ink-soft:  #5D4D45;   /* muted text                     */
+          --vx-panel:     #0B0808;   /* dark feature / closer panel bg */
+          --vx-on-panel:  #EDEFEF;
+          --vx-btn:       #0B0808;   /* primary pill bg                */
+          --vx-btn-fg:    #FFFFFF;
+          --vx-btn-hover: #5D4D45;
+          --vx-chip:      #0B0808;   /* small arrow chip               */
+          --vx-chip-fg:   #FFFFFF;
+          --vx-pill:      rgba(255,255,255,0.92);
+          --vx-mist:      #D1D6D8;
+          --vx-sage:      #98AEB3;
+          --vx-max:       1240px;
+          background: var(--vx-bg);
+          color: var(--vx-ink);
+          font-family: var(--font-space-grotesk), system-ui, sans-serif;
         }
+
+        /* ── VEXO PALETTE — dark override ── */
+        html[data-theme="dark"] .rx-vexo {
+          --vx-bg:        #0E0F10;
+          --vx-card:      #17191A;
+          --vx-card-2:    #202325;
+          --vx-line:      #282C2E;
+          --vx-ink:       #ECEEEE;
+          --vx-ink-soft:  #9AA1A1;
+          --vx-panel:     #17191A;
+          --vx-on-panel:  #ECEEEE;
+          --vx-btn:       #ECEEEE;
+          --vx-btn-fg:    #0B0808;
+          --vx-btn-hover: #C6CFD0;
+          --vx-chip:      #ECEEEE;
+          --vx-chip-fg:   #0B0808;
+          --vx-pill:      rgba(20,22,24,0.86);
+          --vx-mist:      #2A2E30;
+        }
+
+        .rx-vexo .vx-display {
+          font-family: var(--font-archivo), var(--font-space-grotesk), system-ui, sans-serif;
+        }
+        .rx-vexo .vx-serif {
+          font-family: var(--font-instrument), Georgia, "Times New Roman", serif;
+        }
+
+        /* HeroSlideshow motion (reused from the elegance kit): the slow ambient
+         * orbit and the slide-progress bar. No backticks anywhere in this block. */
+        @keyframes rx-ambient {
+          0%   { transform: rotate(0deg)   translate(1.1em) rotate(0deg)    scale(1.2); }
+          100% { transform: rotate(360deg) translate(1.1em) rotate(-360deg) scale(1.2); }
+        }
+        .rx-ambient { animation: rx-ambient 30s linear infinite; }
+        @keyframes rx-bar { from { width: 0 } to { width: 100% } }
+        /* Moving-text band: the row is doubled, so -50% loops seamlessly. */
+        @keyframes rx-ticker { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+        .rx-ticker { animation: rx-ticker linear infinite; }
+        @media (prefers-reduced-motion: reduce) { .rx-ambient, .rx-ticker { animation: none !important; } }
       `}</style>
 
       <SmoothScroll />
-      <Cursor />
 
-      {/* ══ THE SPINE — ink in BOTH themes, on purpose (see header note) ══ */}
-      <div className="rx-spine bg-surface-background text-text-primary">
-        {/* ── HERO ─────────────────────────────────────────── */}
-        <section className="relative flex h-[92svh] min-h-[560px] w-full flex-col justify-end overflow-hidden">
-          {/* Wrapped, not `className="absolute inset-0"` — RevealImage is itself
-              `relative`, and Tailwind emits `relative` AFTER `absolute`, so the
-              caller's `absolute` loses and the frame collapses to zero height. */}
-          <div className="absolute inset-0">
-            <RevealImage
-              src="/demo/products/photo-04.jpg"
-              alt="RISITEX cut-and-sew apparel"
-              className="h-full w-full"
-              parallax={0.2}
-              priority
-            />
-          </div>
+      <div className="rx-vexo">
+        {/* ════ HERO — full-bleed cross-fading photography ══════════════════
+         * The user asked to bring back the earlier MOVING-IMAGE hero (a slow
+         * cross-fade slideshow) instead of the standing cut-out, kept tighter
+         * and carrying the current copy. White type over a dark scrim reads in
+         * BOTH themes — the hero background does not flip with the theme, so its
+         * text colour must not either. HeroSlideshow supplies the cross-fade +
+         * ambient orbit (rx-ambient / rx-bar keyframes are defined above).
+         */}
+        <section className="relative flex min-h-[76svh] items-center overflow-hidden rounded-b-[28px] md:min-h-[82svh] md:rounded-b-[40px]">
+          <HeroSlideshow slides={HERO_SLIDES} />
           <div
             aria-hidden
             className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(180deg, rgba(var(--rx-plate),0.72) 0%, rgba(var(--rx-plate),0.12) 30%, rgba(var(--rx-plate),0.55) 72%, rgba(var(--rx-plate),0.95) 100%)",
-            }}
+            style={{ background: "linear-gradient(180deg, rgba(11,8,8,0.36) 0%, rgba(11,8,8,0.18) 42%, rgba(11,8,8,0.28) 70%, rgba(11,8,8,0.66) 100%)" }}
           />
-
-          <Container className="relative z-10 pb-12">
+          <div className="relative z-10 mx-auto w-full max-w-[var(--vx-max)] px-4 py-20 text-center md:px-6 lg:px-8">
             <Reveal>
-              <p className="text-micro uppercase tracking-[0.3em] opacity-70">
-                Est. 2019 · Bengaluru · Made for men
+              <p className="text-[12px] uppercase tracking-[0.3em] text-white opacity-75">
+                Bengaluru · Manufacturing since 2019
               </p>
             </Reveal>
-            <h1 className="mt-6 text-[clamp(2.25rem,7.6vw,7rem)] font-medium leading-[0.92] tracking-[-0.04em]">
-              <Lines delay={0.1}>{["Everyday essentials.", "Crafted properly."]}</Lines>
-            </h1>
-            <div className="mt-10 flex flex-wrap items-end justify-between gap-8 border-t border-border-subtle pt-6">
-              <Reveal delay={0.25}>
-                <p className="max-w-[44ch] text-body-lg leading-relaxed opacity-75">
-                  Premium jeans, boxer shorts, innerwear and pyjamas made with
-                  quality fabrics and precise craftsmanship. Built for everyday
-                  wear, for retailers and distributors across India.
+            <div className="mt-5">
+              <MixedHeading
+                as="h1"
+                align="center"
+                tone="invert"
+                className="text-[clamp(2.2rem,6vw,5rem)] uppercase"
+                lines={[
+                  [{ t: "Built for every" }, { t: "season,", em: true }],
+                  [{ t: "made for every" }, { t: "floor.", em: true }],
+                ]}
+              />
+            </div>
+            <Reveal delay={0.25}>
+              <p className="mx-auto mt-6 max-w-[52ch] text-[16px] leading-[1.7] text-white opacity-85">
+                Premium jeans, boxer shorts, innerwear and pyjamas — made in
+                Bengaluru for retailers and distributors across India.
+              </p>
+            </Reveal>
+            <Reveal delay={0.35}>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <Pill href="/wholesale/catalogue" variant="solid">Explore catalogue</Pill>
+                <SignedOut>
+                  <Pill href="/auth/sign-up" variant="outline-invert">Become a partner</Pill>
+                </SignedOut>
+                <SignedIn>
+                  <Pill href="/b2b/dashboard" variant="outline-invert">Go to dashboard</Pill>
+                </SignedIn>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ════ FLOATING GARMENTS — the "programme" transition ═══════════ */}
+        <section className="relative overflow-hidden py-16 md:py-24">
+          <Watermark text="Wholesale" className="text-[24vw]" opacity={0.05} />
+          <div className="relative z-10 mx-auto grid max-w-[var(--vx-max)] grid-cols-1 items-center gap-10 px-4 md:px-6 lg:grid-cols-2 lg:px-8">
+            <div>
+              <MixedHeading
+                className="text-[clamp(2rem,4.4vw,3.6rem)] uppercase"
+                lines={[[{ t: "The denim" }, { t: "programme", em: true }]]}
+              />
+              <Reveal delay={0.15}>
+                <p className="mt-6 max-w-[42ch] text-[16px] leading-[1.7] text-[var(--vx-ink-soft)]">
+                  Four sewing lines in Bengaluru, working to AQL 2.5. Straight,
+                  slim and relaxed blocks in non-lycra and stretch — washed to
+                  your colourway, cut for a working retail floor.
                 </p>
               </Reveal>
-              <Reveal delay={0.35}>
-                <div className="flex flex-wrap items-center gap-4">
-                  <InkLink href="/wholesale/catalogue" solid>Explore Collection</InkLink>
-                  <SignedOut><InkLink href="/auth/sign-up">Become a Partner</InkLink></SignedOut>
-                  <SignedIn><InkLink href="/b2b/dashboard">Go to Dashboard</InkLink></SignedIn>
+              <Reveal delay={0.25}>
+                <div className="mt-8">
+                  <Pill href="/wholesale/catalogue" variant="dark">Browse the denim</Pill>
                 </div>
               </Reveal>
             </div>
-          </Container>
-        </section>
-
-        {/* ── MARQUEE ──────────────────────────────────────── */}
-        <div className="overflow-hidden border-y border-border-subtle py-5">
-          <div className="rx-marquee flex w-max whitespace-nowrap">
-            {[0, 1].map((dup) => (
-              <div key={dup} className="flex shrink-0 items-center" aria-hidden={dup === 1}>
-                {MARQUEE.map((m) => (
-                  <span key={`${dup}-${m}`} className="flex items-center text-[clamp(1.5rem,3.4vw,3rem)] font-medium uppercase tracking-[-0.02em]">
-                    <span className="px-8">{m}</span>
-                    <span className="opacity-40">✳</span>
-                  </span>
-                ))}
-              </div>
-            ))}
+            {/* three floating garments at different parallax speeds */}
+            <div className="relative flex items-end justify-center gap-4 md:gap-8">
+              <FloatingCutout src={`${CUT}/jeans-dark.png`} alt="Dark wash denim" width={180} strength={22} bob={10} className="mb-10 w-[30%]" />
+              <FloatingCutout src={`${CUT}/jeans-hanger.png`} alt="Denim on hanger" width={230} strength={12} bob={16} className="w-[40%]" />
+              <FloatingCutout src={`${CUT}/jeans-light.png`} alt="Light wash denim" width={180} strength={30} bob={8} className="mb-16 w-[30%]" />
+            </div>
           </div>
-        </div>
-
-        {/* ── NEW ARRIVALS ─────────────────────────────────── */}
-        <section className="py-24 md:py-32">
-          <Container>
-            <div className="flex flex-wrap items-end justify-between gap-6">
-              <div>
-                <Reveal>
-                  <p className="text-micro uppercase tracking-[0.3em] opacity-55">Our collection</p>
-                </Reveal>
-                <h2 className="mt-5 text-[clamp(2rem,5vw,4rem)] font-medium leading-[0.95] tracking-[-0.035em]">
-                  <Lines>{["Men's essentials.", "Done right."]}</Lines>
-                </h2>
-              </div>
-              <Reveal delay={0.1}>
-                <InkLink href="/wholesale/catalogue">View Full Collection</InkLink>
-              </Reveal>
-            </div>
-            <div className="mt-12">
-              <Arrivals items={arrivals} cats={arrivalCats} />
-            </div>
-          </Container>
         </section>
 
-        {/* ── THE FOUR CHAPTERS — the story spine ──────────── */}
-        {CHAPTERS.map((c) => (
-          <section key={c.n} className="border-t border-border-subtle py-20 md:py-28">
-            <Container>
-              <div className={`grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-16 ${c.align === "right" ? "" : ""}`}>
-                <div className={`lg:col-span-6 ${c.align === "right" ? "lg:order-2" : ""}`}>
-                  <RevealImage
-                    src={c.image}
-                    alt={c.kicker}
-                    className="aspect-[4/5] w-full"
-                    parallax={0.16}
-                  />
-                </div>
-                <div className={`lg:col-span-6 ${c.align === "right" ? "lg:order-1" : ""}`}>
-                  <Reveal>
-                    <p className="text-micro uppercase tracking-[0.3em] opacity-55">
-                      <span className="opacity-100">{c.n}</span>
-                      <span className="mx-3">—</span>
-                      {c.kicker}
-                    </p>
-                  </Reveal>
-                  <h2 className="mt-5 text-[clamp(2rem,4.6vw,3.75rem)] font-medium leading-[0.98] tracking-[-0.035em]">
-                    <Lines>{c.title}</Lines>
-                  </h2>
-                  <Reveal delay={0.15}>
-                    <p className="mt-6 max-w-[46ch] text-body-lg leading-relaxed opacity-70">{c.body}</p>
-                  </Reveal>
-                  <Reveal delay={0.25}>
-                    <dl className="mt-10 flex flex-wrap gap-x-12 gap-y-5 border-t border-border-subtle pt-6">
-                      {c.meta.map((m) => (
-                        <div key={m.k}>
-                          <dt className="text-micro uppercase tracking-[0.2em] opacity-45">{m.k}</dt>
-                          <dd className="mt-2 text-body-lg numerics-tabular">{m.v}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  </Reveal>
-                </div>
-              </div>
-            </Container>
-          </section>
-        ))}
-
-        {/* ── TWO EDITORIAL CARDS (the reference's mid-page pair) ── */}
-        <section className="border-t border-border-subtle py-20 md:py-28">
-          <Container>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
-              {[
-                { t: "Order once. Reorder with confidence.", d: "The same fabric, the same fit, every run.", href: "/wholesale/catalogue", img: "/demo/products/photo-05.jpg", cta: "Explore" },
-                { t: "Made for business buyers.", d: "Wholesale pricing, clear stock, GST invoices, real support.", href: "/auth/sign-up", img: "/demo/products/images.jpeg", cta: "Apply" },
-              ].map((card) => (
-                <Link key={card.t} href={card.href} data-cursor={card.cta} className="group relative block aspect-[4/3] overflow-hidden">
-                  <Image
-                    src={card.img}
-                    alt=""
-                    fill
-                    sizes="(min-width: 768px) 50vw, 100vw"
-                    className="scale-[1.02] object-cover transition-transform duration-[900ms] ease-standard group-hover:scale-[1.08]"
-                  />
-                  <div
-                    aria-hidden
-                    className="absolute inset-0 transition-opacity duration-500 group-hover:opacity-80"
-                    style={{ background: "linear-gradient(0deg, rgba(var(--rx-plate),0.88) 0%, rgba(var(--rx-plate),0.15) 60%, rgba(var(--rx-plate),0) 100%)" }}
-                  />
-                  <div className="absolute inset-x-0 bottom-0 p-8">
-                    <h3 className="max-w-[16ch] text-[clamp(1.5rem,2.6vw,2.25rem)] font-medium leading-[1.05] tracking-[-0.03em]">
-                      {card.t}
-                    </h3>
-                    <p className="mt-3 max-w-[36ch] text-body-sm opacity-70">{card.d}</p>
-                    <span className="mt-6 inline-block overflow-hidden">
-                      <span className="inline-block border-b border-border-strong pb-1 text-caption uppercase tracking-[0.16em] transition-transform duration-500 ease-standard group-hover:translate-x-2">
-                        {card.cta} →
-                      </span>
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </Container>
-        </section>
-
-        {/* ── CLOSER — overlapping display type over photography ── */}
-        <section className="relative flex h-[80vh] min-h-[460px] items-center justify-center overflow-hidden border-t border-border-subtle">
-          <div className="absolute inset-0">
-            <RevealImage src="/demo/products/photo-12.jpg" alt="" className="h-full w-full" parallax={0.22} />
+        {/* ════ FEATURE PANELS ══════════════════════════════════════════ */}
+        <section className="mx-auto max-w-[1560px] px-4 md:px-6 lg:px-10">
+          <div className="mb-10">
+            <MixedHeading
+              className="text-[clamp(2rem,4.4vw,3.6rem)] uppercase"
+              lines={[
+                [{ t: "Made for the" }, { t: "floor,", em: true }],
+                [{ t: "finished to" }, { t: "last.", em: true }],
+              ]}
+            />
           </div>
-          {/*
-           * Plate + vignette, no ghosted display type.
-           * A giant marquee ran behind this headline and it was unreadable —
-           * two competing texts at 14vw fighting over the same pixels. The
-           * photograph is the interest; the copy just needs to sit on it
-           * cleanly. Radial first (focuses the eye centre), then a floor so the
-           * buttons never land on a highlight.
-           */}
-          <div
-            aria-hidden
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(120% 90% at 50% 45%, rgba(var(--rx-plate),0.62) 0%, rgba(var(--rx-plate),0.82) 55%, rgba(var(--rx-plate),0.94) 100%)",
-            }}
-          />
-          <div
-            aria-hidden
-            className="absolute inset-x-0 bottom-0 h-1/3"
-            style={{ background: "linear-gradient(0deg, rgba(var(--rx-plate),0.9) 0%, rgba(var(--rx-plate),0) 100%)" }}
-          />
-          <Container className="relative z-10 text-center">
-            <h2 className="text-[clamp(2.25rem,6vw,5rem)] font-medium leading-[0.95] tracking-[-0.04em]">
-              <Lines>{["Let's build your", "next collection."]}</Lines>
-            </h2>
+          <div className="grid grid-cols-1 gap-5 md:gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+            <FeatureCard {...FEATURES[0]!} />
+            <FeatureCard {...FEATURES[1]!} />
+          </div>
+        </section>
+
+        {/* ════ SHOWCASE — 3 cut-outs over the watermark, like the reference ══
+         * The centre figure is flanked by two floating garment cut-outs so the
+         * section fills its width instead of leaving big empty margins. */}
+        <section className="relative overflow-hidden py-14 md:py-20">
+          <Watermark text="Essentials" className="text-[22vw]" opacity={0.05} />
+          <div className="relative z-10 mx-auto max-w-[var(--vx-max)] px-4 text-center md:px-6 lg:px-8">
+            <MixedHeading
+              align="center"
+              className="text-[clamp(2rem,4.4vw,3.6rem)] uppercase"
+              lines={[[{ t: "With the latest in" }, { t: "everyday", em: true }, { t: "essentials" }]]}
+            />
+            <div className="mt-10 flex items-end justify-center gap-2 sm:gap-6 lg:gap-12">
+              <FloatingCutout
+                src={`${CUT}/jeans-dark.png`}
+                alt="Dark wash denim"
+                width={200}
+                strength={20}
+                bob={10}
+                className="mb-6 hidden w-[26%] max-w-[220px] sm:block"
+              />
+              <ShowcaseFigure src={`${CUT}/figure-torso.png`} alt="RISITEX everyday essentials" width={360} />
+              <FloatingCutout
+                src={`${CUT}/jeans-light.png`}
+                alt="Light wash denim"
+                width={200}
+                strength={28}
+                bob={8}
+                className="mb-12 hidden w-[26%] max-w-[220px] sm:block"
+              />
+            </div>
             <Reveal delay={0.2}>
-              <p className="mx-auto mt-6 max-w-[44ch] text-body-lg opacity-70">
-                Whether you're a retailer, distributor or growing brand, Risitex
-                delivers dependable manufacturing, consistent quality and
-                business-first service.
-              </p>
-            </Reveal>
-            <Reveal delay={0.3}>
-              <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-                <InkLink href="/auth/sign-up" solid>Create Business Account</InkLink>
-                <InkLink href="/contact">Contact Sales</InkLink>
+              <div className="mt-8 flex items-center justify-center gap-3">
+                <Pill href="/wholesale/catalogue" variant="dark">Shop essentials</Pill>
+                <Pill href="/about" variant="outline">Our process</Pill>
               </div>
             </Reveal>
-          </Container>
-        </section>
-      </div>
-
-      {/* ══ TRADE CONTENT — follows the theme (light-mode support) ══ */}
-      <section className="border-b border-border-subtle bg-surface-background py-24 md:py-32">
-        <Container>
-          <Reveal>
-            <p className="text-micro uppercase tracking-[0.3em] text-text-muted">Why Risitex</p>
-          </Reveal>
-          <h2 className="mt-5 max-w-[18ch] text-[clamp(2rem,4.6vw,3.5rem)] font-medium leading-[0.98] tracking-[-0.035em] text-text-primary">
-            <Lines>{["Why businesses", "choose Risitex."]}</Lines>
-          </h2>
-          <div className="mt-14 border-t border-border-subtle">
-            {TRADE.map((f, i) => (
-              <Reveal key={f.n} delay={i * 0.04}>
-                <div className="group grid grid-cols-1 items-start gap-3 border-b border-border-subtle py-8 transition-colors duration-base hover:bg-surface-sunken md:grid-cols-12 md:gap-6">
-                  <span className="text-caption tracking-[0.16em] text-text-muted md:col-span-1 md:pt-2">{f.n}</span>
-                  <h3 className="text-heading-sm text-text-primary transition-transform duration-slow ease-standard group-hover:translate-x-2 md:col-span-3">
-                    {f.t}
-                  </h3>
-                  <p className="text-body-md leading-relaxed text-text-secondary md:col-span-8">{f.d}</p>
-                </div>
-              </Reveal>
-            ))}
           </div>
-        </Container>
-      </section>
+        </section>
 
-      {/* ── FAQ ──────────────────────────────────────────── */}
-      <section className="bg-surface-background py-24 md:py-32">
-        {/* Full width on purpose — a 4/8 split parked the heading in a narrow
-            column and left a dead gap beside every short question. */}
-        <Container>
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <div>
-              <Reveal>
-                <p className="text-micro uppercase tracking-[0.3em] text-text-muted">FAQ</p>
-              </Reveal>
-              <h2 className="mt-5 text-[clamp(2rem,4.6vw,3.5rem)] font-medium leading-[1] tracking-[-0.035em] text-text-primary">
-                <Lines>{["Questions, answered."]}</Lines>
-              </h2>
-            </div>
+        {/* ════ MARQUEE — moving text band (reference's sliding headline) ═══ */}
+        <section className="mt-14 border-y border-[var(--vx-line)] py-6 md:mt-20 md:py-10">
+          <Marquee
+            items={["Premium Denim", "Boxer Shorts", "Innerwear", "Pyjamas", "Made in Bengaluru"]}
+          />
+        </section>
+
+        {/* ════ PRODUCT GRID — live catalogue ═══════════════════════════ */}
+        <section className="mx-auto max-w-[var(--vx-max)] px-4 md:px-6 lg:px-8">
+          <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
+            <MixedHeading
+              className="text-[clamp(2rem,4.4vw,3.6rem)] uppercase"
+              lines={[[{ t: "Fresh blocks for your" }, { t: "next", em: true }, { t: "order" }]]}
+            />
             <Reveal delay={0.1}>
               <Link
-                href="/contact"
-                data-cursor=""
-                className="group inline-flex items-center gap-2 border-b border-text-primary pb-1 text-caption uppercase tracking-[0.16em] text-text-primary transition-colors duration-base hover:border-brand-accent hover:text-brand-accent"
+                href="/wholesale/catalogue"
+                className="group inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.2em] text-[var(--vx-ink-soft)] transition-colors hover:text-[var(--vx-ink)]"
               >
-                Still stuck? Talk to us
-                <span aria-hidden className="transition-transform duration-base group-hover:translate-x-1">→</span>
+                View full catalogue
+                <span aria-hidden className="transition-transform duration-500 group-hover:translate-x-1">→</span>
               </Link>
             </Reveal>
           </div>
-          <Reveal delay={0.15} className="mt-14">
-            <FaqList items={FAQS} />
-          </Reveal>
-        </Container>
-      </section>
+          <ProductGrid items={grid} />
+        </section>
+
+        {/* ════ LOOK SCROLLER ═══════════════════════════════════════════ */}
+        <section className="mt-16 md:mt-24">
+          <div className="mx-auto max-w-[var(--vx-max)] px-4 md:px-6 lg:px-8">
+            <MixedHeading
+              align="center"
+              className="text-center text-[clamp(2rem,4.4vw,3.6rem)] uppercase"
+              lines={[[{ t: "Fits for your" }, { t: "next", em: true }, { t: "season" }]]}
+            />
+          </div>
+          <LookScroller looks={LOOKS} />
+        </section>
+
+        {/* ════ STATS ═══════════════════════════════════════════════════ */}
+        <section className="mx-auto mt-14 max-w-[var(--vx-max)] px-4 md:mt-24 md:px-6 lg:px-8">
+          <div className="rounded-[26px] border border-[var(--vx-line)] bg-[var(--vx-card)] px-6 py-12 md:px-10">
+            {/* Dividers between columns so the wide "1,20,000+" and the small
+                "4" read as two separate stats, never one run of text. */}
+            <div className="grid grid-cols-2 gap-y-12 lg:grid-cols-4">
+              {NUMBERS.map((n, i) => {
+                const mobRight = i % 2 === 1;
+                const deskFirst = i % 4 === 0;
+                const cls = [
+                  mobRight ? "border-l border-[var(--vx-line)] pl-5" : "",
+                  deskFirst
+                    ? "lg:border-l-0 lg:pl-0"
+                    : "lg:border-l lg:border-[var(--vx-line)] lg:pl-8",
+                ].join(" ");
+                return (
+                  <Reveal key={n.k} delay={i * 0.08}>
+                    <div className={cls}>
+                      <p className="vx-display text-[clamp(1.4rem,6vw,3.25rem)] font-extrabold leading-none tracking-[-0.02em]">
+                        <CountUp to={n.v} suffix={"suffix" in n ? n.suffix : ""} year={"year" in n ? n.year : false} />
+                      </p>
+                      <p className="mt-3 text-[12px] uppercase tracking-[0.2em] text-[var(--vx-ink-soft)]">
+                        {n.k}
+                      </p>
+                    </div>
+                  </Reveal>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ════ FAQ — brought back from the earlier homepage ════════════ */}
+        <section className="mx-auto mb-20 mt-16 max-w-[var(--vx-max)] px-4 md:mb-24 md:mt-24 md:px-6 lg:px-8">
+          <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
+            <MixedHeading
+              className="text-[clamp(2rem,4.4vw,3.6rem)] uppercase"
+              lines={[[{ t: "Questions," }, { t: "answered", em: true }]]}
+            />
+            <Reveal delay={0.1}>
+              <Link
+                href="/contact"
+                className="group inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.2em] text-[var(--vx-ink-soft)] transition-colors hover:text-[var(--vx-ink)]"
+              >
+                Still have questions? Talk to us
+                <span aria-hidden className="transition-transform duration-500 group-hover:translate-x-1">→</span>
+              </Link>
+            </Reveal>
+          </div>
+          <FaqList items={FAQS} />
+        </section>
+      </div>
     </>
   );
 }

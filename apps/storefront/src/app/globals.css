@@ -120,3 +120,32 @@
     animation: none;
   }
 }
+
+/*
+ * Theme-aware logo swap for the navbar (site-wide).
+ *
+ * The mark exists as two PNGs: black (for a light navbar) and cream (for a dark
+ * one). Which shows is driven by the ACTUAL navbar background, not just the
+ * theme — the homepage forces the navbar light via html:has(.rx-cocoon) even
+ * when the stored theme is dark, so a naive data-theme check would show the
+ * cream mark on a white card and it would vanish. Order matters: the homepage
+ * override comes last so it wins.
+ */
+.rx-logo-light { display: none; }
+.rx-logo-black { display: block; }
+:root[data-theme="dark"] .rx-logo-black { display: none; }
+:root[data-theme="dark"] .rx-logo-light { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .rx-logo-black { display: none; }
+  :root:not([data-theme="light"]) .rx-logo-light { display: block; }
+}
+html:has(.rx-cocoon) .rx-logo-black { display: block !important; }
+html:has(.rx-cocoon) .rx-logo-light { display: none !important; }
+
+/*
+ * The navbar is fixed (announcement 36px + nav 64px = 100px) and so takes no
+ * flow space. Reserve its height on every page so content isn't hidden behind
+ * it. The homepage opts out — its hero is meant to sit behind the navbar.
+ */
+main { padding-top: 100px; }
+html:has(.rx-cocoon) main { padding-top: 0; }
