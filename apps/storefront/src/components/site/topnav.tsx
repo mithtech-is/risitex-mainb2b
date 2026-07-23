@@ -267,8 +267,20 @@ function NavSearch() {
     };
   }, [q]);
 
+  /**
+   * Live search: typing redirects to the catalogue with ?q=.
+   *
+   * GUARDED BY `open` — i.e. only while the visitor is actively using the box.
+   * Without that guard this effect caused a nasty glitch: click a search
+   * RESULT → the product page opens → pathname changes → this effect re-arms
+   * (q still filled, no longer on the catalogue) → 400ms later it yanked the
+   * visitor off the product page back to the catalogue. Same story when
+   * navigating anywhere else with leftover text in the box. `go()` also
+   * clears `q`, so both belts hold.
+   */
   React.useEffect(() => {
     const term = q.trim();
+    if (!open) return;
     if (term.length < 1) return;
     if (pathname === "/wholesale/catalogue") return;
     const t = setTimeout(() => {
@@ -278,7 +290,7 @@ function NavSearch() {
       );
     }, 400);
     return () => clearTimeout(t);
-  }, [q, pathname, router]);
+  }, [q, open, pathname, router]);
 
   React.useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -292,6 +304,11 @@ function NavSearch() {
 
   const go = (href: string) => {
     setOpen(false);
+    // Clear the query BEFORE navigating: the live-search effect's cleanup
+    // cancels any pending catalogue redirect, so clicking a result can never
+    // be followed by a bounce back to the catalogue.
+    setQ("");
+    setHits([]);
     router.push(href);
   };
 
