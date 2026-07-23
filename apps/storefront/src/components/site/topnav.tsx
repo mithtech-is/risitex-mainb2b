@@ -6,7 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import * as React from "react";
 import { MobileMenu } from "./mobile-menu";
-import { CatalogueMega } from "./catalogue-mega";
+import { CatalogueMega, NAV_LINK_CLASS, NavUnderline } from "./catalogue-mega";
 import { WalletIconButton } from "@/components/wallet/wallet-icon-button";
 import {
   ChevronLeft,
@@ -70,12 +70,10 @@ export function Topnav() {
             <Logo />
           </div>
 
-          {/* Centre — pill nav, as on the live site (lamongie.in): the links
-              sit inside a rounded, hairline-bordered pill. */}
-          <nav
-            aria-label="Primary"
-            className="hidden items-center rounded-full border border-border-subtle bg-surface-raised px-1.5 py-1.5 lg:flex"
-          >
+          {/* Centre — Jockey-style link row (jockey.in): UPPERCASE, bold,
+              letterspaced, muted-to-ink on hover with a growing underline.
+              No pill, no borders — the type carries it. */}
+          <nav aria-label="Primary" className="hidden items-center lg:flex">
             <NavLinks />
           </nav>
 
@@ -219,14 +217,10 @@ function NavLinks() {
             <Link
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={[
-                "block rounded-full px-4 py-2 text-body-sm font-medium transition-all duration-fast",
-                active
-                  ? "bg-text-primary text-text-on-inverse"
-                  : "text-text-secondary hover:bg-text-primary hover:text-text-on-inverse",
-              ].join(" ")}
+              className={NAV_LINK_CLASS(active)}
             >
               {item.label}
+              <NavUnderline show={active} />
             </Link>
           </li>
         );
@@ -314,7 +308,8 @@ function NavSearch() {
       <form
         onSubmit={submit}
         role="search"
-        className="flex items-center gap-2 border border-text-primary bg-surface-background pl-3 h-10 rounded-md overflow-hidden w-[260px] focus-within:w-[340px] transition-[width] duration-base ease-standard"
+        // Jockey's search: a soft rounded-full grey pill, no hard border.
+        className="flex h-10 w-[240px] items-center gap-2 overflow-hidden rounded-full bg-surface-sunken pl-4 transition-[width] duration-base ease-standard focus-within:w-[320px]"
       >
         <Search
           className="pointer-events-none h-[18px] w-[18px] shrink-0 text-text-muted"
@@ -336,7 +331,7 @@ function NavSearch() {
       </form>
 
       {showPanel && (
-        <div className="absolute right-0 top-full z-popover mt-1 w-full overflow-hidden rounded-md border border-text-primary bg-surface-background py-3">
+        <div className="absolute right-0 top-full z-popover mt-2 w-full overflow-hidden rounded-[16px] border border-border-subtle bg-surface-raised py-3 shadow-[0_24px_50px_-12px_rgba(10,10,10,0.25)]">
           <p className="px-4 pb-2 text-[11px] text-text-muted">
             {loading ? "Searching…" : "Search Results"}
           </p>

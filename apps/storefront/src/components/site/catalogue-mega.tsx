@@ -135,6 +135,28 @@ const catHref = (handle?: string) =>
     ? `/wholesale/catalogue?cat=${encodeURIComponent(handle)}`
     : "/wholesale/catalogue";
 
+/**
+ * The Jockey nav-link skin (jockey.in), shared by the trigger and the plain
+ * links in topnav: ALWAYS bold + uppercase (so hover never shifts layout),
+ * muted by default, ink on hover/active, with a 2px underline that grows in.
+ */
+export const NAV_LINK_CLASS = (active: boolean) =>
+  [
+    "group/nav relative flex items-center gap-1 px-4 py-2 text-[13px] font-bold uppercase tracking-[0.12em] transition-colors duration-fast",
+    active ? "text-text-primary" : "text-text-muted hover:text-text-primary",
+  ].join(" ");
+
+export function NavUnderline({ show }: { show: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`absolute inset-x-4 bottom-0 h-[2px] origin-left bg-text-primary transition-transform duration-base ease-standard ${
+        show ? "scale-x-100" : "scale-x-0 group-hover/nav:scale-x-100"
+      }`}
+    />
+  );
+}
+
 export function CatalogueMega() {
   const pathname = usePathname() ?? "";
   const active =
@@ -171,14 +193,10 @@ export function CatalogueMega() {
         <Link
           href="/wholesale/catalogue"
           aria-current={active ? "page" : undefined}
-          className={[
-            "relative block rounded-full px-4 py-2 text-body-sm font-medium transition-all duration-fast",
-            active
-              ? "bg-text-primary text-text-on-inverse"
-              : "text-text-secondary hover:bg-text-primary hover:text-text-on-inverse",
-          ].join(" ")}
+          className={NAV_LINK_CLASS(active)}
         >
           Catalogue
+          <NavUnderline show={active} />
         </Link>
       </li>
     );
@@ -191,12 +209,7 @@ export function CatalogueMega() {
         aria-current={active ? "page" : undefined}
         aria-expanded={open}
         onKeyDown={(e) => e.key === "Escape" && closeNow()}
-        className={[
-          "relative flex items-center gap-1 rounded-full px-4 py-2 text-body-sm font-medium transition-all duration-fast",
-          active || open
-            ? "bg-text-primary text-text-on-inverse"
-            : "text-text-secondary hover:bg-text-primary hover:text-text-on-inverse",
-        ].join(" ")}
+        className={NAV_LINK_CLASS(active || open)}
       >
         Catalogue
         <ChevronDown
@@ -205,6 +218,7 @@ export function CatalogueMega() {
           }`}
           aria-hidden
         />
+        <NavUnderline show={active || open} />
       </Link>
 
       {/* Full-width mega panel */}

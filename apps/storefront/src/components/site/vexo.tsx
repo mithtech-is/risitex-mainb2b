@@ -99,7 +99,7 @@ export function MixedHeading({
               {toks.map((tk, ti) => (
                 <React.Fragment key={ti}>
                   {tk.em ? (
-                    <span className="vx-serif italic font-normal tracking-[-0.01em]">
+                    <span className="vx-serif tracking-[-0.01em]">
                       {tk.t}
                     </span>
                   ) : (
@@ -127,6 +127,7 @@ export function Pill({
   href,
   children,
   variant = "dark",
+  size = "md",
   arrow = true,
   className = "",
   external = false,
@@ -140,6 +141,8 @@ export function Pill({
    * flip with the theme.
    */
   variant?: "dark" | "outline" | "solid" | "outline-invert";
+  /** "lg" for hero-adjacent CTAs that must hold their own next to big imagery */
+  size?: "md" | "lg";
   arrow?: boolean;
   className?: string;
   external?: boolean;
@@ -165,7 +168,11 @@ export function Pill({
       ) : null}
     </>
   );
-  const cls = `group/pill inline-flex items-center gap-2 rounded-full px-6 py-3 text-[12px] font-medium uppercase tracking-[0.14em] transition-all duration-500 ease-out ${skin} ${className}`;
+  const dims =
+    size === "lg"
+      ? "gap-3 px-8 py-4 text-[14px]"
+      : "gap-2 px-6 py-3 text-[12px]";
+  const cls = `group/pill inline-flex items-center rounded-full font-medium uppercase tracking-[0.14em] transition-all duration-500 ease-out ${dims} ${skin} ${className}`;
   return external ? (
     <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>
       {inner}
@@ -614,6 +621,55 @@ function ProductCard({ item, index }: { item: GridItem; index: number }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+ * WatermarkMarquee — the reference's signature background type: a GIANT,
+ * faint word train that slides continuously behind a section's content.
+ * Same doubled-row/-50% loop as the Marquee, but huge, low-opacity, and
+ * absolutely positioned to fill its section. Decorative only (aria-hidden);
+ * static under reduced motion.
+ * ───────────────────────────────────────────────────────────────────────── */
+export function WatermarkMarquee({
+  text,
+  opacity = 0.06,
+  seconds = 46,
+  className = "",
+}: {
+  text: string;
+  opacity?: number;
+  /** one full loop duration — keep it SLOW; the reference glides, never races */
+  seconds?: number;
+  className?: string;
+}) {
+  const reduced = useReducedMotion();
+  const row = (dup: number) => (
+    <div className="flex shrink-0 items-center" aria-hidden={dup === 1}>
+      {[0, 1].map((i) => (
+        <span
+          key={`${dup}-${i}`}
+          className="vx-display whitespace-nowrap px-10 font-extrabold uppercase leading-none tracking-[-0.03em] text-[var(--vx-ink)]"
+        >
+          {text}
+        </span>
+      ))}
+    </div>
+  );
+  return (
+    <div
+      aria-hidden
+      className={`pointer-events-none absolute inset-0 flex items-center overflow-hidden ${className}`}
+      style={{ opacity }}
+    >
+      <div
+        className={`flex w-max ${reduced ? "" : "rx-ticker"}`}
+        style={reduced ? undefined : { animationDuration: `${seconds}s` }}
+      >
+        {row(0)}
+        {row(1)}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
  * Marquee — big text sliding left across the page (the reference's moving
  * headline band). The row is rendered twice and translated -50%, so the seam
  * is invisible; pauses/stops under reduced motion. Colours follow the theme.
@@ -630,10 +686,13 @@ export function Marquee({
     <div className="flex shrink-0 items-center" aria-hidden={dup === 1}>
       {items.map((t, i) => (
         <span key={`${dup}-${i}`} className="flex items-center">
-          <span className="vx-display px-6 text-[clamp(1.6rem,5vw,4rem)] font-extrabold uppercase leading-none tracking-[-0.02em] text-[var(--vx-ink)] md:px-10">
+          {/* Smaller and MUTED on purpose: the band sits right above big ink
+              section headings, and at heading size/colour the two read as one
+              wall of text. Soft colour + smaller size = clear hierarchy. */}
+          <span className="vx-display px-5 text-[clamp(1.1rem,2.6vw,2rem)] font-bold uppercase leading-none tracking-[-0.01em] text-[var(--vx-ink-soft)] md:px-8">
             {t}
           </span>
-          <span aria-hidden className="text-[clamp(0.9rem,1.8vw,1.5rem)] text-[var(--vx-sage)]">
+          <span aria-hidden className="text-[clamp(0.7rem,1.3vw,1.05rem)] text-[var(--vx-sage)]">
             ✦
           </span>
         </span>

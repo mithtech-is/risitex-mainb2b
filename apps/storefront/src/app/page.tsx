@@ -9,6 +9,7 @@ import {
   MixedHeading,
   Pill,
   Watermark,
+  WatermarkMarquee,
   Marquee,
   FloatingCutout,
   FeatureCard,
@@ -118,17 +119,14 @@ const FAQS: Faq[] = [
   { q: "Can I request custom manufacturing?", a: "Yes. We support OEM manufacturing, private labelling and custom production for qualifying order volumes." },
 ];
 
-/* Fallback grid when the live catalogue is empty, so the section never renders
- * as a broken row. Real product photography only. */
-const DEMO_ITEMS: GridItem[] = [
-  { href: "/wholesale/catalogue", name: "Straight denim", cat: "Jeans", moq: "240 pcs", image: `${PROD}/jeans-dark-blue.jpg` },
-  { href: "/wholesale/catalogue", name: "Relaxed denim", cat: "Jeans", moq: "240 pcs", image: `${PROD}/jeans-light-blue.jpg` },
-  { href: "/wholesale/catalogue", name: "Woven boxers", cat: "Shorts", moq: "240 pcs", image: `${PROD}/photo-04.jpg` },
-  { href: "/wholesale/catalogue", name: "Combed boxers", cat: "Innerwear", moq: "240 pcs", image: `${PROD}/photo-05.jpg` },
-];
-
+/**
+ * LIVE CATALOGUE ONLY — no demo fallback. If the store has no published
+ * products with imagery, the grid section simply doesn't render. The live
+ * site must never advertise a product that does not exist (user requirement,
+ * 2026-07-23).
+ */
 function toGrid(products: Product[]): GridItem[] {
-  const items = products
+  return products
     .map((p) => ({ p, art: p.image ?? p.images?.[0] }))
     .filter((x): x is { p: Product; art: string } => Boolean(x.art))
     .slice(0, 8)
@@ -140,7 +138,6 @@ function toGrid(products: Product[]): GridItem[] {
       image: art,
       hover: p.images?.find((i) => i !== art) ?? art,
     }));
-  return items.length ? items : DEMO_ITEMS;
 }
 
 export default async function HomePage() {
@@ -232,11 +229,18 @@ export default async function HomePage() {
           --vx-mist:      #2A2E30;
         }
 
+        /* ONE typeface: Space Grotesk carries display AND accent. The old
+         * Archivo/Instrument-Serif pair is gone; .vx-display stays as the
+         * heavy-headline hook and .vx-serif is now the LIGHT accent (weight
+         * contrast replaces the italic serif — Space Grotesk has no italic,
+         * and a synthesised oblique would look cheap). */
         .rx-vexo .vx-display {
-          font-family: var(--font-archivo), var(--font-space-grotesk), system-ui, sans-serif;
+          font-family: var(--font-space-grotesk), system-ui, sans-serif;
         }
         .rx-vexo .vx-serif {
-          font-family: var(--font-instrument), Georgia, "Times New Roman", serif;
+          font-family: var(--font-space-grotesk), system-ui, sans-serif;
+          font-style: normal;
+          font-weight: 300;
         }
 
         /* HeroSlideshow motion (reused from the elegance kit): the slow ambient
@@ -357,40 +361,24 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ════ SHOWCASE — 3 cut-outs over the watermark, like the reference ══
-         * The centre figure is flanked by two floating garment cut-outs so the
-         * section fills its width instead of leaving big empty margins. */}
+        {/* ════ SHOWCASE — centred figure over CONTINUOUSLY MOVING type ═════
+         * Exactly the reference's treatment: one clean cut-out in the middle,
+         * and a giant faint word train gliding left behind it, edge to edge. */}
         <section className="relative overflow-hidden py-14 md:py-20">
-          <Watermark text="Essentials" className="text-[22vw]" opacity={0.05} />
+          <WatermarkMarquee text="Everyday Essentials" className="text-[13vw]" opacity={0.06} seconds={46} />
           <div className="relative z-10 mx-auto max-w-[var(--vx-max)] px-4 text-center md:px-6 lg:px-8">
             <MixedHeading
               align="center"
               className="text-[clamp(2rem,4.4vw,3.6rem)] uppercase"
               lines={[[{ t: "With the latest in" }, { t: "everyday", em: true }, { t: "essentials" }]]}
             />
-            <div className="mt-10 flex items-end justify-center gap-2 sm:gap-6 lg:gap-12">
-              <FloatingCutout
-                src={`${CUT}/jeans-dark.png`}
-                alt="Dark wash denim"
-                width={200}
-                strength={20}
-                bob={10}
-                className="mb-6 hidden w-[26%] max-w-[220px] sm:block"
-              />
-              <ShowcaseFigure src={`${CUT}/figure-torso.png`} alt="RISITEX everyday essentials" width={360} />
-              <FloatingCutout
-                src={`${CUT}/jeans-light.png`}
-                alt="Light wash denim"
-                width={200}
-                strength={28}
-                bob={8}
-                className="mb-12 hidden w-[26%] max-w-[220px] sm:block"
-              />
+            <div className="mt-10">
+              <ShowcaseFigure src={`${CUT}/figure-torso.png`} alt="RISITEX everyday essentials" width={310} />
             </div>
             <Reveal delay={0.2}>
-              <div className="mt-8 flex items-center justify-center gap-3">
-                <Pill href="/wholesale/catalogue" variant="dark">Shop essentials</Pill>
-                <Pill href="/about" variant="outline">Our process</Pill>
+              <div className="mt-10 flex items-center justify-center gap-4">
+                <Pill href="/wholesale/catalogue" variant="dark" size="lg">Shop essentials</Pill>
+                <Pill href="/about" variant="outline" size="lg">Our process</Pill>
               </div>
             </Reveal>
           </div>
@@ -403,17 +391,24 @@ export default async function HomePage() {
           />
         </section>
 
-        {/* ════ PRODUCT GRID — live catalogue ═══════════════════════════ */}
-        <section className="mx-auto max-w-[var(--vx-max)] px-4 md:px-6 lg:px-8">
-          <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
+        {/* ════ PRODUCT GRID — live catalogue ═══════════════════════════
+         * Generous mt separates this from the marquee band's border above —
+         * the heading was sitting right on that rule and read as suffocated.
+         * Header is CENTRED (heading + catalogue link stacked), per request.
+         * REAL PRODUCTS ONLY: the whole section is skipped when the live
+         * catalogue has nothing to show. */}
+        {grid.length > 0 ? (
+        <section className="mx-auto mt-16 max-w-[var(--vx-max)] px-4 md:mt-24 md:px-6 lg:px-8">
+          <div className="mb-12 text-center">
             <MixedHeading
+              align="center"
               className="text-[clamp(2rem,4.4vw,3.6rem)] uppercase"
               lines={[[{ t: "Fresh blocks for your" }, { t: "next", em: true }, { t: "order" }]]}
             />
             <Reveal delay={0.1}>
               <Link
                 href="/wholesale/catalogue"
-                className="group inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.2em] text-[var(--vx-ink-soft)] transition-colors hover:text-[var(--vx-ink)]"
+                className="group mt-5 inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.2em] text-[var(--vx-ink-soft)] transition-colors hover:text-[var(--vx-ink)]"
               >
                 View full catalogue
                 <span aria-hidden className="transition-transform duration-500 group-hover:translate-x-1">→</span>
@@ -422,6 +417,7 @@ export default async function HomePage() {
           </div>
           <ProductGrid items={grid} />
         </section>
+        ) : null}
 
         {/* ════ LOOK SCROLLER ═══════════════════════════════════════════ */}
         <section className="mt-16 md:mt-24">
