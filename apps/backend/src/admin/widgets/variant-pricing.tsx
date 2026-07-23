@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
-import { Button, Container, Heading, Input, Table, Text, toast } from "@medusajs/ui"
+import { Button, Container, Heading, IconButton, Input, Table, Text, Tooltip, TooltipProvider, toast } from "@medusajs/ui"
 
 /**
  * Variant Pricing widget — lets the admin set Wholesale price, MRP, and
@@ -92,6 +92,18 @@ const VariantPricingWidget = ({ data: product }: { data: Product }) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
   }
 
+  /**
+   * Excel-style fill-down: copy ONE cell's value to every variant in that
+   * column. Saves the admin re-typing the same wholesale/MRP/pack figure
+   * across dozens of variants — the whole point of this control. Works from
+   * any row (whichever cell holds the value you want everywhere).
+   */
+  const fillDown = (field: "wholesale" | "mrp" | "packSize", value: string) => {
+    if (value === "") return
+    setRows((prev) => prev.map((r) => ({ ...r, [field]: value })))
+    toast.success(`Applied ${value} to all ${rows.length} variants`)
+  }
+
   const validate = (row: Row): string | null => {
     for (const [label, value] of [
       ["Wholesale", row.wholesale],
@@ -179,7 +191,7 @@ const VariantPricingWidget = ({ data: product }: { data: Product }) => {
         <Heading level="h2">B2B Pricing & Packs</Heading>
         <Text size="small" className="text-ui-fg-subtle mt-1">
           Wholesale shows after login · MRP shows to everyone · Pack size = pieces per variant
-          counted toward MOQ
+          counted toward MOQ · Use the ⇩ next to a value to copy it to every variant
         </Text>
       </div>
       <Table>
@@ -197,33 +209,40 @@ const VariantPricingWidget = ({ data: product }: { data: Product }) => {
               <Table.Cell>
                 <Text size="small">{row.title}</Text>
               </Table.Cell>
-              <Table.Cell>
-                <Input
-                  type="number"
-                  size="small"
-                  value={row.wholesale}
-                  onChange={(e) => updateRow(row.id, { wholesale: e.currentTarget.value })}
-                  placeholder="—"
-                />
-              </Table.Cell>
-              <Table.Cell>
-                <Input
-                  type="number"
-                  size="small"
-                  value={row.mrp}
-                  onChange={(e) => updateRow(row.id, { mrp: e.currentTarget.value })}
-                  placeholder="—"
-                />
-              </Table.Cell>
-              <Table.Cell>
-                <Input
-                  type="number"
-                  size="small"
-                  value={row.packSize}
-                  onChange={(e) => updateRow(row.id, { packSize: e.currentTarget.value })}
-                  placeholder="—"
-                />
-              </Table.Cell>
+              {(
+                [
+                  ["wholesale", row.wholesale],
+                  ["mrp", row.mrp],
+                  ["packSize", row.packSize],
+                ] as const
+              ).map(([field, value]) => (
+                <Table.Cell key={field}>
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      size="small"
+                      value={value}
+                      onChange={(e) => updateRow(row.id, { [field]: e.currentTarget.value })}
+                      placeholder="—"
+                    />
+                    <TooltipProvider>
+                      <Tooltip content="Copy this value to all variants">
+                        <IconButton
+                          size="small"
+                          variant="transparent"
+                          disabled={value === ""}
+                          aria-label={`Copy this ${field} to all variants`}
+                          onClick={() => fillDown(field, value)}
+                        >
+                          <span aria-hidden className="text-[13px] leading-none">
+                            ⇩
+                          </span>
+                        </IconButton>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </Table.Cell>
+              ))}
             </Table.Row>
           ))}
         </Table.Body>
