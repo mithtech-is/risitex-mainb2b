@@ -1000,6 +1000,29 @@ function QuestionsInbox() {
         }
     }
 
+    /** Permanently remove a question the admin judges unnecessary. */
+    const deleteQuestion = async () => {
+        if (!selected) return
+        if (
+            !confirm(
+                `Delete this question from ${selected.customer_name}? It disappears from the product page too. This cannot be undone.`
+            )
+        )
+            return
+        setSaving(true)
+        try {
+            await fetch(
+                `/admin/product-questions?id=${encodeURIComponent(selected.id)}`,
+                { method: "DELETE", credentials: "include" }
+            )
+            await load()
+            setSelectedId(null)
+            setAnswer("")
+        } finally {
+            setSaving(false)
+        }
+    }
+
     return (
         <div>
             <div className="mb-4 flex items-center justify-between gap-2">
@@ -1201,7 +1224,7 @@ function QuestionsInbox() {
                                 </label>
                             </div>
 
-                            <div className="flex gap-2">
+                            <div className="flex items-center justify-between gap-2">
                                 <Button
                                     size="small"
                                     disabled={saving || !answer.trim()}
@@ -1209,6 +1232,14 @@ function QuestionsInbox() {
                                     onClick={submitAnswer}
                                 >
                                     {selected.answer ? "Update answer" : "Submit answer"}
+                                </Button>
+                                <Button
+                                    size="small"
+                                    variant="danger"
+                                    disabled={saving}
+                                    onClick={deleteQuestion}
+                                >
+                                    Delete question
                                 </Button>
                             </div>
 

@@ -369,8 +369,41 @@ function NavSearch() {
   );
 }
 
+/**
+ * Is a customer signed in? Read from the same auth-token key + events the
+ * account slot uses, so every part of the nav agrees. `null` = not yet known
+ * (first client render) — treat as signed-out so nothing flashes in.
+ */
+function useAuthed() {
+  const [authed, setAuthed] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    const read = () => {
+      try {
+        setAuthed(!!window.localStorage.getItem("medusa_auth_token"));
+      } catch {
+        setAuthed(false);
+      }
+    };
+    read();
+    const onChange = () => read();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "medusa_auth_token" || e.key === null) read();
+    };
+    window.addEventListener("risitex:auth-changed", onChange);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("risitex:auth-changed", onChange);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  return authed;
+}
+
 function TopnavActions() {
   const counts = useNavActionCounts();
+  const authed = useAuthed();
 
   return (
     // One consistent gap between every action; the search + theme sit left of
@@ -379,9 +412,13 @@ function TopnavActions() {
     <div className="flex items-center gap-1">
       <NavSearch />
       <ThemeToggle />
-      <NavIcon href="/b2b/wishlist" label="Wishlist" count={counts.wishlist}>
-        <Heart className="h-5 w-5" />
-      </NavIcon>
+      {/* Wishlist is a signed-in feature — hidden until login (user request
+          2026-07-23) so guests never see a control they cannot use. */}
+      {authed ? (
+        <NavIcon href="/b2b/wishlist" label="Wishlist" count={counts.wishlist}>
+          <Heart className="h-5 w-5" />
+        </NavIcon>
+      ) : null}
       <WalletIconButton />
       <NavIcon href="/b2b/cart" label="Cart" count={counts.cart}>
         <ShoppingBag className="h-5 w-5" />
@@ -418,28 +455,7 @@ function ThemeToggle() {
 }
 
 function AccountNavSlot() {
-  const [authed, setAuthed] = React.useState<boolean | null>(null);
-
-  React.useEffect(() => {
-    const read = () => {
-      try {
-        setAuthed(!!window.localStorage.getItem("medusa_auth_token"));
-      } catch {
-        setAuthed(false);
-      }
-    };
-    read();
-    const onChange = () => read();
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "medusa_auth_token" || e.key === null) read();
-    };
-    window.addEventListener("risitex:auth-changed", onChange);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener("risitex:auth-changed", onChange);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
+  const authed = useAuthed();
 
   if (authed === false) {
     return (

@@ -57,3 +57,24 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   res.json({ question: updated });
 };
+
+/**
+ * DELETE /admin/product-questions?id=<question_id>
+ *
+ * Permanently remove a question the admin judges unnecessary (spam, abuse,
+ * duplicates). Hard delete — it disappears from the storefront PDP on the
+ * next fetch and from the moderation inbox immediately.
+ */
+export const DELETE = async (req: MedusaRequest, res: MedusaResponse) => {
+  const id = (req.query.id ?? "").toString().trim();
+  if (!id) {
+    return res.status(400).json({ message: "id is required" });
+  }
+
+  const svc = req.scope.resolve<ProductQuestionsModuleService>(
+    PRODUCT_QUESTIONS_MODULE,
+  );
+  await svc.deleteProductQuestions(id);
+
+  res.json({ id, deleted: true });
+};
