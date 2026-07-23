@@ -152,7 +152,7 @@ export default function FaqPage() {
                         aria-hidden
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-base ease-standard ${
                           isOpen
-                            ? "rotate-180 bg-brand-accent text-white"
+                            ? "rotate-180 bg-brand-accent text-text-on-accent"
                             : "bg-surface-sunken text-text-muted"
                         }`}
                       >

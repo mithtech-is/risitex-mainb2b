@@ -523,7 +523,7 @@ function NavIcon({
     >
       {children}
       {showBadge && (
-        <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-brand-accent px-1 text-center font-mono text-[10px] leading-4 text-white">
+        <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-brand-accent px-1 text-center font-mono text-[10px] leading-4 text-text-on-accent">
           {count > 99 ? "99+" : count}
         </span>
       )}
