@@ -100,17 +100,8 @@ export default async function WholesalePdpPage({
           sizeChartGarment={sizeChartGarment}
         />
 
-        <section className="grid grid-cols-1 gap-6 pb-16 lg:grid-cols-2">
-          <ProductQuestions
-            productId={product.medusaId ?? product.slug}
-            metadataQuestions={product.questions}
-          />
-          <ProductReviews
-            productId={product.medusaId ?? product.slug}
-            metadataReviews={product.reviews}
-          />
-        </section>
-
+        {/* Description FIRST (user request 2026-07-23): a buyer reads what the
+            product is before community Q&A and ratings. */}
         <section className="pb-16">
           <h2 className="font-display text-heading-lg text-text-primary">
             Product Description
@@ -129,6 +120,17 @@ export default async function WholesalePdpPage({
               <li key={i}>{line}</li>
             ))}
           </ul>
+        </section>
+
+        <section className="grid grid-cols-1 gap-6 pb-16 lg:grid-cols-2">
+          <ProductQuestions
+            productId={product.medusaId ?? product.slug}
+            metadataQuestions={product.questions}
+          />
+          <ProductReviews
+            productId={product.medusaId ?? product.slug}
+            metadataReviews={product.reviews}
+          />
         </section>
 
         {related.length > 0 && (

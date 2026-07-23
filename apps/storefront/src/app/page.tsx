@@ -62,7 +62,7 @@ const FEATURES = [
     eyebrow: "The denim programme",
     title: "Straight, slim & relaxed blocks",
     cta: "View",
-    href: "/wholesale/catalogue",
+    href: "/wholesale/catalogue?cat=jeans",
     tall: true,
   },
   {
@@ -71,7 +71,7 @@ const FEATURES = [
     eyebrow: "Base cloth & washes",
     title: "Non-lycra and stretch, washed to order",
     cta: "View",
-    href: "/wholesale/catalogue",
+    href: "/wholesale/catalogue?cat=jeans",
     tall: false,
   },
 ];
@@ -331,7 +331,7 @@ export default async function HomePage() {
               </Reveal>
               <Reveal delay={0.25}>
                 <div className="mt-8">
-                  <Pill href="/wholesale/catalogue" variant="dark">Browse the denim</Pill>
+                  <Pill href="/wholesale/catalogue?cat=jeans" variant="dark">Browse the denim</Pill>
                 </div>
               </Reveal>
             </div>
@@ -377,7 +377,7 @@ export default async function HomePage() {
             </div>
             <Reveal delay={0.2}>
               <div className="mt-10 flex items-center justify-center gap-4">
-                <Pill href="/wholesale/catalogue" variant="dark" size="lg">Shop essentials</Pill>
+                <Pill href="/wholesale/catalogue?cat=innerwear" variant="dark" size="lg">Shop essentials</Pill>
                 <Pill href="/about" variant="outline" size="lg">Our process</Pill>
               </div>
             </Reveal>
