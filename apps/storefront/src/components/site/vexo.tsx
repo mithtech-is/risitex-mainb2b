@@ -172,7 +172,7 @@ export function Pill({
     size === "lg"
       ? "gap-3 px-8 py-4 text-[14px]"
       : "gap-2 px-6 py-3 text-[12px]";
-  const cls = `group/pill inline-flex items-center rounded-full font-medium uppercase tracking-[0.14em] transition-all duration-500 ease-out ${dims} ${skin} ${className}`;
+  const cls = `group/pill inline-flex items-center whitespace-nowrap rounded-full font-medium uppercase tracking-[0.14em] transition-all duration-500 ease-out ${dims} ${skin} ${className}`;
   return external ? (
     <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>
       {inner}
@@ -689,10 +689,10 @@ export function Marquee({
           {/* Smaller and MUTED on purpose: the band sits right above big ink
               section headings, and at heading size/colour the two read as one
               wall of text. Soft colour + smaller size = clear hierarchy. */}
-          <span className="vx-display px-5 text-[clamp(1.1rem,2.6vw,2rem)] font-bold uppercase leading-none tracking-[-0.01em] text-[var(--vx-ink-soft)] md:px-8">
+          <span className="vx-display px-4 text-[clamp(0.95rem,2.6vw,2rem)] font-bold uppercase leading-none tracking-[-0.01em] text-[var(--vx-ink-soft)] md:px-8">
             {t}
           </span>
-          <span aria-hidden className="text-[clamp(0.7rem,1.3vw,1.05rem)] text-[var(--vx-sage)]">
+          <span aria-hidden className="text-[clamp(0.6rem,1.3vw,1.05rem)] text-[var(--vx-sage)]">
             ✦
           </span>
         </span>

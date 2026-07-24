@@ -240,7 +240,7 @@ export default async function HomePage() {
               <ShowcaseFigure src={`${CUT}/figure-torso.png`} alt="RISITEX everyday essentials" width={310} />
             </div>
             <Reveal delay={0.2}>
-              <div className="mt-10 flex items-center justify-center gap-4">
+              <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">
                 <Pill href="/wholesale/catalogue?cat=innerwear" variant="dark" size="lg">Shop essentials</Pill>
                 <Pill href="/about" variant="outline" size="lg">Our process</Pill>
               </div>
