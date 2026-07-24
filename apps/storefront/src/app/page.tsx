@@ -5,6 +5,7 @@ import type { Product } from "@/data/products";
 import { SmoothScroll, Reveal } from "@/components/site/fx";
 import { CountUp, HeroSlideshow } from "@/components/site/elegance";
 import { FaqList, type Faq } from "@/components/site/faq";
+import { VexoThemeStyle } from "@/components/site/vexo-theme";
 import {
   MixedHeading,
   Pill,
@@ -118,116 +119,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <style>{`
-        /* ══ VEXO HOMEPAGE THEME — scoped, THEME-REACTIVE, no leak elsewhere ══
-         *
-         * The homepage now follows the site theme: light tokens in light mode,
-         * dark in dark mode. Header semantic tokens are overridden ONLY in light
-         * mode, so the design system's own dark tokens drive the navbar in dark
-         * mode. The --vx-* palette has a light default on .rx-vexo and a dark
-         * override. The footer is left to the design system so it flips with the
-         * theme and its logo toggle (.rx-logo-black/.rx-logo-light) resolves.
-         *
-         * Specificity: html:root:not([data-theme="dark"]):has(.rx-vexo) = (0,3,1)
-         * beats the design system's :root[data-theme="dark"] (0,2,0); the dark
-         * override html[data-theme="dark"] .rx-vexo = (0,2,1) beats .rx-vexo.
-         */
-        html:root:not([data-theme="dark"]):has(.rx-vexo) {
-          --surface-background: #EDEFEF;
-          --surface-raised:     #FFFFFF;
-          --surface-sunken:     #F2F3F3;
-          --surface-inverse:    #0B0808;
-          --text-primary:       #0B0808;
-          --text-secondary:     #3A332F;
-          --text-muted:         #5D4D45;
-          --text-on-accent:     #FFFFFF;
-          --text-on-inverse:    #FFFFFF;
-          --border-subtle:      #E1E4E4;
-          --border-strong:      #D1D6D8;
-          --border-focus:       #0B0808;
-          --brand-accent:       #0B0808;
-          --brand-accent-muted: #5D4D45;
-          --brand-accent-surface: #F2F3F3;
-          --action-primary-bg:  #0B0808;
-          --action-primary-bg-hover: #5D4D45;
-          --action-primary-bg-active: #000000;
-          --action-primary-text: #FFFFFF;
-          --action-secondary-bg: #FFFFFF;
-          --action-secondary-bg-hover: #F2F3F3;
-          --action-secondary-text: #0B0808;
-          color-scheme: light;
-        }
-
-        /* ── VEXO PALETTE — light default ── */
-        .rx-vexo {
-          --vx-bg:        #EDEFEF;
-          --vx-card:      #FFFFFF;
-          --vx-card-2:    #E4E7E7;
-          --vx-line:      #E1E4E4;
-          --vx-ink:       #0B0808;   /* PRIMARY TEXT (theme-aware)     */
-          --vx-ink-soft:  #5D4D45;   /* muted text                     */
-          --vx-panel:     #0B0808;   /* dark feature / closer panel bg */
-          --vx-on-panel:  #EDEFEF;
-          --vx-btn:       #0B0808;   /* primary pill bg                */
-          --vx-btn-fg:    #FFFFFF;
-          --vx-btn-hover: #5D4D45;
-          --vx-chip:      #0B0808;   /* small arrow chip               */
-          --vx-chip-fg:   #FFFFFF;
-          --vx-pill:      rgba(255,255,255,0.92);
-          --vx-mist:      #D1D6D8;
-          --vx-sage:      #98AEB3;
-          --vx-max:       1240px;
-          background: var(--vx-bg);
-          color: var(--vx-ink);
-          font-family: var(--font-space-grotesk), system-ui, sans-serif;
-        }
-
-        /* ── VEXO PALETTE — dark override ── */
-        html[data-theme="dark"] .rx-vexo {
-          --vx-bg:        #0E0F10;
-          --vx-card:      #17191A;
-          --vx-card-2:    #202325;
-          --vx-line:      #282C2E;
-          --vx-ink:       #ECEEEE;
-          --vx-ink-soft:  #9AA1A1;
-          --vx-panel:     #17191A;
-          --vx-on-panel:  #ECEEEE;
-          --vx-btn:       #ECEEEE;
-          --vx-btn-fg:    #0B0808;
-          --vx-btn-hover: #C6CFD0;
-          --vx-chip:      #ECEEEE;
-          --vx-chip-fg:   #0B0808;
-          --vx-pill:      rgba(20,22,24,0.86);
-          --vx-mist:      #2A2E30;
-        }
-
-        /* ONE typeface: Space Grotesk carries display AND accent. The old
-         * Archivo/Instrument-Serif pair is gone; .vx-display stays as the
-         * heavy-headline hook and .vx-serif is now the LIGHT accent (weight
-         * contrast replaces the italic serif — Space Grotesk has no italic,
-         * and a synthesised oblique would look cheap). */
-        .rx-vexo .vx-display {
-          font-family: var(--font-space-grotesk), system-ui, sans-serif;
-        }
-        .rx-vexo .vx-serif {
-          font-family: var(--font-space-grotesk), system-ui, sans-serif;
-          font-style: normal;
-          font-weight: 300;
-        }
-
-        /* HeroSlideshow motion (reused from the elegance kit): the slow ambient
-         * orbit and the slide-progress bar. No backticks anywhere in this block. */
-        @keyframes rx-ambient {
-          0%   { transform: rotate(0deg)   translate(1.1em) rotate(0deg)    scale(1.2); }
-          100% { transform: rotate(360deg) translate(1.1em) rotate(-360deg) scale(1.2); }
-        }
-        .rx-ambient { animation: rx-ambient 30s linear infinite; }
-        @keyframes rx-bar { from { width: 0 } to { width: 100% } }
-        /* Moving-text band: the row is doubled, so -50% loops seamlessly. */
-        @keyframes rx-ticker { from { transform: translateX(0) } to { transform: translateX(-50%) } }
-        .rx-ticker { animation: rx-ticker linear infinite; }
-        @media (prefers-reduced-motion: reduce) { .rx-ambient, .rx-ticker { animation: none !important; } }
-      `}</style>
+      <VexoThemeStyle />
 
       <SmoothScroll />
 
