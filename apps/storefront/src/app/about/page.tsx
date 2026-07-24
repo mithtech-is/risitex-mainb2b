@@ -154,16 +154,16 @@ export default function AboutPage() {
         <section className="mx-auto max-w-[var(--vx-max)] px-4 md:px-6 lg:px-8">
           <Reveal>
             <div className="overflow-hidden rounded-[24px] bg-[var(--vx-panel)] shadow-[0_30px_70px_-40px_rgba(0,0,0,0.5)]">
-              <div className="grid grid-cols-2 gap-y-10 px-6 py-10 lg:grid-cols-4 lg:px-4">
+              <div className="grid grid-cols-1 gap-y-8 px-6 py-10 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-4 lg:gap-x-0 lg:px-4">
                 {STATS.map((s, i) => (
                   <div
                     key={s.label}
-                    className={`flex items-center justify-center gap-4 px-4 ${i > 0 ? "lg:border-l lg:border-[rgba(255,255,255,0.10)]" : ""}`}
+                    className={`flex items-center justify-center gap-4 px-2 sm:px-4 ${i > 0 ? "lg:border-l lg:border-[rgba(255,255,255,0.10)]" : ""}`}
                   >
                     <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[rgba(255,255,255,0.16)] text-[var(--vx-sage)]">
                       <s.icon className="h-6 w-6" aria-hidden />
                     </span>
-                    <span>
+                    <span className="min-w-0">
                       <span className="vx-display block text-[clamp(1.5rem,2.4vw,2rem)] font-extrabold leading-none text-[var(--vx-on-panel)]">
                         {s.value}
                       </span>
