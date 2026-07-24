@@ -15,9 +15,7 @@ import {
   FeatureCard,
   ShowcaseFigure,
   ProductGrid,
-  LookScroller,
   type GridItem,
-  type Look,
 } from "@/components/site/vexo";
 
 /**
@@ -73,32 +71,6 @@ const FEATURES = [
     cta: "View",
     href: "/wholesale/catalogue?cat=jeans",
     tall: false,
-  },
-];
-
-/* The single-look scroller. hero-figure and figure-torso are the strongest
- * full cut-outs; figure-boxer carries the innerwear look. */
-const LOOKS: Look[] = [
-  {
-    src: `${CUT}/hero-figure.png`,
-    alt: "RISITEX five-pocket denim look",
-    word: "Denim",
-    label: "Five-pocket denim",
-    spec: "Non-lycra & stretch · washed to order",
-  },
-  {
-    src: `${CUT}/figure-torso.png`,
-    alt: "RISITEX boxer shorts look",
-    word: "Shorts",
-    label: "Woven boxer shorts",
-    spec: "Combed cotton · built for repeat wear",
-  },
-  {
-    src: `${CUT}/figure-boxer.png`,
-    alt: "RISITEX innerwear look",
-    word: "Innerwear",
-    label: "Everyday innerwear",
-    spec: "Soft combed cotton · AQL 2.5 inspected",
   },
 ];
 
@@ -419,18 +391,6 @@ export default async function HomePage() {
           <ProductGrid items={grid} />
         </section>
         ) : null}
-
-        {/* ════ LOOK SCROLLER ═══════════════════════════════════════════ */}
-        <section className="mt-16 md:mt-24">
-          <div className="mx-auto max-w-[var(--vx-max)] px-4 md:px-6 lg:px-8">
-            <MixedHeading
-              align="center"
-              className="text-center text-[clamp(2rem,4.4vw,3.6rem)] uppercase"
-              lines={[[{ t: "Fits for your" }, { t: "next", em: true }, { t: "season" }]]}
-            />
-          </div>
-          <LookScroller looks={LOOKS} />
-        </section>
 
         {/* ════ STATS ═══════════════════════════════════════════════════ */}
         <section className="mx-auto mt-14 max-w-[var(--vx-max)] px-4 md:mt-24 md:px-6 lg:px-8">
