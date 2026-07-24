@@ -399,16 +399,17 @@ export default async function HomePage() {
          * catalogue has nothing to show. */}
         {grid.length > 0 ? (
         <section className="mx-auto mt-16 max-w-[var(--vx-max)] px-4 md:mt-24 md:px-6 lg:px-8">
-          <div className="mb-12 text-center">
+          {/* Heading left, catalogue link on the right — not centred (user
+              request 2026-07-23). */}
+          <div className="mb-12 flex flex-wrap items-end justify-between gap-4">
             <MixedHeading
-              align="center"
               className="text-[clamp(2rem,4.4vw,3.6rem)] uppercase"
               lines={[[{ t: "Fresh blocks for your" }, { t: "next", em: true }, { t: "order" }]]}
             />
             <Reveal delay={0.1}>
               <Link
                 href="/wholesale/catalogue"
-                className="group mt-5 inline-flex items-center gap-2 text-[12px] uppercase tracking-[0.2em] text-[var(--vx-ink-soft)] transition-colors hover:text-[var(--vx-ink)]"
+                className="group inline-flex items-center gap-2 pb-2 text-[12px] uppercase tracking-[0.2em] text-[var(--vx-ink-soft)] transition-colors hover:text-[var(--vx-ink)]"
               >
                 View full catalogue
                 <span aria-hidden className="transition-transform duration-500 group-hover:translate-x-1">→</span>
